@@ -1,0 +1,5 @@
+<launch>
+
+    <rosparam command="load" file="$(find morpheus_collision)/config/allowed_collision_vector.yaml" />
+
+</launch>

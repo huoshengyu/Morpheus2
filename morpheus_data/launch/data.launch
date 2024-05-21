@@ -1,0 +1,6 @@
+<launch>
+
+    <node name="data_server" pkg="morpheus_data" type="morpheus_data" output="screen">
+    </node>
+
+</launch>

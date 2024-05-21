@@ -1,0 +1,29 @@
+goal:
+  keyhole:
+    goal_pose:
+      position: {x: 0.350, y: 0.535, z: 0.86995}
+      orientation: {x: 0.5, y: -0.5, z: -0.5, w: -0.5}
+    position_weights: {x: 0.0, y: 2.0, z: 0.0}
+    orientation_weights: {x: 0.0, y: 0.0, z: 0.0, w: 0.0}
+    max_velocity_scaling_factor: 0.1
+  keyhole_start:
+    goal_pose:
+      position: {x: 0.350, y: 0.15, z: 0.86995}
+      orientation: {x: 0.5, y: -0.5, z: -0.5, w: -0.5}
+    position_weights: {x: 0.0, y: 2.0, z: 0.0}
+    orientation_weights: {x: 0.0, y: 0.0, z: 0.0, w: 0.0}
+    max_velocity_scaling_factor: 1.0
+  keyhole_pickup:
+    goal_pose:
+      position: {x: 0.350, y: 0.535, z: 0.94}
+      orientation: {x: 0.5, y: -0.5, z: -0.5, w: -0.5}
+    position_weights: {x: 0.0, y: 2.0, z: 0.0}
+    orientation_weights: {x: 0.0, y: 0.0, z: 0.0, w: 0.0}
+    max_velocity_scaling_factor: 0.2
+  keyhole_end:
+    goal_pose:
+      position: {x: 0.350, y: 0.535, z: 0.86995}
+      orientation: {x: 0.5, y: -0.5, z: -0.5, w: -0.5}
+    position_weights: {x: 0.0, y: 2.0, z: 0.0}
+    orientation_weights: {x: 0.0, y: 0.0, z: 0.0, w: 0.0}
+    max_velocity_scaling_factor: 0.1

@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+
+<robot name="large_tunnel" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find morpheus_teleop)/urdf/macros/wall_4x12in.xacro" />
+
+  <xacro:macro name="large_tunnel"
+    params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 scale:=0.0254 prefix parent">
+
+    <link name="${prefix}large_tunnel"/>
+
+    <xacro:wall_4x12in
+        x="0"
+        y="0"
+        z="0"
+        R="0"
+        P="0"
+        Y="0"
+        prefix="${prefix}bottom"
+        parent="${prefix}large_tunnel"
+        scale="${scale}"
+    />
+    <xacro:wall_4x12in
+        x="${scale * 1}"
+        y="${0}"
+        z="${scale * 1}"
+        R="0"
+        P="-1.57079632679"
+        Y="0"
+        prefix="${prefix}left"
+        parent="${prefix}large_tunnel"
+        scale="${scale}"
+    />
+    <xacro:wall_4x12in
+        x="${scale * 12}"
+        y="${0}"
+        z="${scale * 1}"
+        R="0"
+        P="-1.57079632679"
+        Y="0"
+        prefix="${prefix}right"
+        parent="${prefix}large_tunnel"
+        scale="${scale}"
+    />
+    <xacro:wall_4x12in
+        x="${0}"
+        y="${0}"
+        z="${scale * 13}"
+        R="0"
+        P="0"
+        Y="0"
+        prefix="${prefix}top"
+        parent="${prefix}large_tunnel"
+        scale="${scale}"
+    />
+
+    <joint name="${prefix}large_tunnel_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${prefix}large_tunnel" />
+      <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y}" />
+    </joint>
+    
+  </xacro:macro>
+
+</robot>

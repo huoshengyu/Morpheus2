@@ -1,0 +1,31 @@
+<launch>
+    <arg name="initial_joint_positions" default=" -J elbow_joint 1.5708 -J finger_joint 0 -J shoulder_lift_joint -1.5708 -J shoulder_pan_joint 0 -J wrist_1_joint -1.5708 -J wrist_2_joint -1.5708 -J wrist_3_joint 3.14" doc="Initial joint configuration of the robot"/>
+    <arg name="controllers" default="joint_state_controller cartesian_compliance_controller gripper_action_controller"/>
+    <arg name="stopped_controllers" default="cartesian_motion_controller motion_control_handle cartesian_force_controller pos_joint_traj_controller"/>
+    <arg name="controller_config_file" default="$(find morpheus_teleop)/config/gazebo_controllers.yaml" />
+    <arg name="moveit_controller_config_file" default="$(find homestri_gazebo)/config/b_bot_moveit_controllers.yaml" />
+    <arg name="use_rviz" default="true" />
+
+    <arg name="xacro_path" default="$(find morpheus_teleop)/urdf/scenes/b_bot_keyhole_scene.xacro"/>
+    <arg name="srdf_path" default="$(find morpheus_teleop)/srdf/scenes/b_bot_scene.srdf"/>
+
+
+    <!-- launch a_bot-fake -->
+    <include file="$(find morpheus_teleop)/launch/b_bot_fake.launch">
+        <arg name="initial_joint_positions" value="$(arg initial_joint_positions)"/>
+        <arg name="controllers" value="$(arg controllers)"/>
+        <arg name="stopped_controllers" value="$(arg stopped_controllers)"/>
+        <arg name="controller_config_file" value="$(arg controller_config_file)" />
+        <arg name="moveit_controller_config_file" value="$(arg moveit_controller_config_file)"/>
+        <arg name="use_rviz" value="$(arg use_rviz)"/>
+        <arg name="xacro_path" value="$(arg xacro_path)"/>
+        <arg name="srdf_path" value="$(arg srdf_path)"/>
+    </include>
+
+    <!-- launch key_to_joy -->
+    <include file="$(find morpheus_teleop)/launch/key_to_joy.launch"/>
+
+    <!-- launch xbox360_swap -->
+    <include file="$(find morpheus_teleop)/launch/xbox360_swap_fake.launch"/>
+
+</launch>

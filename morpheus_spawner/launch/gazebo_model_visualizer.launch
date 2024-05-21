@@ -1,0 +1,5 @@
+<launch>
+    
+    <node name="gazebo_model_visualizer" pkg="morpheus_spawner" type="morpheus_spawner" output="screen"/>
+
+</launch>

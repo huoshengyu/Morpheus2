@@ -1,0 +1,63 @@
+<launch>
+    <arg name="initial_joint_positions" default=" -J elbow_joint 1.5708 -J finger_joint 0 -J shoulder_lift_joint -1.5708 -J shoulder_pan_joint 0 -J wrist_1_joint -1.5708 -J wrist_2_joint -1.5708 -J wrist_3_joint 1.5708" doc="Initial joint configuration of the robot"/>
+    <arg name="controllers" default="joint_state_controller cartesian_compliance_controller gripper_action_controller"/>
+    <arg name="stopped_controllers" default="cartesian_motion_controller motion_control_handle cartesian_force_controller pos_joint_traj_controller"/>
+    <arg name="controller_config_file" default="$(find morpheus_teleop)/config/gazebo_controllers.yaml" />
+    <arg name="moveit_controller_config_file" default="$(find homestri_gazebo)/config/a_bot_moveit_controllers.yaml" />
+    <arg name="use_rviz" default="true" />
+
+    <arg name="xacro_path" default="$(find morpheus_teleop)/urdf/scenes/a_bot_keyhole_scene.xacro"/>
+    <arg name="srdf_path" default="$(find morpheus_teleop)/srdf/scenes/a_bot_keyhole_scene.srdf"/>
+
+    <!-- Control motion and compliance controller with one handle -->
+    <remap from="motion_control_handle/target_frame" to="target_frame" />
+    <remap from="cartesian_motion_controller/target_frame" to="target_frame" />
+    <remap from="cartesian_compliance_controller/target_frame" to="target_frame" />
+    <!-- Control wrenches via one topic -->
+    <remap from="cartesian_force_controller/target_wrench" to="target_wrench" />
+    <remap from="cartesian_compliance_controller/target_wrench" to="target_wrench" />
+    <!-- Read wrenches via one topic -->
+    <remap from="cartesian_force_controller/ft_sensor_wrench" to="wrench_filtered" />
+    <remap from="cartesian_compliance_controller/ft_sensor_wrench" to="wrench_filtered" />
+    <!-- ur5e driver -->
+    <include file="$(find homestri_gazebo)/launch/common_gazebo.launch">
+        <arg name="initial_joint_positions" value="$(arg initial_joint_positions)"/>
+        <arg name="controllers" value="$(arg controllers)"/>
+        <arg name="stopped_controllers" value="$(arg stopped_controllers)"/>
+        <arg name="controller_config_file" value="$(arg controller_config_file)" />
+        <arg name="urdf_path" value="$(arg xacro_path)"/>
+    </include>
+
+    <!-- compliant trajectory action server -->
+    <remap from="compliant_traj_action_server/target_wrench" to="target_wrench" />
+    <remap from="compliant_traj_action_server/target_frame" to="target_frame" />
+    <node 
+        name="compliant_traj_action_server" 
+        pkg="compliant_trajectory_control" 
+        type="follow_compliant_trajectory_action_server" 
+        output="screen"
+    />
+
+    <!-- launch moveit -->
+    <include file="$(find morpheus_teleop)/launch/move_group.launch">
+        <arg name="allow_trajectory_execution" value="true" />
+        <arg name="moveit_controller_manager" value="simple" />
+        <arg name="fake_execution_type" value="interpolate" />
+        <arg name="info" value="true" />
+        <arg name="debug" value="false" />
+        <arg name="pipeline" value="ompl" />
+        <arg name="load_robot_description" value="false" />
+        <arg name="xacro_path" value="$(arg xacro_path)"/>
+        <arg name="srdf_path" value="$(arg srdf_path)"/>
+    </include>
+    <!-- Load moveit controller list to the parameter server -->
+    <rosparam file="$(arg moveit_controller_config_file)" ns="move_group"/>
+
+    <!-- launch rviz -->
+    <group if="$(arg use_rviz)">
+        <arg name="my_rviz" value="-d $(find morpheus_teleop)/rviz/morpheus_gazebo.rviz" />
+        <node name="rviz" pkg="rviz" type="rviz" respawn="false" args="$(arg my_rviz)"
+            output="screen" />
+    </group>
+    
+</launch>

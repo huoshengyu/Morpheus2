@@ -1,0 +1,12 @@
+<launch>
+
+    <!-- launch teleop xbox360 twist -->
+    <arg name="twist_topic" default="/twist_controller/command" />
+    <node pkg="morpheus_teleop" type="xbox360_swap.py" name="xbox360_twist" output="screen">
+        <param name="twist_topic" value="$(arg twist_topic)" />
+    </node>
+
+    <!-- tcp pose publisher -->
+    <node pkg="morpheus_teleop" type="tcp_pose_publisher.py" name="tcp_pose_publisher" output="screen"/>
+
+</launch>

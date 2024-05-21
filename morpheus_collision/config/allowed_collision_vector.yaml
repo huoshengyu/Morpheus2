@@ -1,0 +1,5 @@
+ALLOWED_COLLISION_VECTOR:
+    [
+    'pedestal'
+    ]
+

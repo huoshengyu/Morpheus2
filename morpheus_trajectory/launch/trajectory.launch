@@ -1,0 +1,10 @@
+<launch>
+
+    <!-- launch goal_transform params -->
+    <include file="$(find morpheus_teleop)/launch/goal_transform.launch"/>
+
+    <!-- launch trajectory publisher -->
+    <node name="trajectory_server" pkg="morpheus_trajectory" type="morpheus_trajectory" output="screen">
+    </node>
+
+</launch>

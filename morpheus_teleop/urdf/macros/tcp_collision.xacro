@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+
+<!-- This macro adds a convenient TF frame at the tip of the closed gripper. -->
+<!-- The position of the TF frame has not been measured at all and needs to be calibrated. -->
+
+<robot name="tcp_collision" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="tcp_collision" params="
+    prefix 
+    parent
+    tcp_offset">
+
+    <!-- Add an additional link to plan with. Oriented like the UR ee_link frame. -->
+    <link name="${prefix}tcp_collision_link">
+      <visual>
+        <origin rpy="0 0 0" xyz="0 0 0" />
+        <geometry>
+          <sphere radius="1" />
+        </geometry>
+        <material name="grey">
+          <color rgba=".5 .5 .5 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="0 0 0" />
+        <geometry>
+          <sphere radius="1" />
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0.0 0.0 0.02" rpy="0 0 0" />
+        <mass value=".006784" />
+        <inertia ixx=".18e-05" iyy=".18e-05" izz=".18e-05" ixy="0.0" iyz="0.0" ixz="0.0" />
+      </inertial>
+    </link>
+
+    <joint name="${prefix}tcp_collision_joint" type="fixed">
+      <parent link="${prefix}${parent}" />
+      <child link="${prefix}tcp_collision_link" />
+      <origin rpy="0 ${-pi/2} ${-pi/2}" xyz="0 0 ${tcp_offset}" />
+    </joint>
+
+  </xacro:macro>
+</robot>

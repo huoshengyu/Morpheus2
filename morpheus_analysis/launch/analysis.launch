@@ -1,0 +1,6 @@
+<launch>
+
+    <node name="analysis_server" pkg="morpheus_analysis" type="morpheus_analysis" output="screen">
+    </node>
+
+</launch>

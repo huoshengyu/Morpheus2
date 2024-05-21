@@ -1,0 +1,9 @@
+<launch>
+
+    <include file="$(find morpheus_collision)/launch/a_bot_link_vector.launch"/>
+    <include file="$(find morpheus_collision)/launch/allowed_collision_vector.launch"/>
+
+    <node name="collision_server" pkg="morpheus_collision" type="morpheus_collision" output="screen">
+    </node>
+
+</launch>
