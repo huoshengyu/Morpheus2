@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="bar_12in_scene">
+
+    <link name="base_link" />
+
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/bar_12in.xacro" />
+    <xacro:bar_12in
+        prefix=""
+        parent="base_link"
+        x="-0.0127"
+        y="-0.1528"
+        z="-0.0127"
+        scale="0.0254"
+    />
+    
+</robot>

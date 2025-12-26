@@ -2,19 +2,22 @@
     <arg name="robot_ip" default="192.168.1.102" />
     <arg name="reverse_ip" default="192.168.1.2" />
     <arg name="tool_device_name" default="/tmp/ttyUR" />
-    <arg name="kinematics_config" default="$(find homestri_bringup)/etc/a_bot_calibration.yaml" />
+    <arg name="calibration_path" default="$(find homestri_bringup)/etc/a_bot_calibration.yaml" />
     <arg name="controllers" default="joint_state_controller twist_controller speed_scaling_state_controller force_torque_sensor_controller"/>
     <arg name="stopped_controllers" default="joint_group_vel_controller scaled_pos_joint_traj_controller motion_control_handle cartesian_motion_controller cartesian_force_controller cartesian_compliance_controller"/>
     <arg name="controller_config_file" default="$(find homestri_bringup)/config/a_bot_controllers.yaml" />
     <arg name="moveit_controller_config_file" default="$(find homestri_bringup)/config/a_bot_moveit_controllers.yaml" />
     <arg name="use_rviz" default="true" />
 
-    <arg name="xacro_path" default="$(find morpheus_teleop)/urdf/scenes/a_bot_scene.xacro"/>
-    <arg name="srdf_path" default="$(find morpheus_teleop)/srdf/scenes/a_bot_scene.srdf"/>
+    <arg name="xacro_path" default="$(find morpheus_description)/urdf/scenes/a_bot_scene.xacro"/>
+    <arg name="srdf_path" default="$(find morpheus_description)/srdf/scenes/a_bot_scene.srdf"/>
+    <arg name="joint_limits_path" default="$(find homestri_a_bot_moveit_config)/config/joint_limits.yaml"/>
+    <arg name="cartesian_limits_path" default="$(find morpheus_moveit)/config/cartesian_limits.yaml"/>
+    <arg name="kinematics_path" default="$(find homestri_a_bot_moveit_config)/config/kinematics.yaml"/>
 
     <!-- Set the robot urdf on the parameter server -->
     <param name="robot_description" command="$(find xacro)/xacro '$(arg xacro_path)' 
-        kinematics_parameters_file:=$(arg kinematics_config)" 
+        kinematics_parameters_file:=$(arg calibration_path)" 
     />
 
     <!-- Convert joint states to /tf tranforms -->
@@ -37,7 +40,7 @@
         <arg name="use_tool_communication" value="true" />
         <arg name="tool_voltage" value="24" />
         <arg name="tool_device_name" value="$(arg tool_device_name)" />
-        <arg name="kinematics_config" value="$(arg kinematics_config)" />
+        <arg name="kinematics_config" value="$(arg calibration_path)" />
         <arg name="controllers" value="$(arg controllers)"/>
         <arg name="stopped_controllers" value="$(arg stopped_controllers)" />
         <arg name="controller_config_file" value="$(arg controller_config_file)"/>
@@ -59,7 +62,7 @@
     </include>
 
     <!-- launch moveit -->
-    <include file="$(find morpheus_teleop)/launch/move_group.launch">
+    <include file="$(find morpheus_moveit)/launch/move_group.launch">
         <arg name="allow_trajectory_execution" value="true" />
         <arg name="moveit_controller_manager" value="simple" />
         <arg name="fake_execution_type" value="interpolate" />
@@ -69,13 +72,16 @@
         <arg name="load_robot_description" value="false" />
         <arg name="xacro_path" value="$(arg xacro_path)"/>
         <arg name="srdf_path" value="$(arg srdf_path)"/>
+        <arg name="joint_limits_path" value="$(arg joint_limits_path)"/>
+        <arg name="cartesian_limits_path" value="$(arg cartesian_limits_path)"/>
+        <arg name="kinematics_path" value="$(arg kinematics_path)"/>
     </include>
     <!-- Load moveit controller list to the parameter server -->
     <rosparam file="$(arg moveit_controller_config_file)" ns="move_group"/>
 
     <!-- launch rviz -->
     <group if="$(arg use_rviz)">
-        <arg name="my_rviz" value="-d $(find morpheus_teleop)/rviz/morpheus_gazebo.rviz" />
+        <arg name="my_rviz" value="-d $(find morpheus_moveit)/rviz/morpheus_gazebo.rviz" />
         <node name="rviz" pkg="rviz" type="rviz" respawn="false" args="$(arg my_rviz)"
             output="screen" />
     </group>

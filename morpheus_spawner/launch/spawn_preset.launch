@@ -1,0 +1,14 @@
+<launch>
+    <arg name="preset_name" default="dragon"/>
+    <arg name="namespace" default="/"/>
+
+    <group ns="$(arg namespace)">
+
+        <!-- Launch spawner_service_client (spawner node must already be running) -->
+        <node pkg="morpheus_spawner" type="spawner_preset_service_client.py" name="spawner_preset_service_client" output="screen" 
+            args="$(arg preset_name)"
+        />
+
+    </group>
+
+</launch>

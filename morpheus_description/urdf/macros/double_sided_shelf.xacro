@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+
+<robot name="double_sided_shelf" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find morpheus_description)/urdf/macros/shelf.xacro" />
+  <xacro:include filename="$(find morpheus_description)/urdf/macros/wall_4x12in.xacro" />
+  
+  <xacro:macro name="double_sided_shelf"
+    params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 scale:=0.0254 prefix parent">
+
+    <link name="${prefix}double_sided_shelf"/>
+
+    <xacro:shelf
+        x="${scale * 4}"
+        y="0"
+        z="0"
+        R="0"
+        P="0"
+        Y="${pi/2}"
+        prefix="${prefix}left_"
+        parent="${prefix}double_sided_shelf"
+        scale="${scale}"
+    />
+    <xacro:shelf
+        x="${scale * 9}"
+        y="0"
+        z="0"
+        R="0"
+        P="0"
+        Y="${pi/2}"
+        prefix="${prefix}right_"
+        parent="${prefix}double_sided_shelf"
+        scale="${scale}"
+    />
+
+    <xacro:wall_4x12in
+        x="${scale * 4}"
+        y="0"
+        z="0"
+        R="${pi/2}"
+        P="0"
+        Y="${pi/2}"
+        prefix="${prefix}bottom_"
+        parent="${prefix}double_sided_shelf"
+        scale="${scale}"
+    />
+    <xacro:wall_4x12in
+        x="${scale * 4}"
+        y="0"
+        z="${scale * 4}"
+        R="${pi/2}"
+        P="0"
+        Y="${pi/2}"
+        prefix="${prefix}top_"
+        parent="${prefix}double_sided_shelf"
+        scale="${scale}"
+    />
+
+    <joint name="${prefix}double_sided_shelf_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${prefix}double_sided_shelf" />
+      <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y}" />
+    </joint>
+
+  </xacro:macro>
+
+</robot>

@@ -2,9 +2,9 @@
 
     <!-- simulated robot arguments -->
     <arg name="use_rviz" default="true" />
-    <arg name="urdf_path" default="$(find morpheus_teleop)/urdf/scenes/a_bot_double_sided_shelf_scene.xacro" />
-    <!-- <arg name="xacro_path" default="$(find morpheus_teleop)/urdf/scenes/test_scene.xacro"/>
-    <arg name="srdf_path" default="$(find morpheus_teleop)/config/test_scene.srdf"/> -->
+    <arg name="urdf_path" default="$(find morpheus_description)/urdf/scenes/a_bot_double_sided_shelf_scene.xacro" />
+    <!-- <arg name="xacro_path" default="$(find morpheus_description)/urdf/scenes/test_scene.xacro"/>
+    <arg name="srdf_path" default="$(find morpheus_description)/config/test_scene.srdf"/> -->
 
     <!-- launch gazebo -->
     <include file="$(find homestri_gazebo)/launch/a_bot_gazebo.launch">
@@ -13,7 +13,7 @@
     </include>
 
     <!-- launch moveit -->
-<!--     <include file="$(find morpheus_teleop)/launch/move_group.launch">
+<!--     <include file="$(find morpheus_moveit)/launch/move_group.launch">
         <arg name="allow_trajectory_execution" value="true" />
         <arg name="moveit_controller_manager" value="fake" />
         <arg name="fake_execution_type" value="interpolate" />
@@ -27,7 +27,7 @@
 
     <!-- launch rviz -->
 <!--     <group if="$(arg use_rviz)">
-        <arg name="my_rviz" value="-d $(find morpheus_teleop)/rviz/morpheus_gazebo.rviz" />
+        <arg name="my_rviz" value="-d $(find morpheus_moveit)/rviz/morpheus_gazebo.rviz" />
         <node name="rviz" pkg="rviz" type="rviz" respawn="false" args="$(arg my_rviz)"
             output="screen" />
     </group> -->

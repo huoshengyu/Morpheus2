@@ -1,0 +1,3 @@
+<launch>
+    <node name="collision_serial" pkg="morpheus_haptics" type="collision_serial" output="screen" />
+</launch>

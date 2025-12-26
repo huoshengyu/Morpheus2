@@ -6,21 +6,7 @@
         <param name="twist_topic" value="$(arg twist_topic)" />
     </node>
 
-    <!-- Republish twists as wrenches -->
-    <node name="spacenav_to_wrench" pkg="cartesian_controller_utilities" type="converter.py" output="screen">
-            <param name="twist_topic" value="$(arg twist_topic)"/>
-            <param name="wrench_topic" value="/target_wrench"/>
-            <param name="frame_id" value="world"/>
-            <param name="publishing_rate" value="50"/>
-    </node>
-
-    <!-- Numerically integrate twists into a pose -->
-    <node name="spacenav_to_pose" pkg="cartesian_controller_utilities" type="pose.py" output="screen">
-            <param name="twist_topic" value="$(arg twist_topic)"/>
-            <param name="pose_topic" value="/target_frame"/>
-            <param name="frame_id" value="base_link"/>
-            <param name="end_effector" value="tool0"/>
-            <param name="publishing_rate" value="50"/>
-    </node>
+    <!-- Twist Converter -->
+    <include file="$(find morpheus_teleop)/launch/twist_converter.launch"/>
 
 </launch>

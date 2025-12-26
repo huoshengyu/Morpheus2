@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+
+<robot name="dragon_simple" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="dragon_simple"
+    params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 scale:=0.0254 prefix parent">
+
+    <link name="${prefix}dragon_simple">
+        <inertial>
+            <origin rpy="0 0 0" xyz="${scale * 0.0} ${scale * 0.0} ${scale * 2}"/>
+            <mass value="0.05"/>
+            <inertia ixx="5" ixy="0" ixz="0" iyy="5" iyz="0" izz="12"/>
+        </inertial>
+        <visual>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/visual/dragon_simple.obj" scale="${scale} ${scale} ${scale}"/>
+            </geometry>
+            <material name="grey">
+                <color rgba="0.3 0.3 0.3 1" />
+            </material>
+        </visual>
+        <collision>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0" />
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/collision/dragon_simple.obj" scale="${scale} ${scale} ${scale}"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="${prefix}dragon_simple_joint" type="fixed">
+        <parent link="${parent}" />
+        <child link="${prefix}dragon_simple" />
+        <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y}" />
+    </joint>
+
+  </xacro:macro>
+
+</robot>

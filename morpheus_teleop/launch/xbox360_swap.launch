@@ -1,18 +1,27 @@
 <launch>
 
-    <!-- launch teleop xbox360 twist -->
-    <arg name="twist_topic" default="/twist_controller/command" />
+    <!-- Launch teleop xbox360 twist -->
+    <arg name="twist_topic" default="twist_controller/command"/>
+    <arg name="arm_group" default="arm"/>
+    <arg name="frame_id" default="base_link"/>
+    <arg name="end_effector" default="tcp_link"/>
+
     <node pkg="joy" type="joy_node" name="joy_node" respawn="true" output="screen">
-        <param name="dev" type="str" value="/dev/input/js0" />
-        <param name="dev_ff" value="/dev/input/event7" />
-        <param name="default_trig_val" value="true" />
+        <param name="dev" type="str" value="/dev/input/js0"/>
+        <param name="dev_ff" value="/dev/input/event7"/>
+        <param name="default_trig_val" value="true"/>
     </node>
 
     <node pkg="morpheus_teleop" type="xbox360_swap.py" name="xbox360_twist" output="screen">
-        <param name="twist_topic" value="$(arg twist_topic)" />
+        <param name="twist_topic" value="$(arg twist_topic)"/>
+        <param name="arm_group" value="$(arg arm_group)"/>
     </node>
 
-    <!-- tcp pose publisher -->
-    <node pkg="morpheus_teleop" type="tcp_pose_publisher.py" name="tcp_pose_publisher" output="screen"/>
+  <!-- Launch Twist converter-->
+  <include file="$(find morpheus_teleop)/launch/twist_converter.launch">
+      <arg name="twist_topic" value="$(arg twist_topic)"/>
+      <arg name="frame_id" value="$(arg frame_id)"/>
+      <arg name="end_effector" value="$(arg end_effector)"/>
+  </include>
 
 </launch>

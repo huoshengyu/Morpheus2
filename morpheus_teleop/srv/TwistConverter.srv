@@ -1,0 +1,12 @@
+# Reset twist_converter.py's target pose, such as after a trajectory command
+int8 RESET=0
+# Set twist_converter.py's target pose to the specified pose.
+int8 SET=1
+
+# Mode to use
+int8 mode
+
+# New target pose to be used when setting target pose. Unused if reset mode is used.
+geometry_msgs/Pose pose
+---
+bool success

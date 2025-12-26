@@ -1,5 +1,0 @@
-<launch>
-
-    <rosparam command="load" file="$(find morpheus_collision)/config/a_bot_link_vector.yaml" />
-
-</launch>

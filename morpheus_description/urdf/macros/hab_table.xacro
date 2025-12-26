@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<robot name="hab_table" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="hab_table"
+      params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 length:=${91 * 0.0254} width:=${48 * 0.0254} height:=0.0254 scale:=1 prefix parent">
+    <link name="${prefix}hab_table">
+      <visual>
+        <origin xyz="${length / 2} ${width / 2} ${-height / 2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${length} ${width} ${height}"/>
+        </geometry>
+        <material name="grey">
+            <color rgba="0.3 0.3 0.3 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="${length / 2} ${width/2} ${-height / 2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${length} ${width} ${height}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${prefix}hab_table_joint" type="fixed">
+        <parent link="${parent}" />
+        <child link="${prefix}hab_table" />
+        <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y}" />
+    </joint>
+  </xacro:macro>
+  
+
+</robot>

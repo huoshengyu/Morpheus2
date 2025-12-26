@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="trossen">
+
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/vx300s_macro.xacro" />
+
+    <xacro:macro name="trossen"
+        params="
+        prefix 
+        parent
+        *origin">
+
+        <!-- tcp_offset is the summation of offsets from gripper_bar, ee_bar, and ee_gripper, i.e. the offset from ee_arm_link to ee_gripper_link -->
+        <xacro:vx300s
+            prefix="${prefix}"
+            parent="${parent}"
+            tcp_offset="${0 + 0.025875 + 0.0385}"
+        >
+            <xacro:insert_block name="origin" />
+        </xacro:vx300s>
+
+    </xacro:macro>
+
+</robot>

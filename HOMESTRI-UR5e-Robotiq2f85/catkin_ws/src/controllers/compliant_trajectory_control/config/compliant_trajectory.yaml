@@ -1,0 +1,26 @@
+cartesian_compliance_controller:
+  type: "velocity_controllers/CartesianComplianceController"
+  end_effector_link: "tcp_link"
+  robot_base_link: "base_link"
+  ft_sensor_ref_link: "wrist_3_link"
+  compliance_ref_link: "tcp_link"
+  target_frame_topic: "target_frame"
+  joints: &robot_joints
+    - shoulder_pan_joint
+    - shoulder_lift_joint
+    - elbow_joint
+    - wrist_1_joint
+    - wrist_2_joint
+    - wrist_3_joint
+  # further configure your compliance controller (gains, stiffness, etc)
+
+# make sure this name matches the corresponding node in the launch file
+compliant_traj_action_server:
+  end_effector_link: "tcp_link"
+  robot_base_link: "base_link"
+  joints: *robot_joints
+  path_tolerance:
+    pose_error: {trans_x: 0.3, trans_y: 0.3, trans_z: 0.3, rot_x: 1.0, rot_y: 1.0, rot_z: 1.0}
+  goal_tolerance:
+    pose_error: {trans_x: 0.2, trans_y: 0.2, trans_z: 0.2, rot_x: 0.5, rot_y: 0.5, rot_z: 0.5}
+  goal_time_tolerance: 3.0

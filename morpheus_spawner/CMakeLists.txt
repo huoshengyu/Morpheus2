@@ -1,10 +1,5 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.0.2)
 project(morpheus_spawner)
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(moveit_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(morpheus_msgs REQUIRED)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -12,9 +7,23 @@ find_package(morpheus_msgs REQUIRED)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  rospy
+  std_msgs
+  moveit_msgs
+  geometry_msgs
+  morpheus_msgs
+  moveit_ros_planning_interface
+  message_generation
+  tf2
+  tf2_eigen
+  eigen_conversions
+)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -53,11 +62,15 @@ find_package(morpheus_msgs REQUIRED)
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  SpawnerMsgService.srv
+  SpawnerPresetService.srv
+  AttacherMsgService.srv
+  AttacherIndexService.srv
+#  Service1.srv
+#  Service2.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -67,10 +80,11 @@ find_package(morpheus_msgs REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  moveit_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -101,6 +115,12 @@ find_package(morpheus_msgs REQUIRED)
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
+catkin_package(
+  INCLUDE_DIRS include
+#  LIBRARIES morpheus_teleop
+  CATKIN_DEPENDS message_runtime geometry_msgs std_msgs
+#  DEPENDS system_lib 
+)
 
 ###########
 ## Build ##
@@ -109,8 +129,8 @@ find_package(morpheus_msgs REQUIRED)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-  
+  include
+  ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -126,7 +146,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/gazebo_model_visualizer.cpp)
+add_executable(${PROJECT_NAME} src/gazebo_model_visualizer.cpp src/pick_place_spawner.cpp src/collision_object.cpp src/attached_collision_object.cpp src/spawner.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -137,15 +157,15 @@ add_executable(${PROJECT_NAME} src/gazebo_model_visualizer.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}
+  morpheus_spawner_generate_messages
+  morpheus_spawner_generate_messages_cpp
+  morpheus_spawner_generate_messages_py)
 
 ## Specify libraries to link a library or executable target against
-ament_target_dependencies(${PROJECT_NAME}
-  "std_msgs"
-  "visualization_msgs"
-  "rclcpp"
-  "gazebo_msgs"
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
 )
-ament_package()
 
 #############
 ## Install ##
@@ -164,20 +184,20 @@ ament_package()
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark libraries for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
 install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 )
 
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION include/${PROJECT_NAME}
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
   PATTERN ".svn" EXCLUDE
 )

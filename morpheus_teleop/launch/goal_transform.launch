@@ -1,5 +1,0 @@
-<launch>
-
-    <rosparam command="load" file="$(find morpheus_teleop)/config/goal_transform.yaml"/>
-
-</launch>

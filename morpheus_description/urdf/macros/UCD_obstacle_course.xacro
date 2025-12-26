@@ -1,0 +1,148 @@
+<?xml version="1.0"?>
+<robot name="hera_obstacle_course" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/box.xacro" />
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/hera_pick_goal.xacro" />
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/hera_place_goal.xacro" />
+
+    <xacro:macro name="hera_obstacle_course"
+        params="prefix parent *origin">
+
+        <link name="${prefix}hera_obstacle_course_base_link"/>
+        <joint name="${prefix}hera_obstacle_course_base_link_joint" type="fixed">
+            <parent link="${parent}" />
+            <child link="${prefix}hera_obstacle_course_base_link" />
+            <xacro:insert_block name="origin" />
+        </joint>
+
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_floor_front_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.4510} ${0.015 * 1}">
+            <origin xyz="${0.6050 - 0.015 * 0.5} ${0} ${0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_floor_left_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.9290} ${0.015 * 1} ${0.015 * 1}">
+            <origin xyz="${-0.3240 + 0.9290 * 0.5} ${0.2255 - 0.015 * 0.5} ${0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_floor_right_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.9290} ${0.015 * 1} ${0.015 * 1}">
+            <origin xyz="${-0.3240 + 0.9290 * 0.5} ${-0.2255 + 0.015 * 0.5} ${0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_floor_middle_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.4510} ${0.015 * 1}">
+            <origin xyz="${0.1880 + 0.015 * 0.5} ${0} ${0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_floor_back_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.4510} ${0.015 * 1}">
+            <origin xyz="${-0.3240 + 0.015 * 0.5} ${0} ${0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_wall_front_left_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.015 * 1} ${0.6030}">
+            <origin xyz="${0.6050 - 0.015 * 0.5} ${0.2255 - 0.015 * 0.5} ${0.6030 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_wall_front_right_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.015 * 1} ${0.6030}">
+            <origin xyz="${0.6050 - 0.015 * 0.5} ${-0.2255 + 0.015 * 0.5} ${0.6030 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_wall_middle_left_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.015 * 1} ${0.6030}">
+            <origin xyz="${0.1880 + 0.015 * 0.5} ${0.2255 - 0.015 * 0.5} ${0.6030 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_wall_middle_right_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.015 * 1} ${0.6030}">
+            <origin xyz="${0.1880 + 0.015 * 0.5} ${-0.2255 + 0.015 * 0.5} ${0.6030 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_wall_back_right_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.015 * 1} ${0.6030}">
+            <origin xyz="${-0.3240 + 0.015 * 0.5} ${-0.2255 + 0.015 * 0.5} ${0.6030 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_wall_back_post_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.015 * 1} ${0.2340}">
+            <origin xyz="${-0.3240 + 0.3210 - 0.015 * 0.5} ${-0.2255 + 0.015 * 0.5} ${0.2340 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+        
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_wall_back_crown_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.3210} ${0.015 * 1} ${0.015 * 1}">
+            <origin xyz="${-0.3240 + 0.3210 * 0.5} ${-0.2255 + 0.015 * 0.5} ${0.2340 - 0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_roof_front_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.015 * 1} ${0.4510} ${0.015 * 1}">
+            <origin xyz="${0.6050 - 0.015 * 0.5} ${0} ${0.6030 - 0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_roof_left_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.43180} ${0.015 * 1} ${0.015 * 1}">
+            <origin xyz="${0.6050 - 0.43180 * 0.5} ${0.2255 - 0.015 * 0.5} ${0.6030 - 0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+
+        <xacro:box
+            prefix="${prefix}hera_obstacle_course_roof_right_link"
+            parent="${prefix}hera_obstacle_course_base_link"
+            size="${0.9290} ${0.015 * 1} ${0.015 * 1}">
+            <origin xyz="${-0.3240 + 0.929 * 0.5} ${-0.2255 + 0.015 * 0.5} ${0.6030 - 0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:box>
+
+        <xacro:hera_pick_goal
+            prefix="${prefix}hera_obstacle_course_easy_pick_goal"
+            parent="${prefix}hera_obstacle_course_base_link"
+            radius="${0.0254 * 1.0}"
+            length="${0.0254 * 0.5}">
+            <origin xyz="${0.6050 - 0.015 * 1.5} ${0} ${0.6030 - 0.015 * 0.5}" rpy="0 ${pi/2} 0" />
+        </xacro:hera_pick_goal>
+
+        <xacro:hera_pick_goal
+            prefix="${prefix}hera_obstacle_course_hard_pick_goal"
+            parent="${prefix}hera_obstacle_course_base_link"
+            radius="${0.0254 * 1.0}"
+            length="${0.0254 * 0.5}">
+            <origin xyz="${-0.3240 + 0.3210 * 0.5} ${-0.2255 + 0.015 * 0.5 + (-0.1630)} ${0.015 }" rpy="0 0 0" />
+        </xacro:hera_pick_goal>
+
+        <xacro:hera_place_goal
+            prefix="${prefix}hera_obstacle_course_place_goal"
+            parent="${prefix}hera_obstacle_course_base_link"
+            radius="${0.0254 * 1.0}"
+            length="${0.0254 * 0.5}">
+            <origin xyz="${0.0254 * 10} 0.0 ${0.015 * 0.5}" rpy="0 0 0" />
+        </xacro:hera_place_goal>
+
+    </xacro:macro>
+</robot>

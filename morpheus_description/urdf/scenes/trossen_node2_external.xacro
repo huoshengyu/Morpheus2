@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="vx300s">
+
+    <xacro:arg name="robot_name" default="vx300s"/>
+    <xacro:arg name="base_link_frame" default="base_link"/>
+    <xacro:arg name="show_ar_tag" default="false"/>
+    <xacro:arg name="show_gripper_bar" default="true"/>
+    <xacro:arg name="show_gripper_fingers" default="true"/>
+    <xacro:arg name="use_world_frame" default="false"/>
+    <xacro:arg name="external_urdf_loc" default=""/>
+    <xacro:arg name="load_gazebo_configs" default="false"/>
+
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/node2_table.xacro" />
+    <xacro:node2_table
+        prefix=""
+        parent="world"
+        x="${0.0254 * (-48)}"
+        y="${0.0254 * 8.5}"
+        z="${0.0254 * 34.75}"
+        scale="1"
+    />
+    <!-- scale=0.0254 meters/inch -->
+
+    <link name="world" />
+    <joint name="trossen_base_joint" type="fixed">
+        <parent link="world"/>
+        <child link="$(arg robot_name)/$(arg base_link_frame)"/>
+        <origin xyz="0 0 ${0.0254 * 34.75}" rpy="0 0 0" />
+    </joint>
+
+</robot>

@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<robot name="teapot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="teapot"
+    params="x:=0 y:=0 z:=0 scale:=0.05 prefix parent">
+
+    <link name="${prefix}teapot">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+            <mass value="2"/>
+            <inertia ixx="1.5" ixy="0" ixz="0" iyy="2" iyz="0" izz="2"/>
+        </inertial>
+        <visual>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/visual/teapot.obj" scale="${scale} ${scale} ${scale}"/>
+            </geometry>
+            <material name="grey">
+                <color rgba="0.3 0.3 0.3 1" />
+            </material>
+        </visual>
+        <collision concave="yes">
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0" />
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/collision/teapot.obj" scale="${scale} ${scale} ${scale}"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="${prefix}teapot_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${prefix}teapot" />
+      <origin xyz="${x} ${y} ${z}" />
+    </joint>
+  </xacro:macro>
+
+</robot>

@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<robot name="node2" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="node2"
+      params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 height:=0.3683 radius:=0.1080 scale:=1 prefix parent">
+    <link name="${prefix}node2">
+      <visual>
+        <origin xyz="${-height / 2} 0 0" rpy="0 ${pi / 2} 0"/>
+        <geometry>
+          <cylinder length="${height * scale}" radius="${radius * scale}"/>
+        </geometry>
+        <material name="grey">
+            <color rgba="0.3 0.3 0.3 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="${-height / 2} 0 0" rpy="0 ${pi / 2} 0"/>
+        <geometry>
+          <cylinder length="${height * scale}" radius="${radius * scale}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <link name="${prefix}PMA3">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.15"/>
+            <inertia ixx="${scale * 1.0}" ixy="0" ixz="0" iyy="${scale * 1.0}" iyz="0" izz="${scale * 1.0}"/>
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/visual/PMA3.stl" scale="${scale * 0.001} ${scale * 0.001} ${scale * 0.001}"/>
+            </geometry>
+            <material name="grey">
+                <color rgba="0.3 0.3 0.3 1" />
+            </material>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/collision/PMA3.stl" scale="${scale * 0.001} ${scale * 0.001} ${scale * 0.001}"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="${prefix}node2_joint" type="fixed">
+        <parent link="${parent}" />
+        <child link="${prefix}node2" />
+        <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y + 3*pi/2}" />
+    </joint>
+
+    <joint name="${prefix}PMA3_joint" type="fixed">
+        <parent link="${prefix}node2" />
+        <child link="${prefix}PMA3" />
+        <origin xyz="0.100 0 -0.025" rpy="${pi/2} 0 0" />
+    </joint>
+  </xacro:macro>
+  
+
+</robot>

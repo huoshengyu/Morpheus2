@@ -1,0 +1,9 @@
+<launch>
+
+    <!-- launch goal_transform params -->
+    <include file="$(find morpheus_trajectory)/launch/goal_transform.launch"/>
+
+    <!-- launch goal_haptics -->
+    <node pkg="morpheus_trajectory" type="goal_haptics.py" name="goal_haptics" output="screen"/>
+
+</launch>

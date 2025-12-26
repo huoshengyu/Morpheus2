@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<robot name="hera_table" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="hera_table"
+      params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 length:=${36 * 0.0254} width:=${24 * 0.0254} height:=0.0254 scale:=1 prefix parent">
+    <link name="${prefix}hera_table">
+      <visual>
+        <origin xyz="0 0 ${-height / 2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${length} ${width} ${height}"/>
+        </geometry>
+        <material name="light_grey">
+            <color rgba="0.7 0.7 0.7 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${-height / 2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${length} ${width} ${height}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${prefix}hera_table_joint" type="fixed">
+        <parent link="${parent}" />
+        <child link="${prefix}hera_table" />
+        <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y}" />
+    </joint>
+  </xacro:macro>
+  
+
+</robot>

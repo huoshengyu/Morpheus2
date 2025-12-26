@@ -83,8 +83,8 @@ speedBindings={
 class PublishThread(threading.Thread):
     def __init__(self, rate):
         super(PublishThread, self).__init__()
-        twist_topic = rospy.get_param("~twist_topic", "/joy/twist")
-        self.publisher = node.create_publisher(TwistMsg, queue_size = 1, twist_topic)
+        twist_topic = rospy.get_param("~twist_topic", "twist_controller/command")
+        self.publisher = rospy.Publisher(twist_topic, TwistMsg, queue_size = 1)
         self.x = 0.0
         self.y = 0.0
         self.z = 0.0
@@ -201,9 +201,7 @@ def vels(speed, turn):
 if __name__=="__main__":
     settings = saveTerminalSettings()
 
-    rclpy.init()
-
-    node = rclpy.create_node('teleop_twist_keyboard')
+    rospy.init_node('teleop_twist_keyboard')
 
     speed = rospy.get_param("~speed", 0.5)
     turn = rospy.get_param("~turn", 1.0)

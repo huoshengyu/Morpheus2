@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+
+<robot name="double_level_shelf" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find morpheus_description)/urdf/macros/shelf.xacro" />
+  
+  <xacro:macro name="double_level_shelf"
+    params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 scale:=0.0254 prefix parent">
+
+    <link name="${prefix}double_level_shelf"/>
+
+    <xacro:shelf
+        x="0"
+        y="0"
+        z="0"
+        R="0"
+        P="0"
+        Y="0"
+        prefix="${prefix}bottom_"
+        parent="${prefix}double_level_shelf"
+        scale="${scale}"
+    />
+    <xacro:shelf
+        x="0"
+        y="0"
+        z="0"
+        R="0"
+        P="0"
+        Y="0"
+        prefix="${prefix}top_"
+        parent="${prefix}double_level_shelf"
+        scale="${scale}"
+    />
+
+    <joint name="${prefix}double_level_shelf_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${prefix}double_level_shelf" />
+      <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y}" />
+    </joint>
+
+  </xacro:macro>
+
+</robot>

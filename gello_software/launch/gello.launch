@@ -1,0 +1,38 @@
+<launch>
+    <arg name="robot"                   default="sim_ur"/>
+    <arg name="robot_name"              default="$(arg robot)"/>
+    <arg name="agent"                   default="gello"/>
+    <arg name="gello_port"              default="fake"/>
+    <arg name="use_keyboard"            default="true"/>
+
+    <node 
+        pkg="gello" 
+        name="gello_nodes" 
+        type="launch_nodes.py" 
+        output="screen" 
+        ns="$(arg robot_name)"
+        args="--robot=$(arg robot)"
+    />
+    
+    <node 
+        pkg="gello" 
+        name="gello_env" 
+        type="run_env.py" 
+        output="screen" 
+        ns="$(arg robot_name)"
+        args="--robot_type=$(arg robot)
+                --agent=$(arg agent)
+                --gello_port=$(arg gello_port)"
+    />
+
+    <node if="$(arg use_keyboard)"
+        pkg="gello" 
+        name="key_to_gello" 
+        type="key_to_gello.py" 
+        output="screen" 
+        ns="$(arg robot_name)"
+        args="--robot_type=$(arg robot)
+                --agent=$(arg agent)"
+    />
+
+</launch>

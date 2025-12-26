@@ -6,11 +6,11 @@
 #include <chrono>
 #include <ctime>
 
-#include "rclcpp/rclcpp.hpp"
-#include <std_msgs/msg/string.hpp>
-#include <std_msgs/msg/float64.hpp>
-#include <geometry_msgs/msg/point.hpp>
-#include <visualization_msgs/msg/marker.hpp>
+#include <ros/ros.h>
+#include <std_msgs/String.h>
+#include <std_msgs/Float64.h>
+#include <geometry_msgs/Point.h>
+#include <visualization_msgs/Marker.h>
 #include <moveit/moveit_cpp/moveit_cpp.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
 #include <moveit/collision_detection_bullet/collision_env_bullet.h>
@@ -19,8 +19,8 @@
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/robot_model/robot_model.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
-#include <morpheus_msgs/msg/contact_map.hpp>
-#include <morpheus_msgs/msg/string_pair.hpp>
+#include <morpheus_msgs/ContactMap.h>
+#include <morpheus_msgs/StringPair.h>
 
 // name of the robot description (a param name, so it can be changed externally)
 static const std::string ROBOT_DESCRIPTION =
@@ -70,7 +70,7 @@ namespace analysis
 };
 
 // Get directory of data folder. Note: cwd is /root/.ros/ by default
-static const std::string data_dir = "/root/catkin_ws/src/morpheus/morpheus_data/analysis/";
+static const std::string data_dir = "/root/catkin_ws/src/morpheus_data/data/";
 
 class AnalysisNode
 {
@@ -160,7 +160,7 @@ class AnalysisNode
             return result;
         }
 
-        static void emptyCallback(std_msgs::msg::String msg)
+        static void emptyCallback(std_msgs::String msg)
         {
             
         }
@@ -172,7 +172,7 @@ int main(int argc, char** argv)
     AnalysisNode analysis_node(argc, argv);
     if (argc == 1)
     {
-        RCLCPP_INFO(rclcpp::get_logger("MorpheusAnalysis"), "No command line arguments given. Please provide data filenames");
+        ROS_INFO("No command line arguments given. Please provide data filenames");
     }
     else
     {

@@ -1,6 +1,23 @@
 <launch>
+  <arg name="controller"                        default="ps4"/>
+  <arg name="data"                              default="true"/>
+  
+  <node ns="UCDsession" name="data_server" pkg="morpheus_data" type="UCDsession.py" output="screen"/>
+  
+  <node pkg="morpheus_data" type="trossen_tf_csv" name="trossen_tf_csv" output="screen">
+    <param name="base_dir" value="/root/catkin_ws/src/morpheus_data/data/"/>   
+    <param name="basename_topic" value="/UCDsession/csv_basename"/>
+    <param name="world_frame" value="vx300s/base_link"/>
+    <param name="log_rate_hz" value="10"/>
+    <param name="append" value="false"/>
+    <param name="flush_each_row" value="false"/>
+  </node>
 
-    <node name="data_server" pkg="morpheus_data" type="morpheus_data" output="screen">
-    </node>
-
+  <node pkg="morpheus_data" type="Backup_Bag" name="Backup_Bag" output="screen">
+    <param name="base_dir" value="/root/catkin_ws/src/morpheus_data/data/"/>
+    <param name="basename_topic" value="/UCDsession/csv_basename"/>
+    <param name="append" value="false"/>
+    <param name="flush_each_row" value="false"/>
+  </node>
+  
 </launch>

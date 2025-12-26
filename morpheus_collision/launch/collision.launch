@@ -1,9 +1,18 @@
 <launch>
 
-    <include file="$(find morpheus_collision)/launch/a_bot_link_vector.launch"/>
-    <include file="$(find morpheus_collision)/launch/allowed_collision_vector.launch"/>
+    <arg name="arm_group"                   default="arm"/>
+    <arg name="gripper_group"               default="gripper"/>
+    <arg name="collision_haptics"           default="$(arg collision_haptics)"/>
 
-    <node name="collision_server" pkg="morpheus_collision" type="morpheus_collision" output="screen">
+    <include file="$(find morpheus_collision)/launch/robot_link_vector.launch"/>
+    <include file="$(find morpheus_collision)/launch/allowed_collision_vector.launch"/>
+    
+    <node name="collision" pkg="morpheus_collision" type="morpheus_collision" output="screen">
+        <param name="arm_group" value="$(arg arm_group)"/>
+        <param name="gripper_group" value="$(arg gripper_group)"/>
     </node>
+
+    <!-- Launch arduino collision haptics node -->
+    <include if="$(arg collision_haptics)" file="$(find morpheus_haptics)/launch/collision_send.launch"/> 
 
 </launch>

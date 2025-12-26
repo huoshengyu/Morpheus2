@@ -26,13 +26,12 @@ def transform_callback(tf_buffer):
         rospy.logwarn("Transform lookup failed!")
 
 if __name__ == '__main__':
-    rclpy.init()
-    node = rclpy.create_node('transform_to_pose_node')
+    rospy.init_node('transform_to_pose_node')
     
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
     
-    pose_pub = node.create_publisher(geometry_msgs.msg.Pose, queue_size=10, '/tcp_pose')
+    pose_pub = rospy.Publisher('/tcp_pose', geometry_msgs.msg.Pose, queue_size=10)
     
     rate = rospy.Rate(10)  # hz
     

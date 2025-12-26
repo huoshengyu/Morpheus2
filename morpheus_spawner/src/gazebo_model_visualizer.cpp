@@ -1,11 +1,11 @@
 #include <algorithm>
 
-#include "rclcpp/rclcpp.hpp"
-#include <std_msgs/msg/string.hpp>
-#include <std_msgs/msg/float64.hpp>
-#include <visualization_msgs/msg/marker.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
-#include <gazebo_msgs/msg/model_states.hpp>
+#include <ros/ros.h>
+#include <std_msgs/String.h>
+#include <std_msgs/Float64.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <gazebo_msgs/ModelStates.h>
 
 namespace visualizer
 {
@@ -16,27 +16,27 @@ class VisualizerNode
 {
     public:
         ros::Subscriber g_model_states_msg_subscriber;
-        inline static gazebo_msgs::msg::ModelStates g_model_states_msg;
+        inline static gazebo_msgs::ModelStates g_model_states_msg;
         inline static bool received_model_states_msg;
         ros::Publisher g_marker_array_publisher;
-        visualization_msgs::msg::MarkerArray g_model_markers;
+        visualization_msgs::MarkerArray g_model_markers;
 
         VisualizerNode(int argc, char** argv)
         {
             // Initialize ROS node
-            rclcpp::init(argc, argv);
-            auto nh = rclcpp::Node::make_shared("visualizer");
+            ros::init(argc, argv, "visualizer");
+            ros::NodeHandle nh;
             ros::AsyncSpinner spinner(0);
             spinner.start();
                         
             // Create a subscriber to receive model state updates
-            g_model_states_msg_subscriber = nh.subscribe<gazebo_msgs::msg::ModelStates>("gazebo/model_states", 1, gazeboModelStateCallback);
+            g_model_states_msg_subscriber = nh.subscribe<gazebo_msgs::ModelStates>("gazebo/model_states", 1, gazeboModelStateCallback);
 
             // Create a marker array publisher for publishing shapes to Rviz
-            g_marker_array_publisher = nh.advertise<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 0);
+            g_marker_array_publisher = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 0);
 
             // Create an array of markers
-            visualization_msgs::msg::MarkerArray g_model_markers();
+            visualization_msgs::MarkerArray g_model_markers();
 
             // Instantiate visual tools for visualizing markers in Rviz
             // visual_tools_ = std::make_shared<moveit_visual_tools::MoveItVisualTools>(node_, "world", "/moveit_visual_tools");
@@ -52,11 +52,11 @@ class VisualizerNode
         void spin()
         {
             // Loop at specified rate
-            rclcpp::Rate loop_rate(10);
-            while (rclcpp::ok())
+            ros::Rate loop_rate(10);
+            while (ros::ok())
             {
                 // Spin once to invoke subscriber callback(s)
-                rclcpp::spin_some(node);
+                ros::spinOnce();
 
                 // If message received, visualize
                 if (received_model_states_msg)
@@ -66,20 +66,20 @@ class VisualizerNode
             }
 
             // Spin the ROS node
-            rclcpp::spin(node);
+            ros::spin();
         }
 
-        void visualize(gazebo_msgs::msg::ModelStates model_states_msg)
+        void visualize(gazebo_msgs::ModelStates model_states_msg)
         {
             // Set a color for the visualization markers
-            std_msgs::msg::ColorRGBA color;
+            std_msgs::ColorRGBA color;
             color.r = 1.0;
             color.g = 1.0;
             color.b = 1.0;
             color.a = 0.5;
 
             // Instantiate marker array for holding the markers to be visualized
-            visualization_msgs::msg::MarkerArray markers;
+            visualization_msgs::MarkerArray markers;
 
             // Keep count so that separate namespaces can be kept
             std::map<std::string, unsigned> ns_counts;
@@ -96,8 +96,8 @@ class VisualizerNode
                     continue;
                 }
 
-                geometry_msgs::msg::Pose pose = model_states_msg.pose[i];
-                geometry_msgs::msg::Twist twist = model_states_msg.twist[i];
+                geometry_msgs::Pose pose = model_states_msg.pose[i];
+                geometry_msgs::Twist twist = model_states_msg.twist[i];
                 double scale = 0.0254;
                 double x_len = 1;
                 double y_len = 12;
@@ -108,17 +108,17 @@ class VisualizerNode
                     ns_counts[ns_name] = 0;
                 else
                     ns_counts[ns_name]++;
-                visualization_msgs::msg::Marker mk; // Instantiate marker
-                mk.header.stamp = rclcpp::Time::now(); // Timestamp
+                visualization_msgs::Marker mk; // Instantiate marker
+                mk.header.stamp = ros::Time::now(); // Timestamp
                 mk.header.frame_id = "world"; // Reference frame id
                 mk.ns = ns_name; // String name
                 mk.id = ns_counts[ns_name]; // Unique number id
                 mk.pose = pose; // Pose of the shape
                 mk.color = color; // Color specified above
-                mk.action = visualization_msgs::msg::Marker::ADD; // Add shape to Rviz
-                mk.lifetime = rclcpp::Duration(0.5); // Remain for 0.5 sec or until replaced
-                mk.type = visualization_msgs::msg::Marker::CUBE;
-                mk.mesh_resource = ""; // Use custom mesh (if type = visualization_msgs::msg::Marker::MESH_RESOURCE)
+                mk.action = visualization_msgs::Marker::ADD; // Add shape to Rviz
+                mk.lifetime = ros::Duration(0.5); // Remain for 0.5 sec or until replaced
+                mk.type = visualization_msgs::Marker::CUBE;
+                mk.mesh_resource = ""; // Use custom mesh (if type = visualization_msgs::Marker::MESH_RESOURCE)
                 mk.scale.x = scale * x_len; // X scale
                 mk.scale.y = scale * y_len; // Y scale
                 mk.scale.z = scale * z_len; // Z scale
@@ -128,13 +128,13 @@ class VisualizerNode
             publishMarkers(markers);
         }
 
-        void publishMarkers(visualization_msgs::msg::MarkerArray& markers)
+        void publishMarkers(visualization_msgs::MarkerArray& markers)
         {
             // delete old markers
             if (!g_model_markers.markers.empty())
             {
                 for (auto& marker : g_model_markers.markers)
-                marker.action = visualization_msgs::msg::Marker::DELETE;
+                marker.action = visualization_msgs::Marker::DELETE;
 
                 // g_marker_array_publisher->publish(g_model_markers);
             }
@@ -149,18 +149,11 @@ class VisualizerNode
         
     private:
         // Define a callback to update to be called when the PlanningSceneMonitor receives an update
-        static void gazeboModelStateCallback(const gazebo_msgs::msg::ModelStates::ConstSharedPtr& msg)
+        static void gazeboModelStateCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
         {
-            RCLCPP_INFO(rclcpp::get_logger("MorpheusSpawner"), "Updating...");
+            ROS_INFO("Updating...");
             g_model_states_msg = *msg;
             received_model_states_msg = true;
         }
 
 };
-
-int main(int argc, char** argv)
-{
-    VisualizerNode visualizer_node(argc, argv);
-    visualizer_node.spin();
-    return 0;
-}

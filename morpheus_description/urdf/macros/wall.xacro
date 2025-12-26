@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<robot name="wall" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="wall"
+    params="x:=0 y:=0 z:=0 scale:=0.05 prefix parent">
+
+    <link name="${prefix}wall">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+            <mass value="1"/>
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
+        <visual>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/visual/wall.obj" scale="${scale} ${scale} ${scale}"/>
+            </geometry>
+            <material name="grey">
+                <color rgba="0.3 0.3 0.3 1" />
+            </material>
+        </visual>
+        <collision>
+            <origin rpy="1.57079632679 0 0" xyz="0 0 0" />
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/collision/wall.obj" scale="${scale} ${scale} ${scale}"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="${prefix}wall_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${prefix}wall" />
+      <origin xyz="${x} ${y} ${z}" />
+    </joint>
+  </xacro:macro>
+
+</robot>

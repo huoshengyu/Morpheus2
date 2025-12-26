@@ -1,9 +1,0 @@
-<launch>
-
-    <!-- launch goal_transform params -->
-    <include file="$(find morpheus_teleop)/launch/goal_transform.launch"/>
-
-    <!-- launch goal_haptics -->
-    <node pkg="morpheus_teleop" type="goal_haptics.py" name="goal_haptics" output="screen"/>
-
-</launch>

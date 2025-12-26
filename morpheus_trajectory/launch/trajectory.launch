@@ -1,10 +1,30 @@
 <launch>
+    <arg name="trajectory_name"                     default=""/>
+    <arg name="goal_name_vector"                    default="trossen_home hera_ceiling hera_floor hera_crouch_front hera_crouch_right hera_arch_over hera_arch_pick"/>
 
-    <!-- launch goal_transform params -->
-    <include file="$(find morpheus_teleop)/launch/goal_transform.launch"/>
+    <arg name="arm_group"                           default="arm"/>
+    <arg name="gripper_group"                       default="gripper"/>
+    <arg name="mode"                                default="preset"/>
+    <arg name="controller"                          default="ps4"/>
+    <arg name="trajectory_haptics"                  default="false"/>
 
-    <!-- launch trajectory publisher -->
-    <node name="trajectory_server" pkg="morpheus_trajectory" type="morpheus_trajectory" output="screen">
+    <!-- Load goal_transform params -->
+    <rosparam command="load" file="$(find morpheus_trajectory)/config/goal_transform.yaml"/>
+    <rosparam command="load" file="$(find morpheus_trajectory)/config/trajectory_presets.yaml"/>
+    <!-- Assign goal trajectory (preset overrides name vector) -->
+    <param name="goal/name_vector" value="$(arg goal_name_vector)"/>
+    <param name="goal/trajectory_name" value="$(arg trajectory_name)"/>
+
+    <!-- Launch trajectory publisher -->
+    <node name="trajectory" pkg="morpheus_trajectory" type="morpheus_trajectory" output="screen">
+        <param name="arm_group"                     value="$(arg arm_group)"/>
+        <param name="gripper_group"                 value="$(arg gripper_group)"/>
+        <param name="mode"                          value="$(arg mode)"/>
+        <param name="controller"                    value="$(arg controller)"/>
     </node>
 
+    <!-- Launch trajectory haptics -->
+    <group if="$(arg trajectory_haptics)">
+        <node name="serial_trajec_sender" pkg="morpheus_trajectory" type="serial_trajec_sender" output="screen"/>
+    </group>
 </launch>

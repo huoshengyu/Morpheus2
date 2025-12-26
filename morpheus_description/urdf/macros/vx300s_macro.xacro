@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="vx300s">
+
+    <xacro:macro name="vx300s"
+        params="
+        prefix 
+        parent
+        tcp_offset
+        *origin">
+
+        <xacro:include filename="$(find morpheus_description)/urdf/macros/vx300s.urdf.xacro"/>
+
+        <xacro:unless value="$(arg use_world_frame)">
+            <link name="world"/>
+            <joint name="${prefix}trossen_base_joint" type="fixed">
+                <parent link="${parent}"/>
+                <child link="$(arg robot_name)/$(arg base_link_frame)"/>
+                <xacro:insert_block name="origin" />
+            </joint>
+        </xacro:unless>
+
+        <!-- Add an additional link to plan with. Identical to ee_gripper_link frame, included for consistency with HOMESTRI UR5e description. -->
+        <link name="${prefix}tcp_link" />
+        <joint name="${prefix}tcp_joint" type="fixed">
+            <parent link="${prefix}vx300s/ee_arm_link" />
+            <child link="${prefix}tcp_link" />
+            <origin rpy="0 0 0" xyz="${tcp_offset} 0 0" />
+        </joint>
+
+    </xacro:macro>
+
+</robot>

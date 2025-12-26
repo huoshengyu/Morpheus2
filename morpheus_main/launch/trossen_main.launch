@@ -1,0 +1,67 @@
+<launch>
+    <arg name="robot_model"                         default="vx300s"/>
+    <arg name="robot_name"                          default="$(arg robot_model)"/>
+
+    <arg name="robot_mode"                          default="real"/>
+    <arg name="control_mode"                        default="none"/>
+    <arg name="controller"                          default="none"/>
+    <arg name="use_keyboard"                        default="false"/>
+    <arg name="collision"                           default="false"/>
+    <arg name="collision_haptics"                   default="false"/>
+    <arg name="spawner"                             default="false"/>
+    <arg name="trajectory"                          default="false"/>
+    <arg name="trajectory_name"                     default=""/>
+    <arg name="trajectory_haptics"                  default="false"/>
+
+    <!-- <arg name="xacro_path"                          default="$(find morpheus_description)/urdf/scenes/trossen_hera_scene.xacro"/>
+    <arg name="srdf_path"                           default="$(find morpheus_description)/srdf/scenes/trossen_hera_scene.srdf.xacro"/> -->
+    <!-- UCD experiment-->
+    <arg name="xacro_path"                          default="$(find morpheus_description)/urdf/scenes/UCD_trossen_hera_scene.xacro"/>
+    <arg name="srdf_path"                           default="$(find morpheus_description)/srdf/scenes/trossen_hera_scene.srdf.xacro"/>
+
+    <arg name="data"                                default="true"/>
+
+    <!-- Launch trossen and controls -->
+    <include file="$(find morpheus_teleop)/launch/trossen.launch">
+        <arg name="robot_model"                         value="$(arg robot_model)"/>
+        <arg name="robot_name"                          value="$(arg robot_name)"/>
+
+        <arg name="robot_mode"                          value="$(arg robot_mode)"/>
+        <arg name="control_mode"                        value="$(arg control_mode)"/>
+        <arg name="controller"                          value="$(arg controller)"/>
+        <arg name="use_keyboard"                        value="$(arg use_keyboard)"/>
+
+        <arg name="xacro_path"                          value="$(arg xacro_path)"/>
+        <arg name="srdf_path"                           value="$(arg srdf_path)"/>
+    </include>
+
+    <group ns="$(arg robot_name)">
+
+        <!-- Launch collision node -->
+        <include if="$(arg collision)" file="$(find morpheus_collision)/launch/collision.launch">
+            <arg name="arm_group"                       value="interbotix_arm"/>
+            <arg name="gripper_group"                   value="interbotix_gripper"/>
+            <arg name="collision_haptics"               value="$(arg collision_haptics)"/>
+        </include>
+
+        <!-- Launch spawner node -->
+        <include if="$(arg spawner)" file="$(find morpheus_spawner)/launch/spawner.launch">
+            <arg name="arm_group"                       value="interbotix_arm"/>
+            <arg name="mode"                            value="spawn"/>
+        </include>
+
+        <!-- Launch trajectory node -->
+        <include if="$(arg trajectory)" file="$(find morpheus_trajectory)/launch/trajectory.launch">
+            <arg name="trajectory_name"                 value="$(arg trajectory_name)"/>
+            <arg name="arm_group"                       value="interbotix_arm"/>
+            <arg name="gripper_group"                   value="interbotix_gripper"/>
+            <arg name="controller"                      value="$(arg controller)"/>
+            <arg name="trajectory_haptics"              value="$(arg trajectory_haptics)"/>
+        </include>
+
+    </group>
+
+    <!-- Launch data recording -->
+    <include if="$(arg data)" file="$(find morpheus_data)/launch/data.launch"/>
+
+</launch>

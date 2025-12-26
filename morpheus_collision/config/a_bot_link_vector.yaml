@@ -22,6 +22,8 @@ A_BOT_LINK_VECTOR:
     'right_outer_finger',
     'right_inner_finger',
     'right_inner_finger_pad',
-    'right_inner_knuckle'
+    'right_inner_knuckle',
+    "quick_changer",
+    "angle_bracket"
     ]
 

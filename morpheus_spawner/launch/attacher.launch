@@ -1,0 +1,11 @@
+<launch>
+    <arg name="mesh_path" default="file://$(find morpheus_description)/meshes/components/collision/dragon_simple.obj"/>
+    <arg name="world_pose" default="-x -0.1 -y 0.8528 -z 0.91915 -R 0.0 -P 0.0 -Y 0.0" doc="Pose to spawn the robot at"/>
+    <arg name="mode" default="attach"/>
+    <arg name="index" default="0"/>
+
+    <node name="morpheus_spawner" pkg="morpheus_spawner" type="morpheus_spawner"
+        args="-mesh_path $(arg mesh_path) $(arg world_pose) -mode $(arg mode) -index $(arg index)"
+        respawn="false" output="screen"/>
+
+</launch>

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="vx300s">
+
+    <!-- Trossen scene (already calls the Trossen macro) -->
+    <xacro:include filename="$(find morpheus_description)/urdf/scenes/trossen_scene.xacro" />
+
+    <!-- Hera version of the obstacle course -->
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/UCD_obstacle_course.xacro" />
+    <xacro:hera_obstacle_course
+        prefix=""
+        parent="world"
+    >
+        <origin xyz="${0.0254 * (-0.5)} 0 ${0.0254 * 34.75}" rpy="0 0 0" />
+    </xacro:hera_obstacle_course>
+    <!-- scale=0.0254 meters/inch -->
+    <!-- Note the obstacle course is moved 0.5 inches to the right from its original position -->
+    <!-- This was done so that the Trossen robot remains fully within the obstacle course at rest -->
+    <!-- Otherwise, the elbow would extend slightly outside the allowed bounds at rest -->
+    
+    <!-- Table -->
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/hera_table.xacro" />
+    <xacro:hera_table
+        prefix=""
+        parent="world"
+        x="${(0.6050 + (-0.3240)) / 2 + 0.0254 * (-0.5)}"
+        y="${0.2255 + (0.0254 * -12)}"
+        z="${0.0254 * 34.75}"
+    />
+    <!-- The table is centered such that the obstacle course fits neatly within its dimensions (3'x2') -->
+    <!-- Adjustments to the obstacle course position therefore must also be applied to the table -->
+
+</robot>

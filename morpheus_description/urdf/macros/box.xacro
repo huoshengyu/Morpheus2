@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<robot name="box" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="box"
+      params="prefix parent size *origin">
+    <link name="${prefix}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${size}"/>
+        </geometry>
+        <material name="grey">
+            <color rgba="0.3 0.3 0.3 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${size}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${prefix}_joint" type="fixed">
+        <parent link="${parent}" />
+        <child link="${prefix}" />
+        <xacro:insert_block name="origin" />
+    </joint>
+  </xacro:macro>
+  
+
+</robot>

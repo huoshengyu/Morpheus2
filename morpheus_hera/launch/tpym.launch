@@ -1,0 +1,44 @@
+<launch>
+    <arg name="robot_model"                         default="vx300s"/>
+    <arg name="robot_name"                          default="$(arg robot_model)"/>
+
+    <arg name="robot_mode"                          default="real"/>
+    <arg name="control_mode"                        default="interbotix"/>
+    <arg name="controller"                          default="ps4"/>
+    <arg name="use_keyboard"                        default="false"/>
+    <arg name="collision"                           default="false"/>
+    <arg name="collision_haptics"                   default="false"/>
+    <arg name="spawner"                             default="false"/>
+    <arg name="trajectory"                          default="true"/>
+    <arg name="task"                                default="medium"/>
+    <arg name="trajectory_haptics"                  default="true"/>
+
+    <arg name="xacro_path"                          default="$(find morpheus_description)/urdf/scenes/trossen_hera_scene.xacro"/>
+    <arg name="srdf_path"                           default="$(find morpheus_description)/srdf/scenes/trossen_hera_scene.srdf.xacro"/>
+
+    <arg name="data"                                default="true"/>
+
+    <!-- Launch trossen and controls -->
+    <include file="$(find morpheus_main)/launch/trossen_main.launch">
+        <arg name="robot_model"                         value="$(arg robot_model)"/>
+        <arg name="robot_name"                          value="$(arg robot_name)"/>
+
+        <arg name="robot_mode"                          value="$(arg robot_mode)"/>
+        <arg name="control_mode"                        value="$(arg control_mode)"/>
+        <arg name="controller"                          value="$(arg controller)"/>
+        <arg name="use_keyboard"                        value="$(arg use_keyboard)"/>
+
+        <arg name="xacro_path"                          value="$(arg xacro_path)"/>
+        <arg name="srdf_path"                           value="$(arg srdf_path)"/>
+
+        <arg name="collision"                           value="$(arg collision)"/>
+        <arg name="collision_haptics"                   value="$(arg collision_haptics)"/>
+        <arg name="spawner"                             value="$(arg spawner)"/>
+        <arg name="trajectory"                          value="$(arg trajectory)"/>
+        <arg name="trajectory_name"                     value="$(arg task)"/>
+        <arg name="trajectory_haptics"                  value="$(arg trajectory_haptics)"/>
+
+        <arg name="data"                                value="$(arg data)"/>
+    </include>
+
+</launch>

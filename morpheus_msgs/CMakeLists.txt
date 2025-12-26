@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.0.2)
 project(morpheus_msgs)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -7,21 +7,21 @@ project(morpheus_msgs)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-
-find_package(rosidl_default_generators REQUIRED)
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(moveit_core REQUIRED)
-find_package(moveit_ros_planning REQUIRED)
-find_package(moveit_ros_planning_interface REQUIRED)
-find_package(moveit_visual_tools REQUIRED)
-find_package(moveit_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-set(CMAKE_CXX_STANDARD 1 4)
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  moveit_core
+  moveit_ros_planning
+  moveit_ros_planning_interface
+  moveit_visual_tools
+  moveit_msgs
+  std_msgs
+  geometry_msgs
+  message_generation
+)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -53,14 +53,13 @@ set(CMAKE_CXX_STANDARD 1 4)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-
-rosidl_generate_interfaces(
-    ${PROJECT_NAME}
-        msg/ContactMap.msg
-        msg/Float64Vector.msg
-        msg/StringPair.msg
-    DEPENDENCIES
-        moveit_msgs
+add_message_files(
+  FILES
+#   Message1.msg
+#   Message2.msg
+  ContactMap.msg
+  Float64Vector.msg
+  StringPair.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -78,6 +77,12 @@ rosidl_generate_interfaces(
 # )
 
 ## Generate added messages and services with any dependencies listed here
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+  moveit_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -108,6 +113,13 @@ rosidl_generate_interfaces(
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
+catkin_package(
+#  INCLUDE_DIRS include
+#  LIBRARIES morpheus_teleop
+#  CATKIN_DEPENDS geometry_msgs joy rospy
+#  DEPENDS system_lib
+  CATKIN_DEPENDS message_runtime
+)
 
 ###########
 ## Build ##
@@ -117,7 +129,7 @@ rosidl_generate_interfaces(
 ## Your package locations should be listed before other locations
 include_directories(
 # include
-  
+  ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -146,10 +158,9 @@ add_executable(${PROJECT_NAME} src/msgs.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-ament_target_dependencies(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
 )
-ament_export_dependencies(message_runtime)
-ament_package()
 
 #############
 ## Install ##
@@ -168,20 +179,20 @@ ament_package()
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 install(TARGETS ${PROJECT_NAME}
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark libraries for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
 install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 )
 
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION include/${PROJECT_NAME}
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
   PATTERN ".svn" EXCLUDE
 )

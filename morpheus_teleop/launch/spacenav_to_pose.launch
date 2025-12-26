@@ -1,0 +1,14 @@
+<launch>
+
+    <arg name="twist_topic" default="/twist_controller/command" />
+
+    <!-- Numerically integrate twists into a pose -->
+    <node name="spacenav_to_pose" pkg="cartesian_controller_utilities" type="pose.py" output="screen">
+            <param name="twist_topic" value="$(arg twist_topic)"/>
+            <param name="pose_topic" value="/target_frame"/>
+            <param name="frame_id" value="base_link"/>
+            <param name="end_effector" value="tcp_link"/>
+            <param name="publishing_rate" value="50"/>
+    </node>
+
+</launch>

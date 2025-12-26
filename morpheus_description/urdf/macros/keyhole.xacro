@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+
+<robot name="keyhole" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find morpheus_description)/urdf/macros/shelf.xacro" />
+  <xacro:include filename="$(find morpheus_description)/urdf/macros/bar_4in.xacro" />
+  <xacro:include filename="$(find morpheus_description)/urdf/macros/wall_4x12in.xacro" />
+
+  <xacro:macro name="keyhole"
+    params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 scale:=0.0254 prefix parent">
+
+    <link name="${prefix}keyhole"/>
+
+    <xacro:shelf
+        x="0"
+        y="0"
+        z="0"
+        R="0"
+        P="0"
+        Y="0"
+        prefix="${prefix}keyhole_shelf_"
+        parent="${prefix}keyhole"
+        scale="${scale}"
+    />
+
+    <xacro:bar_4in
+        x="${scale * 4}"
+        y="${scale * 4}"
+        z="${scale * 5}"
+        R="1.57079632679"
+        P="0"
+        Y="0"
+        prefix="${prefix}keyhole_spacer1_"
+        parent="${prefix}keyhole"
+        scale="${scale}"
+    />
+    <xacro:bar_4in
+        x="${scale * 7}"
+        y="${scale * 4}"
+        z="${scale * 5}"
+        R="1.57079632679"
+        P="0"
+        Y="0"
+        prefix="${prefix}keyhole_spacer2_"
+        parent="${prefix}keyhole"
+        scale="${scale}"
+    />
+    <xacro:bar_4in
+        x="${scale * 4}"
+        y="${scale * 4}"
+        z="${scale * 6}"
+        R="1.57079632679"
+        P="0"
+        Y="0"
+        prefix="${prefix}keyhole_spacer3_"
+        parent="${prefix}keyhole"
+        scale="${scale}"
+    />
+    <xacro:bar_4in
+        x="${scale * 7}"
+        y="${scale * 4}"
+        z="${scale * 6}"
+        R="1.57079632679"
+        P="0"
+        Y="0"
+        prefix="${prefix}keyhole_spacer4_"
+        parent="${prefix}keyhole"
+        scale="${scale}"
+    />
+
+    <xacro:wall_4x12in
+        x="0"
+        y="0"
+        z="${scale * 7}"
+        R="0"
+        P="0"
+        Y="0"
+        prefix="${prefix}keyhole_top_"
+        parent="${prefix}keyhole"
+        scale="${scale}"
+    />
+
+    <joint name="${prefix}keyhole_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${prefix}keyhole" />
+      <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y}" />
+    </joint>
+
+  </xacro:macro>
+
+</robot>

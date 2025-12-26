@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<robot name="test_block_1" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="test_block_1"
+    params="x:=0 y:=0 z:=0 scale:=0.001 prefix parent">
+
+    <link name="${prefix}test_block_1">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+            <mass value="2"/>
+            <inertia ixx="1.0" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/visual/test_block_1.stl" scale="${scale} ${scale} ${scale}"/>
+            </geometry>
+            <material name="grey">
+                <color rgba="0.3 0.3 0.3 1" />
+            </material>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <geometry>
+                <mesh filename="package://morpheus_description/meshes/components/collision/test_block_1.stl" scale="${scale} ${scale} ${scale}"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="${prefix}test_block_1_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${prefix}test_block_1" />
+      <origin xyz="${x} ${y} ${z}" />
+    </joint>
+  </xacro:macro>
+
+</robot>

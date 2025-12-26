@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<robot name="hera_obstacle_course" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="hera_obstacle_course"
+        params="prefix parent *origin">
+
+        <link concave="yes" name="${prefix}hera_obstacle_course_link">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 ${pi}" />
+                <geometry>
+                    <mesh
+                        filename="package://morpheus_description/meshes/components/visual/HERAObstacleCourse.obj"
+                        scale="0.01 0.01 0.01" />
+                </geometry>
+                <material name="">
+                    <color rgba="0.3 0.3 0.3 1" />
+                  </material>
+            </visual>
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 ${pi}" />
+                <geometry>
+                    <mesh
+                        filename="package://morpheus_description/meshes/components/collision/HERAObstacleCourse.obj"
+                        scale="0.01 0.01 0.01" />
+                </geometry>
+            </collision>
+        </link>
+        <joint name="${prefix}hera_obstacle_course_joint" type="fixed">
+            <parent link="${parent}" />
+            <child link="${prefix}hera_obstacle_course_link" />
+            <xacro:insert_block name="origin" />
+        </joint>
+
+    </xacro:macro>
+</robot>

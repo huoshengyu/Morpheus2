@@ -17,6 +17,7 @@ class Analysis():
         self.column_labels = None
         self.data = None
         self.column_label_dict = None
+        self.filename = filename
         if filename is not None:
             self.read(filename)
         
@@ -30,7 +31,7 @@ class Analysis():
             self.column_label_dict[self.column_labels[i]] = i
         self.data = np.array(np.genfromtxt(filename, delimiter=",", dtype='unicode', skip_header=1, autostrip=True, unpack=True))
 
-    def plot(self):
+    def plot(self, save=False):
         if self.data is None:
             print("No data to plot! Run read(filename) first.")
             return
@@ -136,8 +137,8 @@ class Analysis():
         # ax.set(xlim3d=(-1, 1), xlabel='X')
         # ax.set(ylim3d=(-1, 1), ylabel='Y')
         # ax.set(zlim3d=(-1, 1), zlabel='Z')
-        print("Starting animation")
         # Creating the Animation object
+        print("Creating animation")
         ani = animation.FuncAnimation(
             fig, update_position_rotation, num_steps, 
                 fargs=(position_data_by_link, 
@@ -145,16 +146,27 @@ class Analysis():
                 rotation_matrices_by_link, 
                 rotation_plots_by_link), 
                 interval=50, repeat_delay=0)
+        # Saving the Animation object
+        if save:
+            print("Saving animation")
+            self.save_animation(ani)
 
+        print("Showing plots")
         plt.show()
+
+    def save_animation(self, ani):
+        savedir = "/root/catkin_ws/src/morpheus_analysis/analysis/"
+        writer = animation.FFMpegWriter(fps=10)
+        ani.save(savedir + "test.mp4", writer=writer)
+        return
 
         
 
 if __name__=="__main__":
 
-    filename = "/root/catkin_ws/src/morpheus/morpheus_data/data/UR5e_test1_0_2024-04-02_19h21m25s.csv"
+    filename = "/root/catkin_ws/src/morpheus_data/data/UR5e_simkeyhole_0_2024-03-12_16h49m22s.csv"
     if len(sys.argv) > 1:
         filename = sys.argv[1]
 
     analysis = Analysis(filename)
-    analysis.plot()
+    analysis.plot(save=True)

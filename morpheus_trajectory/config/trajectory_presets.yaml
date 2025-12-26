@@ -1,0 +1,7 @@
+trajectory_presets:
+  ceiling:  "trossen_home hera_ceiling hera_floor trossen_home"
+  floor:    "trossen_home hera_floor hera_ceiling trossen_home"
+  arch:     "trossen_home hera_ceiling hera_crouch_front hera_crouch_right hera_arch_over hera_arch_over_pick hera_arch_over hera_crouch_right hera_crouch_front trossen_home"
+  easy:     "trossen_home hera_ceiling hera_floor trossen_home"
+  medium:   "trossen_home hera_crouch_front hera_crouch_right hera_arch_over hera_arch_over_pick hera_arch_over hera_crouch_right hera_crouch_front trossen_home"
+  hard:     "trossen_home hera_crouch_front hera_crouch_right hera_crouch_back_right hera_arch_under hera_arch_under_pick hera_arch_under hera_crouch_back_right hera_crouch_right hera_crouch_front trossen_home"
