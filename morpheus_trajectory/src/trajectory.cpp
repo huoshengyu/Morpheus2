@@ -1,27 +1,27 @@
 // General Imports
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 // ROS Messages
-#include <std_msgs/String.h>
-#include <std_msgs/Float64.h>
-#include <geometry_msgs/Point.h>
-#include <visualization_msgs/Marker.h>
-#include <moveit_msgs/RobotState.h>
-#include <moveit_msgs/RobotTrajectory.h>
+#include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/float64.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <visualization_msgs/msg/marker.hpp>
+#include <moveit_msgs/msg/robot_state.hpp>
+#include <moveit_msgs/msg/robot_trajectory.hpp>
 // Moveit
-#include <moveit/moveit_cpp/moveit_cpp.h>
-#include <moveit/moveit_cpp/planning_component.h>
-#include <moveit/move_group_interface/move_group_interface.h>
-#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
-#include <moveit/collision_detection_bullet/collision_env_bullet.h>
-#include <moveit/collision_detection_bullet/collision_detector_allocator_bullet.h>
-#include <moveit/collision_detection/collision_tools.h>
-#include <moveit/robot_model_loader/robot_model_loader.h>
-#include <moveit/robot_model/robot_model.h>
+#include <moveit/moveit_cpp/moveit_cpp.hpp>
+#include <moveit/moveit_cpp/planning_component.hpp>
+#include <moveit/move_group_interface/move_group_interface.hpp>
+#include <moveit/planning_scene_monitor/planning_scene_monitor.hpp>
+#include <moveit/collision_detection_bullet/collision_env_bullet.hpp>
+#include <moveit/collision_detection_bullet/collision_detector_allocator_bullet.hpp>
+#include <moveit/collision_detection/collision_tools.hpp>
+#include <moveit/robot_model_loader/robot_model_loader.hpp>
+#include <moveit/robot_model/robot_model.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 // Geometry
-#include <eigen_conversions/eigen_msg.h>
+// #include <eigen_conversions/eigen_msg.hpp>
 // Local Imports
-#include "morpheus_teleop/button_mappings.h"
+// #include "morpheus_teleop/button_mappings.h"
 
 static const std::string ROBOT_DESCRIPTION =
     "robot_description";  // name of the robot description (a param name, so it can be changed externally)
@@ -36,254 +36,245 @@ static const std::vector<std::string> GOAL_NAME_VECTOR_DEFAULT
     "hera_ceiling",
 };
 
-class TrajectoryNode
+class TrajectoryNode : public rclcpp::Node
 {
     public:
         // Planning Scene Monitor
-        std::shared_ptr<planning_scene_monitor::PlanningSceneMonitor> g_planning_scene_monitor;
+        std::shared_ptr<planning_scene_monitor::PlanningSceneMonitor> planning_scene_monitor_;
 
-        // Subscribers
-        ros::Subscriber g_joy_subscriber;
-        ros::Subscriber g_gello_subscriber;
+        // Subscriptions
+        rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
+        rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr gello_subscription_;
 
         // Publishers
-        ros::Publisher g_marker_array_publisher;
-        ros::Publisher g_trajectory_publisher;
-        ros::Publisher g_nearest_distance_publisher;
-        ros::Publisher g_nearest_direction_publisher;
-        ros::Publisher g_forward_distance_publisher;
-        ros::Publisher g_forward_direction_publisher;
-        ros::Publisher g_goal_distance_publisher;
-        ros::Publisher g_goal_direction_publisher;
-        ros::Publisher g_goal_vector_publisher; //For the directional distance
-        visualization_msgs::MarkerArray g_trajectory_marker_array;
-        moveit_visual_tools::MoveItVisualToolsPtr g_visual_tools;
+        rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_publisher_;
+        rclcpp::Publisher<std_msgs::msg::String>::SharedPtr trajectory_publisher_;
+        rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr nearest_distance_publisher_;
+        rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr nearest_direction_publisher_;
+        rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr forward_distance_publisher_;
+        rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr forward_direction_publisher_;
+        rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr goal_distance_publisher_;
+        rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr goal_direction_publisher_;
+        rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr goal_vector_publisher_; //For the directional distance
+        visualization_msgs::msg::MarkerArray trajectory_marker_array_;
+        moveit_visual_tools::MoveItVisualToolsPtr visual_tools_;
 
         // Move group names
-        std::string g_arm_group;
-        std::string g_gripper_group;
+        std::string arm_group_;
+        std::string gripper_group_;
 
         // Planning interfaces
         // std::shared_ptr<moveit_cpp::PlanningComponent> g_planning_components;
         // std::shared_ptr<moveit_cpp::PlanningComponent::PlanRequestParameters> g_plan_request_parameters;
-        std::shared_ptr<moveit::planning_interface::MoveGroupInterface> g_move_group_interface;
+        std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_interface_;
         // moveit::planning_interface::MoveGroupInterface::Plan g_plan;
 
         // Planning parameters
-        std::vector<robot_trajectory::RobotTrajectory> g_trajectory_vector;
-        std::vector<geometry_msgs::PoseStamped> g_target_vector;
-        std::vector<geometry_msgs::PoseStamped> g_weight_vector;
-        std::vector<moveit_msgs::OrientationConstraint> g_constraint_vector;
-        std::vector<double> g_velocity_vector;
-        std::vector<std::string> g_goal_name_vector;
-        std::string g_mode; // Cartesian or Joint trajectory
+        std::vector<robot_trajectory::RobotTrajectory> trajectory_vector_;
+        std::vector<geometry_msgs::msg::PoseStamped> target_vector_;
+        std::vector<geometry_msgs::msg::PoseStamped> weight_vector_;
+        std::vector<moveit_msgs::msg::OrientationConstraint> constraint_vector_;
+        std::vector<double> velocity_vector_;
+        std::vector<std::string> goal_name_vector_;
+        std::string mode_; // Cartesian or Joint trajectory
 
         // Guidance parameters
-        Eigen::Affine3d g_nearest;
-        Eigen::Affine3d g_forward;
-        Eigen::Affine3d g_goal;
-        int g_segment_index;
-        std::map<std::string, int> g_cntlr;                           // Holds the controller button mappings
-        bool g_segment_swapped;
+        Eigen::Affine3d nearest_;
+        Eigen::Affine3d forward_;
+        Eigen::Affine3d goal_;
+        int segment_index_;
+        std::map<std::string, int> cntlr_;                           // Holds the controller button mappings
+        bool segment_swapped_;
 
-        TrajectoryNode(int argc, char** argv)
+        TrajectoryNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions()) 
+            : Node("morpheus_trajectory", options)
         {
             // Initialize ROS node
-            ros::NodeHandle nh;
-            ros::AsyncSpinner spinner(0);
-            spinner.start();
 
             // Get arm and gripper groups from ros server, if possible
-            if (ros::param::get("~arm_group", g_arm_group))
+            if (this->get_parameter("~arm_group", arm_group_))
             {
-                ROS_INFO("Using arm_group from parameter server");
+                RCLCPP_INFO(this->get_logger(), "Using arm_group from parameter server");
             }
             else
             {
-                g_arm_group = ARM_GROUP_DEFAULT;
-                ROS_INFO("Using ARM_GROUP_DEFAULT");
+                arm_group_ = ARM_GROUP_DEFAULT;
+                RCLCPP_INFO(this->get_logger(), "Using ARM_GROUP_DEFAULT");
             }
-            if (ros::param::get("~gripper_group", g_gripper_group))
+            if (this->get_parameter("~gripper_group", gripper_group_))
             {
-                ROS_INFO("Using gripper_group from parameter server");
+                RCLCPP_INFO(this->get_logger(), "Using gripper_group from parameter server");
             }
             else
             {
-                g_gripper_group = GRIPPER_GROUP_DEFAULT;
-                ROS_INFO("Using GRIPPER_GROUP_DEFAULT");
+                gripper_group_ = GRIPPER_GROUP_DEFAULT;
+                RCLCPP_INFO(this->get_logger(), "Using GRIPPER_GROUP_DEFAULT");
             }
 
-            // Retrieve preexisting PlanningSceneMonitor, if possible
-            g_planning_scene_monitor = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(ROBOT_DESCRIPTION);
+            // Instantiate PlanningSceneMonitor so existing PlanningScene can be found
+            planning_scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(shared_from_this(), ROBOT_DESCRIPTION);
+            planning_scene_monitor_->providePlanningSceneService();
             
             // Instantiate a move group interface so a trajectory can be generated
-            g_move_group_interface = std::make_shared<moveit::planning_interface::MoveGroupInterface>(g_arm_group);
+            move_group_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(shared_from_this(), arm_group_);
 
             // Ensure the PlanningSceneMonitor is ready
-            if (g_planning_scene_monitor->requestPlanningSceneState("get_planning_scene"))
+            if (planning_scene_monitor_->requestPlanningSceneState("get_planning_scene"))
             {
-                ROS_INFO("Planning Scene Monitor is active and ready.");
+                RCLCPP_INFO(this->get_logger(), "Planning Scene Monitor is active and ready.");
             }
             else
             {
-                ROS_ERROR("Failed to set up Planning Scene Monitor.");
+                RCLCPP_ERROR(this->get_logger(), "Failed to set up Planning Scene Monitor.");
             }
 
             try
             {   
                 // Change the PlanningScene's collision detector to Bullet
                 // Bullet supports distance vectors, as well as distances to multiple obstacles
-                planning_scene_monitor::LockedPlanningSceneRW(g_planning_scene_monitor)->setActiveCollisionDetector(collision_detection::CollisionDetectorAllocatorBullet::create(), 
-                                                    true /* exclusive */);
+                planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->allocateCollisionDetector(collision_detection::CollisionDetectorAllocatorBullet::create());
                 
-                if (strcmp((planning_scene_monitor::LockedPlanningSceneRO(g_planning_scene_monitor)->getActiveCollisionDetectorName()).c_str(), "Bullet") == 0)
+                if (strcmp((planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName()).c_str(), "Bullet") == 0)
                 {
-                    ROS_INFO("Planning Scene is active and ready.");
+                    RCLCPP_INFO(this->get_logger(), "Planning Scene is active and ready.");
                 }    
                 else
                 {
-                    ROS_INFO("Collision detector incorrect");
-                    ROS_INFO_STREAM(planning_scene_monitor::LockedPlanningSceneRO(g_planning_scene_monitor)->getActiveCollisionDetectorName());
-                    std::string collision_detector_name = planning_scene_monitor::LockedPlanningSceneRO(g_planning_scene_monitor)->getActiveCollisionDetectorName();
+                    RCLCPP_INFO(this->get_logger(), "Collision detector incorrect");
+                    RCLCPP_INFO_STREAM(this->get_logger(), planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName());
+                    std::string collision_detector_name = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName();
                     throw collision_detector_name;
                 }
             }
             catch (std::string collision_detector_name)
             {
-                ROS_ERROR("Failed to retrieve PlanningScene.");
+                RCLCPP_ERROR(this->get_logger(), "Failed to retrieve PlanningScene.");
             }
             
             // Start the PlanningSceneMonitor
-            g_planning_scene_monitor->startSceneMonitor("move_group/monitored_planning_scene"); // Get scene updates from topic
-            g_planning_scene_monitor->startWorldGeometryMonitor();
-            g_planning_scene_monitor->startStateMonitor("joint_states");
+            planning_scene_monitor_->startSceneMonitor("move_group/monitored_planning_scene"); // Get scene updates from topic
+            planning_scene_monitor_->startWorldGeometryMonitor();
+            planning_scene_monitor_->startStateMonitor("joint_states");
 
             // Create trajectory msg publisher
-            g_trajectory_publisher = nh.advertise<std_msgs::String>("trajectory/msg", 0);
+            trajectory_publisher_ = this->create_publisher<std_msgs::msg::String>("trajectory/msg", 0);
             
             // Create guidance vector publishers
-            g_nearest_distance_publisher = nh.advertise<std_msgs::Float64>("trajectory/nearest/distance", 0);
-            g_nearest_direction_publisher = nh.advertise<geometry_msgs::Vector3>("trajectory/nearest/direction", 0);
-            g_forward_distance_publisher = nh.advertise<std_msgs::Float64>("trajectory/forward/distance", 0);
-            g_forward_direction_publisher = nh.advertise<geometry_msgs::Vector3>("trajectory/forward/direction", 0);
-            g_goal_distance_publisher = nh.advertise<std_msgs::Float64>("trajectory/goal/distance", 0);
-            g_goal_direction_publisher = nh.advertise<geometry_msgs::Vector3>("trajectory/goal/direction", 0);
-            g_goal_vector_publisher = nh.advertise<geometry_msgs::Vector3>("trajectory/goal/vector", 0); //For the directional distance
+            nearest_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("trajectory/nearest/distance", 0);
+            nearest_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("trajectory/nearest/direction", 0);
+            forward_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("trajectory/forward/distance", 0);
+            forward_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("trajectory/forward/direction", 0);
+            goal_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("trajectory/goal/distance", 0);
+            goal_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("trajectory/goal/direction", 0);
+            goal_vector_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("trajectory/goal/vector", 0); //For the directional distance
             // Create a marker array publisher for publishing shapes to Rviz
-            g_marker_array_publisher = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 100);
+            marker_array_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 100);
             
             // Get robot model from the current planning scene
-            const robot_model::RobotModelConstPtr robot_model = g_planning_scene_monitor->getRobotModel();
+            const moveit::core::RobotModelConstPtr robot_model = planning_scene_monitor_->getRobotModel();
 
             // Get the current robot state once so that it does not vary over time
             // A LockedPlanningSceneRO is used to avoid modifying the planning scene.
             // Alternatively, the robot state can be set from a given joint state or from a given pose (using IK)
-            robot_state::RobotStatePtr robot_state(
-                new moveit::core::RobotState(planning_scene_monitor::LockedPlanningSceneRO(g_planning_scene_monitor)->getCurrentState()));
-            robot_state::RobotStatePtr robot_state_home(new moveit::core::RobotState(robot_model));
+            moveit::core::RobotStatePtr robot_state(
+                new moveit::core::RobotState(planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState()));
+            moveit::core::RobotStatePtr robot_state_home(new moveit::core::RobotState(robot_model));
             robot_state_home->setToDefaultValues();
 
             // Create a joint model group for tracking the current robot pose and planning group
             const moveit::core::JointModelGroup* joint_model_group =
-                robot_state->getJointModelGroup(g_arm_group);
+                robot_state->getJointModelGroup(arm_group_);
             std::vector<std::string> joint_names = joint_model_group->getActiveJointModelNames();
 
             // Get target vector from ros server, if possible
-            if (ros::param::get("~mode", g_mode))
+            if (this->get_parameter("~mode", mode_))
             {
-                ROS_INFO("Using planning mode from parameter server");
+                RCLCPP_INFO(this->get_logger(), "Using planning mode from parameter server");
             }
             else
             {
-                g_mode = "cartesian";
-                ROS_INFO("Using planning mode default (Cartesian)");
+                mode_ = "cartesian";
+                RCLCPP_INFO(this->get_logger(), "Using planning mode default (Cartesian)");
             }
 
             // Get target preset from ros server, if possible
             std::string goal_preset_param;
             std::string goal_name_vector_param;
             // If preset trajectory name is retrieved, then try getting the actual preset trajectory
-            if (ros::param::get("goal/trajectory_name", goal_preset_param) && 
-                ros::param::get("trajectory_presets/" + goal_preset_param, goal_name_vector_param))
+            if (this->get_parameter("goal/trajectory_name", goal_preset_param) && 
+                this->get_parameter("trajectory_presets/" + goal_preset_param, goal_name_vector_param))
             {
-                g_goal_name_vector = splitString(goal_name_vector_param, ' ');
-                ROS_INFO("Using goal/trajectory_name from parameter server");
+                goal_name_vector_ = splitString(goal_name_vector_param, ' ');
+                RCLCPP_INFO(this->get_logger(), "Using goal/trajectory_name from parameter server");
             }
             // Else try getting the explicitly defined target vector
-            else if (ros::param::get("goal/name_vector", goal_name_vector_param))
+            else if (this->get_parameter("goal/name_vector", goal_name_vector_param))
             {
-                g_goal_name_vector = splitString(goal_name_vector_param, ' ');
-                ROS_INFO("Using goal/name_vector from parameter server");
+                goal_name_vector_ = splitString(goal_name_vector_param, ' ');
+                RCLCPP_INFO(this->get_logger(), "Using goal/name_vector from parameter server");
             }
             // Else fall back to the hardcoded default
             else
             {
-                g_goal_name_vector = GOAL_NAME_VECTOR_DEFAULT;
-                ROS_INFO("Using GOAL_NAME_VECTOR_DEFAULT");
+                goal_name_vector_ = GOAL_NAME_VECTOR_DEFAULT;
+                RCLCPP_INFO(this->get_logger(), "Using GOAL_NAME_VECTOR_DEFAULT");
             }
 
             // Get goal transforms and associated parameters from parameter server
-            trajectory_msgs::JointTrajectory preset_trajectory;
-            preset_trajectory.header.stamp = ros::Time::now();
+            trajectory_msgs::msg::JointTrajectory preset_trajectory;
+            preset_trajectory.header.stamp = this->get_clock()->now();
             preset_trajectory.header.frame_id = "world";
             preset_trajectory.joint_names = joint_names;
-            for (std::string goal_name : g_goal_name_vector)
+            for (std::string goal_name : goal_name_vector_)
             {
-                if (ros::param::has("goal/" + goal_name))
+                // Get goal transform from parameter server
+                geometry_msgs::msg::PoseStamped target;
+                target.header.stamp = this->get_clock()->now();
+                target.header.frame_id = "world";
+                this->get_parameter("goal/" + goal_name + "/goal_pose/position/x", target.pose.position.x);
+                this->get_parameter("goal/" + goal_name + "/goal_pose/position/y", target.pose.position.y);
+                this->get_parameter("goal/" + goal_name + "/goal_pose/position/z", target.pose.position.z);
+                this->get_parameter("goal/" + goal_name + "/goal_pose/orientation/x", target.pose.orientation.x);
+                this->get_parameter("goal/" + goal_name + "/goal_pose/orientation/y", target.pose.orientation.y);
+                this->get_parameter("goal/" + goal_name + "/goal_pose/orientation/z", target.pose.orientation.z);
+                this->get_parameter("goal/" + goal_name + "/goal_pose/orientation/w", target.pose.orientation.w);
+                target_vector_.push_back(target);
+
+                // Get goal transform from parameter server
+                trajectory_msgs::msg::JointTrajectoryPoint joint_target;
+                std::vector<double> joint_positions(6);
+                for (int i = 0; i < joint_names.size(); i++)
                 {
-                    // Get goal transform from parameter server
-                    geometry_msgs::PoseStamped target;
-                    target.header.stamp = ros::Time::now();
-                    target.header.frame_id = "world";
-                    ros::param::get("goal/" + goal_name + "/goal_pose/position/x", target.pose.position.x);
-                    ros::param::get("goal/" + goal_name + "/goal_pose/position/y", target.pose.position.y);
-                    ros::param::get("goal/" + goal_name + "/goal_pose/position/z", target.pose.position.z);
-                    ros::param::get("goal/" + goal_name + "/goal_pose/orientation/x", target.pose.orientation.x);
-                    ros::param::get("goal/" + goal_name + "/goal_pose/orientation/y", target.pose.orientation.y);
-                    ros::param::get("goal/" + goal_name + "/goal_pose/orientation/z", target.pose.orientation.z);
-                    ros::param::get("goal/" + goal_name + "/goal_pose/orientation/w", target.pose.orientation.w);
-                    g_target_vector.push_back(target);
-
-                    // Get goal transform from parameter server
-                    trajectory_msgs::JointTrajectoryPoint joint_target;
-                    std::vector<double> joint_positions(6);
-                    for (int i = 0; i < joint_names.size(); i++)
-                    {
-                        ros::param::get("goal/" + goal_name + "/goal_state/" + joint_names[i], joint_positions[i]);
-                    }
-                    joint_target.positions = joint_positions;
-                    preset_trajectory.points.push_back(joint_target);
-
-                    // Get goal weights from parameter server
-                    geometry_msgs::PoseStamped weights;
-                    target.header.stamp = ros::Time::now();
-                    target.header.frame_id = "world";
-                    ros::param::get("goal/" + goal_name + "/position_weights/x", weights.pose.position.x);
-                    ros::param::get("goal/" + goal_name + "/position_weights/y", weights.pose.position.y);
-                    ros::param::get("goal/" + goal_name + "/position_weights/z", weights.pose.position.z);
-                    ros::param::get("goal/" + goal_name + "/orientation_weights/x", weights.pose.orientation.x);
-                    ros::param::get("goal/" + goal_name + "/orientation_weights/y", weights.pose.orientation.y);
-                    ros::param::get("goal/" + goal_name + "/orientation_weights/z", weights.pose.orientation.z);
-                    ros::param::get("goal/" + goal_name + "/orientation_weights/w", weights.pose.orientation.w);
-                    g_weight_vector.push_back(weights);
-
-                    // Get max velocity scaling factor from parameter server
-                    double velocity;
-                    ros::param::get("goal/" + goal_name + "/max_velocity_scaling_factor", velocity);
-                    g_velocity_vector.push_back(velocity);
-
-                    ROS_INFO_STREAM("Retrieved goal " << goal_name << " from parameter server");
+                    this->get_parameter("goal/" + goal_name + "/goal_state/" + joint_names[i], joint_positions[i]);
                 }
-                else
-                {
-                    ROS_INFO_STREAM("Failed to retrieve goal " << goal_name << "from parameter server!");
-                }
+                joint_target.positions = joint_positions;
+                preset_trajectory.points.push_back(joint_target);
+
+                // Get goal weights from parameter server
+                geometry_msgs::msg::PoseStamped weights;
+                target.header.stamp = this->get_clock()->now();
+                target.header.frame_id = "world";
+                this->get_parameter("goal/" + goal_name + "/position_weights/x", weights.pose.position.x);
+                this->get_parameter("goal/" + goal_name + "/position_weights/y", weights.pose.position.y);
+                this->get_parameter("goal/" + goal_name + "/position_weights/z", weights.pose.position.z);
+                this->get_parameter("goal/" + goal_name + "/orientation_weights/x", weights.pose.orientation.x);
+                this->get_parameter("goal/" + goal_name + "/orientation_weights/y", weights.pose.orientation.y);
+                this->get_parameter("goal/" + goal_name + "/orientation_weights/z", weights.pose.orientation.z);
+                this->get_parameter("goal/" + goal_name + "/orientation_weights/w", weights.pose.orientation.w);
+                weight_vector_.push_back(weights);
+
+                // Get max velocity scaling factor from parameter server
+                double velocity;
+                this->get_parameter("goal/" + goal_name + "/max_velocity_scaling_factor", velocity);
+                velocity_vector_.push_back(velocity);
+
+                RCLCPP_INFO_STREAM(this->get_logger(), "Retrieved goal " << goal_name << " from parameter server");
             }
-            if (g_target_vector.size() == 0)
+            if (target_vector_.size() == 0)
             {
                 // Generate default target pose
-                geometry_msgs::PoseStamped target;
-                target.header.stamp = ros::Time::now();
+                geometry_msgs::msg::PoseStamped target;
+                target.header.stamp = this->get_clock()->now();
                 target.header.frame_id = "world";
                 target.pose.position.x = 0.4;
                 target.pose.position.y = -0.2;
@@ -292,15 +283,15 @@ class TrajectoryNode
                 target.pose.orientation.y = -0.5;
                 target.pose.orientation.z = -0.5;
                 target.pose.orientation.w = -0.5;
-                g_target_vector.push_back(target);
+                target_vector_.push_back(target);
 
-                ROS_INFO_STREAM("Target vector empty, using default goal pose");
+                RCLCPP_INFO_STREAM(this->get_logger(), "Target vector empty, using default goal pose");
             }
-            if (g_weight_vector.size() == 0)
+            if (weight_vector_.size() == 0)
             {
                 // Generate default weights
-                geometry_msgs::PoseStamped weights;
-                weights.header.stamp = ros::Time::now();
+                geometry_msgs::msg::PoseStamped weights;
+                weights.header.stamp = this->get_clock()->now();
                 weights.header.frame_id = "world";
                 weights.pose.position.x = 0.0;
                 weights.pose.position.y = 1.0;
@@ -309,136 +300,136 @@ class TrajectoryNode
                 weights.pose.orientation.y = 0.0;
                 weights.pose.orientation.z = 0.0;
                 weights.pose.orientation.w = 0.0;
-                g_weight_vector.push_back(weights);
+                weight_vector_.push_back(weights);
 
-                ROS_INFO_STREAM("Weight vector empty, using default goal weights");
+                RCLCPP_INFO_STREAM(this->get_logger(), "Weight vector empty, using default goal weights");
             }
 
-            if (g_constraint_vector.size() == 0)
+            if (constraint_vector_.size() == 0)
             {
-                moveit_msgs::OrientationConstraint constraint;
-                constraint.link_name = g_move_group_interface->getEndEffectorLink();
+                moveit_msgs::msg::OrientationConstraint constraint;
+                constraint.link_name = move_group_interface_->getEndEffectorLink();
                 constraint.header.frame_id = "world";
                 constraint.orientation.w = -0.5;
                 constraint.absolute_x_axis_tolerance = 0.1;
                 constraint.absolute_y_axis_tolerance = 0.1;
                 constraint.absolute_z_axis_tolerance = 0.1;
                 constraint.weight = 1.0;
-                g_constraint_vector.push_back(constraint);
+                constraint_vector_.push_back(constraint);
 
-                ROS_INFO_STREAM("Constraint vector empty, using default goal constraints");
+                RCLCPP_INFO_STREAM(this->get_logger(), "Constraint vector empty, using default goal constraints");
             }
-            if (g_velocity_vector.size() == 0)
+            if (velocity_vector_.size() == 0)
             {
-                g_velocity_vector.push_back(0.1);
-                ROS_INFO_STREAM("Velocity vector empty, using default velocity scaling factor");
+                velocity_vector_.push_back(0.1);
+                RCLCPP_INFO_STREAM(this->get_logger(), "Velocity vector empty, using default velocity scaling factor");
             }
 
             // Just use waypoints directly without planning
-            if (g_mode == "preset" or g_mode == "")
+            if (mode_ == "preset" or mode_ == "")
             {
-                ROS_INFO_STREAM("Using preset path");
+                RCLCPP_INFO_STREAM(this->get_logger(), "Using preset path");
                 for (int i = 0; i < preset_trajectory.points.size()-1; i++)
                 {
                     // For each point in the preset trajectory, make a trajectory segment to be toggled between
-                    trajectory_msgs::JointTrajectory preset_segment;
-                    preset_segment.header.stamp = ros::Time::now();
+                    trajectory_msgs::msg::JointTrajectory preset_segment;
+                    preset_segment.header.stamp = this->get_clock()->now();
                     preset_segment.header.frame_id = "world";
                     preset_segment.joint_names = joint_names;
                     preset_segment.points = {preset_trajectory.points[i], preset_trajectory.points[i+1]};
-                    moveit_msgs::RobotTrajectory msg;
+                    moveit_msgs::msg::RobotTrajectory msg;
                     msg.joint_trajectory = preset_segment;
                     robot_trajectory::RobotTrajectory trajectory(robot_model, joint_model_group);
                     trajectory.setRobotTrajectoryMsg(*robot_state, msg);
-                    g_trajectory_vector.push_back(trajectory);
+                    trajectory_vector_.push_back(trajectory);
                 }
             }
             // Plan a cartesian trajectory. More prone to failed planning.
-            else if (g_mode == "cartesian")
+            else if (mode_ == "cartesian")
             {
                 // Treat target vector's poses as waypoint vector
-                ROS_INFO_STREAM("Starting path computation");
-                std::vector<geometry_msgs::Pose> waypoints;
-                for (int i = 0; i < g_target_vector.size(); i++)
+                RCLCPP_INFO_STREAM(this->get_logger(), "Starting path computation");
+                std::vector<geometry_msgs::msg::Pose> waypoints;
+                for (int i = 0; i < target_vector_.size(); i++)
                 {
-                    ROS_INFO_STREAM(std::to_string(g_target_vector[i].pose.position.x) + " " + std::to_string(g_target_vector[i].pose.position.y) + " " + std::to_string(g_target_vector[i].pose.position.z));
-                    waypoints.push_back(g_target_vector[i].pose);
+                    RCLCPP_INFO_STREAM(this->get_logger(), std::to_string(target_vector_[i].pose.position.x) + " " + std::to_string(target_vector_[i].pose.position.y) + " " + std::to_string(target_vector_[i].pose.position.z));
+                    waypoints.push_back(target_vector_[i].pose);
                 }
                 double step = 0.05;
                 for (int i = 0; i < waypoints.size()-1; i++)
                 {
-                    moveit_msgs::RobotTrajectory msg;
-                    std::vector<geometry_msgs::Pose> segment = {waypoints[i], waypoints[i+1]};
-                    // const moveit_msgs::Constraints path_constraints;
+                    moveit_msgs::msg::RobotTrajectory msg;
+                    std::vector<geometry_msgs::msg::Pose> segment = {waypoints[i], waypoints[i+1]};
+                    // const moveit_msgs::msg::Constraints path_constraints;
                     // bool avoid_collisions = true;
-                    // moveit_msgs::MoveItErrorCodes error_code;
-                    g_move_group_interface->computeCartesianPath(segment, step, msg);
+                    // moveit_msgs::msg::MoveItErrorCodes error_code;
+                    move_group_interface_->computeCartesianPath(segment, step, msg);
 
                     // Set trajectory msg
-                    ROS_INFO_STREAM("Setting msg");
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Setting msg");
                     robot_trajectory::RobotTrajectory trajectory(robot_model, joint_model_group);
                     trajectory.setRobotTrajectoryMsg(*robot_state, msg);
-                    g_trajectory_vector.push_back(trajectory); // Add current trajectory to vector of all trajectories
+                    trajectory_vector_.push_back(trajectory); // Add current trajectory to vector of all trajectories
                 }
             }
             // Plan a joint space trajectory. Less intuitive, more curved paths.
-            else if (g_mode == "joint")
+            else if (mode_ == "joint")
             {
                 // Iterate over all goal poses
-                ROS_INFO_STREAM("Starting path computation");
-                robot_state::RobotState next_start_state = *robot_state;
-                for (int i = 0; i < g_target_vector.size(); i++)
+                RCLCPP_INFO_STREAM(this->get_logger(), "Starting path computation");
+                moveit::core::RobotState next_start_state = *robot_state;
+                for (int i = 0; i < target_vector_.size(); i++)
                 {
-                    ROS_INFO_STREAM("Starting loop");
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Starting loop");
                     // Set planning parameters
-                    g_move_group_interface->setPlanningTime(60); // time in seconds before timeout
-                    g_move_group_interface->setPoseTarget(g_target_vector[i], g_move_group_interface->getEndEffectorLink()); // end effector pose
-                    g_move_group_interface->setStartState(next_start_state); // joint state
-                    g_move_group_interface->setMaxVelocityScalingFactor(g_velocity_vector[i]); // max joint velocity, from range (0,1]
+                    move_group_interface_->setPlanningTime(60); // time in seconds before timeout
+                    move_group_interface_->setPoseTarget(target_vector_[i], move_group_interface_->getEndEffectorLink()); // end effector pose
+                    move_group_interface_->setStartState(next_start_state); // joint state
+                    move_group_interface_->setMaxVelocityScalingFactor(velocity_vector_[i]); // max joint velocity, from range (0,1]
 
                     // Create plan
                     moveit::planning_interface::MoveGroupInterface::Plan plan;
-                    ROS_INFO_STREAM("Starting plan()");
-                    bool success = (g_move_group_interface->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Starting plan()");
+                    bool success = (move_group_interface_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
                     robot_trajectory::RobotTrajectory trajectory(robot_model, joint_model_group);
-                    ROS_INFO_STREAM("Setting msg");
-                    trajectory.setRobotTrajectoryMsg(*robot_state, plan.start_state_, plan.trajectory_);
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Setting msg");
+                    trajectory.setRobotTrajectoryMsg(*robot_state, plan.start_state, plan.trajectory);
                     // double delay = 1.0; // Delay between trajectory segments in seconds
-                    ROS_INFO_STREAM("Starting append()");
-                    g_trajectory_vector.push_back(trajectory); // Add current trajectory to vector of all trajectories
-                    ROS_INFO_STREAM("Starting getLastWayPoint()");
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Starting append()");
+                    trajectory_vector_.push_back(trajectory); // Add current trajectory to vector of all trajectories
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Starting getLastWayPoint()");
                     // Use endpoint as next start state
                     next_start_state = trajectory.getLastWayPoint();
                 }
             }
             else
             {
-                ROS_ERROR("Morpheus Trajectory node requires one of the following modes: (preset, cartesian, joint)");
+                RCLCPP_ERROR(this->get_logger(), "Morpheus Trajectory node requires one of the following modes: (preset, cartesian, joint)");
                 return;
             }
 
             // Instantiate visual tools for visualizing markers in Rviz
-            g_visual_tools = std::make_shared<moveit_visual_tools::MoveItVisualTools>("/world", "visualization_marker_array", g_planning_scene_monitor);
+            visual_tools_ = std::make_shared<moveit_visual_tools::MoveItVisualTools>(shared_from_this(), "/world", "visualization_marker_array", planning_scene_monitor_);
 
             // Set current tracked trajectory segment to index 0
-            g_segment_index = 0;
-            g_segment_swapped = false;
+            segment_index_ = 0;
+            segment_swapped_ = false;
 
             // Set controller type based on params
             std::string controller_type;
             bool use_joy = false;
             bool use_gello = false;
-            if (ros::param::get("~controller", controller_type))
+            if (this->get_parameter("~controller", controller_type))
             {
-                if (button_mappings.find(controller_type) != button_mappings.end())
+                /* if (button_mappings.find(controller_type) != button_mappings.end())
                 {
-                    ROS_INFO_STREAM("Controller type is " + controller_type + ". Joystick commands will be accepted by Morpheus Trajectory.");
-                    g_cntlr = button_mappings.find(controller_type)->second;
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Controller type is " + controller_type + ". Joystick commands will be accepted by Morpheus Trajectory.");
+                    cntlr_ = button_mappings.find(controller_type)->second;
                     use_joy = true;
                 }
                 else if (controller_type == "gello")
                 {
-                    ROS_INFO_STREAM("Controller type is gello. Joystick commands will be ignored by Morpheus Trajectory.");
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Controller type is gello. Joystick commands will be ignored by Morpheus Trajectory.");
                     use_gello = true;
                 }
                 else
@@ -448,75 +439,75 @@ class TrajectoryNode
                     {
                         controller_ss << it->first;
                     }
-                    ROS_INFO_STREAM("Controller type " + controller_type + " not recognized. Accepted controllers are: " + controller_ss.str() + ". Joystick commands will be ignored by Morpheus Trajectory.");
-                }
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Controller type " + controller_type + " not recognized. Accepted controllers are: " + controller_ss.str() + ". Joystick commands will be ignored by Morpheus Trajectory.");
+                } */
             }
             else
             {
-                ROS_INFO_STREAM("Controller type not received from parameter server. Defaulting to ps4.");
+                RCLCPP_INFO_STREAM(this->get_logger(), "Controller type not received from parameter server. Defaulting to ps4.");
                 controller_type = "ps4";
             }
 
-            // Create controller msg subscribers
+            // Create controller msg subscriptions
             if (use_joy)
             {
-                g_joy_subscriber = nh.subscribe("joy", 10, &TrajectoryNode::joyCallback, this);
+                joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10, std::bind(&TrajectoryNode::joyCallback, this, std::placeholders::_1));
             }
             if (use_gello)
             {
-                g_gello_subscriber = nh.subscribe("gello/joint_state", 10, &TrajectoryNode::gelloCallback, this);
+                gello_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>("gello/joint_state", 10, std::bind(&TrajectoryNode::gelloCallback, this, std::placeholders::_1));
             }
 
             spin();
-            // ros::shutdown();
+            // rclcpp::shutdown();
         }
 
         void spin()
         {
             // Loop collision requests and publish at specified rate
-            ros::Rate loop_rate(10);
-            while (ros::ok())
+            rclcpp::Rate loop_rate(10);
+            while (rclcpp::ok())
             {   
                 // Retrieve and update state once. Avoid updating in functions below to maintain sync.
-                auto current_state = planning_scene_monitor::LockedPlanningSceneRO(g_planning_scene_monitor)->getCurrentState();
+                auto current_state = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState();
                 current_state.updateLinkTransforms();
 
                 // Get waypoints of all trajectory segments
                 std::vector<moveit::core::RobotState> waypoints;
-                for (robot_trajectory::RobotTrajectory trajectory : g_trajectory_vector)
+                for (robot_trajectory::RobotTrajectory trajectory : trajectory_vector_)
                 {
                     std::vector<moveit::core::RobotState> traj_waypoints = getWaypoints(trajectory); // Get next set of waypoints
                     waypoints.insert(waypoints.end(), traj_waypoints.begin(), traj_waypoints.end()); // Concatenate
                 }
-                auto transform_deque = getTransforms(waypoints, g_move_group_interface->getEndEffectorLink());
+                auto transform_deque = getTransforms(waypoints, move_group_interface_->getEndEffectorLink());
 
                 // Get waypoints of selected trajectory segment
-                robot_trajectory::RobotTrajectory trajectory_segment = g_trajectory_vector[g_segment_index];
+                robot_trajectory::RobotTrajectory trajectory_segment = trajectory_vector_[segment_index_];
                 std::vector<moveit::core::RobotState> waypoints_segment = getWaypoints(trajectory_segment);
-                auto transform_deque_segment = getTransforms(waypoints_segment, g_move_group_interface->getEndEffectorLink());
+                auto transform_deque_segment = getTransforms(waypoints_segment, move_group_interface_->getEndEffectorLink());
 
                 // Find relative transforms to nearest and forward sections of trajectory segment
-                Eigen::Affine3d tcp_transform = current_state.getGlobalLinkTransform(g_move_group_interface->getEndEffectorLink());
+                Eigen::Affine3d tcp_transform = current_state.getGlobalLinkTransform(move_group_interface_->getEndEffectorLink());
                 std::vector<Eigen::Affine3d> transform_vector = getNearestTransform(transform_deque_segment, tcp_transform);
-                g_nearest = transform_vector[0];
-                g_forward = transform_vector[1];
+                nearest_ = transform_vector[0];
+                forward_ = transform_vector[1];
 
                 // Find relative transform to goal
-                Eigen::Affine3d target_transform = waypoints_segment.back().getGlobalLinkTransform(g_move_group_interface->getEndEffectorLink());
-                g_goal = getRelativeTransform(tcp_transform, target_transform);
+                Eigen::Affine3d target_transform = waypoints_segment.back().getGlobalLinkTransform(move_group_interface_->getEndEffectorLink());
+                goal_ = getRelativeTransform(tcp_transform, target_transform);
 
                 // Print tcp transform matrix and quaternion for debugging
                 /* std::ostringstream oss;
                 oss << tcp_transform.matrix();
-                ROS_INFO_STREAM("\n" + oss.str());
+                RCLCPP_INFO_STREAM(this->get_logger(), "\n" + oss.str());
                 Eigen::Matrix3d tcp_rotation_matrix = tcp_transform.rotation();
                 Eigen::Quaterniond quaternion(tcp_rotation_matrix);
                 std::ostringstream ss;
                 ss << quaternion.coeffs().transpose();
-                ROS_INFO_STREAM("\n" + ss.str()); */
+                RCLCPP_INFO_STREAM(this->get_logger(), "\n" + ss.str()); */
 
                 // Publish and visualize
-                publishVectors(g_nearest.translation(), g_forward.translation(), g_goal.translation());
+                publishVectors(nearest_.translation(), forward_.translation(), goal_.translation());
                 publishTrajectory(transform_deque);
                 visualizeTrajectory(transform_deque, current_state);
 
@@ -525,10 +516,10 @@ class TrajectoryNode
         }
 
         // Generate target poses for planning
-        geometry_msgs::PoseStamped getPose(double x=0, double y=0, double z=0, 
+        geometry_msgs::msg::PoseStamped getPose(double x=0, double y=0, double z=0, 
                                 double w=0, double rx=0, double ry=0, double rz=0)
         {
-            geometry_msgs::PoseStamped pose;
+            geometry_msgs::msg::PoseStamped pose;
             pose.header.frame_id = "world";
             pose.pose.position.x = x;
             pose.pose.position.y = y;
@@ -545,9 +536,9 @@ class TrajectoryNode
         std::vector<moveit::core::RobotState> getWaypoints(planning_interface::MotionPlanResponse& plan) // returns a std::deque< robot_state::RobotStatePtr >
         {
             std::vector<moveit::core::RobotState> waypoints;
-            for (int i = 0; i < plan.trajectory_->getWayPointCount(); i++)
+            for (int i = 0; i < plan.trajectory->getWayPointCount(); i++)
             {
-                waypoints.push_back(plan.trajectory_->getWayPoint(i));
+                waypoints.push_back(plan.trajectory->getWayPoint(i));
             }
             return waypoints;
         }
@@ -647,7 +638,7 @@ class TrajectoryNode
             Eigen::Affine3d forward;
             // Loop over the trajectory waypoints until a point far enough forward is found
             double dt = 1; // 1 second
-            double velocity = g_velocity_vector[0]; // Just use the first velocity given. TODO: account for trajectory segments with different target velocities
+            double velocity = velocity_vector_[0]; // Just use the first velocity given. TODO: account for trajectory segments with different target velocities
             double target_displacement = (A_nearest.inverse() * B_nearest).translation().norm() * interpolation_param_nearest; // Include an offset to match the nearest point's interpolated displacement along the trajectory
             target_displacement += dt * velocity; // Add on the desired forward motion
             double displacement = 0; // Count cumulative displacement
@@ -759,10 +750,10 @@ class TrajectoryNode
                 nearest_dot_product += nearest[i] * nearest[i];
             }
             double nearest_distance = std::sqrt(nearest_dot_product);
-            std_msgs::Float64 nearest_distance_msg;
+            std_msgs::msg::Float64 nearest_distance_msg;
             nearest_distance_msg.data = nearest_distance;
             // Calculate normalized vector of nearest
-            geometry_msgs::Vector3 nearest_direction_msg;
+            geometry_msgs::msg::Vector3 nearest_direction_msg;
             nearest_direction_msg.x = nearest[0] / nearest_distance;
             nearest_direction_msg.y = nearest[1] / nearest_distance;
             nearest_direction_msg.z = nearest[2] / nearest_distance;
@@ -774,10 +765,10 @@ class TrajectoryNode
                 forward_dot_product += forward[i] * forward[i];
             }
             double forward_distance = std::sqrt(forward_dot_product);
-            std_msgs::Float64 forward_distance_msg;
+            std_msgs::msg::Float64 forward_distance_msg;
             forward_distance_msg.data = forward_distance;
             // Calculate normalized vector of forward
-            geometry_msgs::Vector3 forward_direction_msg;
+            geometry_msgs::msg::Vector3 forward_direction_msg;
             forward_direction_msg.x = forward[0] / forward_distance;
             forward_direction_msg.y = forward[1] / forward_distance;
             forward_direction_msg.z = forward[2] / forward_distance;
@@ -789,25 +780,25 @@ class TrajectoryNode
                 goal_dot_product += goal[i] * goal[i];
             }
             double goal_distance = std::sqrt(goal_dot_product);
-            std_msgs::Float64 goal_distance_msg;
+            std_msgs::msg::Float64 goal_distance_msg;
             goal_distance_msg.data = goal_distance;
             // Calculate normalized vector of goal (relative to end effector)
-            geometry_msgs::Vector3 goal_direction_msg;
+            geometry_msgs::msg::Vector3 goal_direction_msg;
             goal_direction_msg.x = goal[0] / goal_distance;
             goal_direction_msg.y = goal[1] / goal_distance;
             goal_direction_msg.z = goal[2] / goal_distance;
-            geometry_msgs::Vector3 goal_vector_msg; //For the directional distance
+            geometry_msgs::msg::Vector3 goal_vector_msg; //For the directional distance
             goal_vector_msg.x = goal[0]; //For the directional distance
             goal_vector_msg.y = goal[1]; //For the directional distance
             goal_vector_msg.z = goal[2]; //For the directional distance   
             // Publish
-            g_nearest_distance_publisher.publish(nearest_distance_msg);
-            g_nearest_direction_publisher.publish(nearest_direction_msg);
-            g_forward_distance_publisher.publish(forward_distance_msg);
-            g_forward_direction_publisher.publish(forward_direction_msg);
-            g_goal_distance_publisher.publish(goal_distance_msg);
-            g_goal_direction_publisher.publish(goal_direction_msg);
-            g_goal_vector_publisher.publish(goal_vector_msg); 
+            nearest_distance_publisher_->publish(nearest_distance_msg);
+            nearest_direction_publisher_->publish(nearest_direction_msg);
+            forward_distance_publisher_->publish(forward_distance_msg);
+            forward_direction_publisher_->publish(forward_direction_msg);
+            goal_distance_publisher_->publish(goal_distance_msg);
+            goal_direction_publisher_->publish(goal_direction_msg);
+            goal_vector_publisher_->publish(goal_vector_msg); 
         }
 
         void publishTrajectory(std::deque<Eigen::Affine3d> transform_deque)
@@ -823,30 +814,30 @@ class TrajectoryNode
                 ss << translation[2];
                 ss << ']';
             }
-            std_msgs::String trajectory_msg;
+            std_msgs::msg::String trajectory_msg;
             trajectory_msg.data = ss.str();
 
             // Publish
-            g_trajectory_publisher.publish(trajectory_msg);
+            trajectory_publisher_->publish(trajectory_msg);
         }
 
-        void publishMarkers(visualization_msgs::MarkerArray& markers)
+        void publishMarkers(visualization_msgs::msg::MarkerArray& markers)
         {
             // delete old markers
-            if (!g_trajectory_marker_array.markers.empty())
+            if (!trajectory_marker_array_.markers.empty())
             {
-                for (auto& marker : g_trajectory_marker_array.markers)
-                marker.action = visualization_msgs::Marker::DELETE;
+                for (auto& marker : trajectory_marker_array_.markers)
+                marker.action = visualization_msgs::msg::Marker::DELETE;
 
-                g_marker_array_publisher.publish(g_trajectory_marker_array);
+                marker_array_publisher_->publish(trajectory_marker_array_);
             }
 
-            // move new markers into g_trajectory_marker_array
-            std::swap(g_trajectory_marker_array.markers, markers.markers);
+            // move new markers into trajectory_marker_array_
+            std::swap(trajectory_marker_array_.markers, markers.markers);
 
             // draw new markers (if there are any)
-            if (!g_trajectory_marker_array.markers.empty())
-                g_marker_array_publisher.publish(g_trajectory_marker_array);
+            if (!trajectory_marker_array_.markers.empty())
+                marker_array_publisher_->publish(trajectory_marker_array_);
         }
 
         void visualizeTrajectory(std::deque<Eigen::Affine3d> transform_deque, moveit::core::RobotState robot_state)
@@ -854,14 +845,14 @@ class TrajectoryNode
             //// Visualize the Trajectory itself /////
 
             // Set a color for the visualization markers
-            std_msgs::ColorRGBA traj_color;
+            std_msgs::msg::ColorRGBA traj_color;
             traj_color.r = 0.0;
             traj_color.g = 1.0;
             traj_color.b = 0.0;
             traj_color.a = 0.5;
 
             // Instantiate marker array for holding the markers to be visualized
-            visualization_msgs::MarkerArray markers;
+            visualization_msgs::msg::MarkerArray markers;
             std::map<std::string, unsigned> ns_counts;
 
             // Loop over transform_deque to visualize each segment on the trajectory
@@ -874,19 +865,19 @@ class TrajectoryNode
                     transform_A = transform_deque[i-1];
                 }
                 Eigen::Vector3d translation_A = transform_A.translation();
-                geometry_msgs::Point point_A;
+                geometry_msgs::msg::Point point_A;
                 point_A.x = translation_A[0];
                 point_A.y = translation_A[1];
                 point_A.z = translation_A[2];
                 Eigen::Affine3d transform_B = transform_deque[i];
                 Eigen::Vector3d translation_B = transform_B.translation();
-                geometry_msgs::Point point_B;
+                geometry_msgs::msg::Point point_B;
                 point_B.x = translation_B[0];
                 point_B.y = translation_B[1];
                 point_B.z = translation_B[2];
 
                 // If this is the target segment, increase the alpha
-                if (i == g_segment_index-1)
+                if (i == segment_index_-1)
                 {
                     traj_color.a = 0.5;
                 }
@@ -896,7 +887,7 @@ class TrajectoryNode
                 }
 
                 // Create a marker for this segment AB
-                std::vector<geometry_msgs::Point> points; // Put points in the array type accepted by Marker
+                std::vector<geometry_msgs::msg::Point> points; // Put points in the array type accepted by Marker
                 points.push_back(point_A);
                 points.push_back(point_B);
                 
@@ -907,44 +898,44 @@ class TrajectoryNode
                     ns_counts[ns_name] = 0;
                 else
                     ns_counts[ns_name]++;
-                visualization_msgs::Marker mk_traj; // Instantiate marker
-                mk_traj.header.stamp = ros::Time::now(); // Timestamp
+                visualization_msgs::msg::Marker mk_traj; // Instantiate marker
+                mk_traj.header.stamp = this->get_clock()->now(); // Timestamp
                 mk_traj.header.frame_id = "world"; // Reference frame id
                 mk_traj.ns = ns_name; // String name
                 mk_traj.id = ns_counts[ns_name]; // Unique number id
-                mk_traj.type = visualization_msgs::Marker::ARROW; // Arrow marker shape
-                mk_traj.action = visualization_msgs::Marker::ADD; // Add shape to Rviz
+                mk_traj.type = visualization_msgs::msg::Marker::ARROW; // Arrow marker shape
+                mk_traj.action = visualization_msgs::msg::Marker::ADD; // Add shape to Rviz
                 mk_traj.points = points; // Start and end points of arrow
                 mk_traj.scale.x = 0.005; // Arrow shaft diameter
                 mk_traj.scale.y = 0.015; // Arrow head diameter
                 mk_traj.scale.z = 0.015; // Arrow head length
                 mk_traj.color = traj_color; // Color specified above
-                mk_traj.lifetime = ros::Duration(1); // Remain for 1 second or until updated
+                mk_traj.lifetime = rclcpp::Duration(1,0); // Remain for 1 second and 0 nanoseconds or until updated
                 markers.markers.push_back(mk_traj); // Add to MarkerArray markers
             }
 
             //// Visualize the tcp -> Trajectory transform
             
             // Set a different color for the tcp -> Trajectory transform
-            std_msgs::ColorRGBA tcp_color;
+            std_msgs::msg::ColorRGBA tcp_color;
             tcp_color.r = 0.0;
             tcp_color.g = 0.0;
             tcp_color.b = 1.0;
             tcp_color.a = 0.5;
 
             // Add a marker for the tcp -> nearest transform
-            Eigen::Vector3d tcp_translation = robot_state.getGlobalLinkTransform(g_move_group_interface->getEndEffectorLink()).translation();
-            Eigen::Vector3d nearest_translation = g_nearest.translation();
-            geometry_msgs::Point tcp_point;
+            Eigen::Vector3d tcp_translation = robot_state.getGlobalLinkTransform(move_group_interface_->getEndEffectorLink()).translation();
+            Eigen::Vector3d nearest_translation = nearest_.translation();
+            geometry_msgs::msg::Point tcp_point;
             tcp_point.x = tcp_translation[0];
             tcp_point.y = tcp_translation[1];
             tcp_point.z = tcp_translation[2];
-            geometry_msgs::Point nearest_point;
+            geometry_msgs::msg::Point nearest_point;
             nearest_point.x = tcp_translation[0] + nearest_translation[0];
             nearest_point.y = tcp_translation[1] + nearest_translation[1];
             nearest_point.z = tcp_translation[2] + nearest_translation[2];
 
-            std::vector<geometry_msgs::Point> points;
+            std::vector<geometry_msgs::msg::Point> points;
             points.push_back(tcp_point);
             points.push_back(nearest_point);
 
@@ -953,38 +944,38 @@ class TrajectoryNode
                 ns_counts[ns_name] = 0;
             else
                 ns_counts[ns_name]++;
-            visualization_msgs::Marker mk_nearest; // Instantiate marker
-            mk_nearest.header.stamp = ros::Time::now(); // Timestamp
+            visualization_msgs::msg::Marker mk_nearest; // Instantiate marker
+            mk_nearest.header.stamp = this->get_clock()->now(); // Timestamp
             mk_nearest.header.frame_id = "world"; // Reference frame id
             mk_nearest.ns = ns_name; // String name
             mk_nearest.id = ns_counts[ns_name]; // Unique number id
-            mk_nearest.type = visualization_msgs::Marker::ARROW; // Arrow marker shape
-            mk_nearest.action = visualization_msgs::Marker::ADD; // Add shape to Rviz
+            mk_nearest.type = visualization_msgs::msg::Marker::ARROW; // Arrow marker shape
+            mk_nearest.action = visualization_msgs::msg::Marker::ADD; // Add shape to Rviz
             mk_nearest.points = points; // Start and end points of arrow
             mk_nearest.scale.x = 0.01; // Arrow shaft diameter
             mk_nearest.scale.y = 0.015; // Arrow head diameter
             mk_nearest.scale.z = 0.015; // Arrow head length
             mk_nearest.color = tcp_color; // Color specified above
-            mk_nearest.lifetime = ros::Duration(1); // Remain for 1 second or until updated
+            mk_nearest.lifetime = rclcpp::Duration(1,0); // Remain for 1 second and 0 nanoseconds or until updated
             markers.markers.push_back(mk_nearest); // Add to MarkerArray markers
 
             //// Visualize the tcp --> forward transform
             
             // Set a different color for the tcp --> forward transform
-            std_msgs::ColorRGBA forward_color;
+            std_msgs::msg::ColorRGBA forward_color;
             forward_color.r = 1.0;
             forward_color.g = 0.0;
             forward_color.b = 0.0;
             forward_color.a = 0.5;
 
             // Add a marker for the tcp --> forward transform
-            Eigen::Vector3d forward_translation = g_forward.translation();
-            geometry_msgs::Point forward_point;
+            Eigen::Vector3d forward_translation = forward_.translation();
+            geometry_msgs::msg::Point forward_point;
             forward_point.x = tcp_translation[0] + forward_translation[0];
             forward_point.y = tcp_translation[1] + forward_translation[1];
             forward_point.z = tcp_translation[2] + forward_translation[2];
 
-            std::vector<geometry_msgs::Point> points_forward;
+            std::vector<geometry_msgs::msg::Point> points_forward;
             points_forward.push_back(tcp_point);
             points_forward.push_back(forward_point);
 
@@ -993,38 +984,38 @@ class TrajectoryNode
                 ns_counts[ns_name_forward] = 0;
             else
                 ns_counts[ns_name_forward]++;
-            visualization_msgs::Marker mk_forward; // Instantiate marker
-            mk_forward.header.stamp = ros::Time::now(); // Timestamp
+            visualization_msgs::msg::Marker mk_forward; // Instantiate marker
+            mk_forward.header.stamp = this->get_clock()->now(); // Timestamp
             mk_forward.header.frame_id = "world"; // Reference frame id
             mk_forward.ns = ns_name_forward; // String name
             mk_forward.id = ns_counts[ns_name_forward]; // Unique number id
-            mk_forward.type = visualization_msgs::Marker::ARROW; // Arrow marker shape
-            mk_forward.action = visualization_msgs::Marker::ADD; // Add shape to Rviz
+            mk_forward.type = visualization_msgs::msg::Marker::ARROW; // Arrow marker shape
+            mk_forward.action = visualization_msgs::msg::Marker::ADD; // Add shape to Rviz
             mk_forward.points = points_forward; // Start and end points of arrow
             mk_forward.scale.x = 0.01; // Arrow shaft diameter
             mk_forward.scale.y = 0.015; // Arrow head diameter
             mk_forward.scale.z = 0.015; // Arrow head length
             mk_forward.color = forward_color; // Color specified above
-            mk_forward.lifetime = ros::Duration(1); // Remain for 1 second or until updated
+            mk_forward.lifetime = rclcpp::Duration(1,0); // Remain for 1 second and 0 nanoseconds or until updated
             markers.markers.push_back(mk_forward); // Add to MarkerArray markers
 
             //// Visualize the tcp --> goal transform
             
             // Set a different color for the tcp --> goal transform
-            std_msgs::ColorRGBA goal_color;
+            std_msgs::msg::ColorRGBA goal_color;
             goal_color.r = 1.0;
             goal_color.g = 1.0;
             goal_color.b = 1.0;
             goal_color.a = 0.5;
 
             // Add a marker for the tcp --> goal transform
-            Eigen::Vector3d goal_translation = g_goal.translation();
-            geometry_msgs::Point goal_point;
+            Eigen::Vector3d goal_translation = goal_.translation();
+            geometry_msgs::msg::Point goal_point;
             goal_point.x = tcp_translation[0] + goal_translation[0];
             goal_point.y = tcp_translation[1] + goal_translation[1];
             goal_point.z = tcp_translation[2] + goal_translation[2];
 
-            std::vector<geometry_msgs::Point> points_goal;
+            std::vector<geometry_msgs::msg::Point> points_goal;
             points_goal.push_back(tcp_point);
             points_goal.push_back(goal_point);
 
@@ -1033,19 +1024,19 @@ class TrajectoryNode
                 ns_counts[ns_name_goal] = 0;
             else
                 ns_counts[ns_name_goal]++;
-            visualization_msgs::Marker mk_goal; // Instantiate marker
-            mk_goal.header.stamp = ros::Time::now(); // Timestamp
+            visualization_msgs::msg::Marker mk_goal; // Instantiate marker
+            mk_goal.header.stamp = this->get_clock()->now(); // Timestamp
             mk_goal.header.frame_id = "world"; // Reference frame id
             mk_goal.ns = ns_name_goal; // String name
             mk_goal.id = ns_counts[ns_name_goal]; // Unique number id
-            mk_goal.type = visualization_msgs::Marker::ARROW; // Arrow marker shape
-            mk_goal.action = visualization_msgs::Marker::ADD; // Add shape to Rviz
+            mk_goal.type = visualization_msgs::msg::Marker::ARROW; // Arrow marker shape
+            mk_goal.action = visualization_msgs::msg::Marker::ADD; // Add shape to Rviz
             mk_goal.points = points_goal; // Start and end points of arrow
             mk_goal.scale.x = 0.01; // Arrow shaft diameter
             mk_goal.scale.y = 0.015; // Arrow head diameter
             mk_goal.scale.z = 0.015; // Arrow head length
             mk_goal.color = goal_color; // Color specified above
-            mk_goal.lifetime = ros::Duration(1); // Remain for 1 second or until updated
+            mk_goal.lifetime = rclcpp::Duration(1,0); // Remain for 1 second and 0 nanoseconds or until updated
             markers.markers.push_back(mk_goal); // Add to MarkerArray markers
 
             //// Update markers to be published ////
@@ -1067,61 +1058,61 @@ class TrajectoryNode
         
     private:
         // Define a callback to be called when the PlanningSceneMonitor receives an update
-        void planningSceneMonitorCallback(const moveit_msgs::PlanningScene::ConstPtr& planning_scene, planning_scene_monitor::PlanningSceneMonitorPtr& planning_scene_monitor)
+        void planningSceneMonitorCallback(const moveit_msgs::msg::PlanningScene::SharedPtr planning_scene, planning_scene_monitor::PlanningSceneMonitorPtr& planning_scene_monitor)
         {
-            ROS_INFO("Updating...");
+            RCLCPP_INFO(this->get_logger(), "Updating...");
         }
 
         // Define a callback to use joystick inputs to control trajectory segment selection
-        void joyCallback(const sensor_msgs::Joy& msg)
+        void joyCallback(const sensor_msgs::msg::Joy& msg)
         {
             // If left stick is pressed, decrement trajectory segment and lock
-            if (msg.buttons.at(g_cntlr["FLIP_EE_X"]) == 1 && g_segment_swapped == false)
+            if (msg.buttons.at(cntlr_["FLIP_EE_X"]) == 1 && segment_swapped_ == false)
             {
-                int new_index = (g_segment_index - 1);
+                int new_index = (segment_index_ - 1);
                 while (new_index < 0)
                 {
-                    new_index += static_cast<int>(g_goal_name_vector.size() - 1);
+                    new_index += static_cast<int>(goal_name_vector_.size() - 1);
                 }
-                g_segment_index = new_index;
-                g_segment_swapped = true;
+                segment_index_ = new_index;
+                segment_swapped_ = true;
             }
             // Else if right stick is pressed, increment trajectory segment and lock
-            else if (msg.buttons.at(g_cntlr["FLIP_EE_ROLL"]) == 1 && g_segment_swapped == false)
+            else if (msg.buttons.at(cntlr_["FLIP_EE_ROLL"]) == 1 && segment_swapped_ == false)
             {
-                int new_index = (g_segment_index + 1) % (static_cast<int>(g_goal_name_vector.size() - 1));
-                g_segment_index = new_index;
-                g_segment_swapped = true;
+                int new_index = (segment_index_ + 1) % (static_cast<int>(goal_name_vector_.size() - 1));
+                segment_index_ = new_index;
+                segment_swapped_ = true;
             }
             // Else if neither stick is pressed, unlock
-            else if (msg.buttons.at(g_cntlr["FLIP_EE_X"]) == 0 && 
-                    msg.buttons.at(g_cntlr["FLIP_EE_ROLL"]) == 0 && 
-                    g_segment_swapped == true)
+            else if (msg.buttons.at(cntlr_["FLIP_EE_X"]) == 0 && 
+                    msg.buttons.at(cntlr_["FLIP_EE_ROLL"]) == 0 && 
+                    segment_swapped_ == true)
             {
-                g_segment_swapped = false;
+                segment_swapped_ = false;
             }
         }
 
         // Define a callback to use GELLO controller inputs to control trajectory segment selection
-        void gelloCallback(const sensor_msgs::JointState& msg)
+        void gelloCallback(const sensor_msgs::msg::JointState& msg)
         {
             // If GELLO gripper is closed, increment trajectory segment and lock
-            if (msg.position.back() > 0.95 && g_segment_swapped == false)
+            if (msg.position.back() > 0.95 && segment_swapped_ == false)
             {
-                g_segment_index = (g_segment_index + 1) % static_cast<int>(g_goal_name_vector.size());
-                g_segment_swapped = true;
+                segment_index_ = (segment_index_ + 1) % static_cast<int>(goal_name_vector_.size());
+                segment_swapped_ = true;
             }
             // Else if right stick is pressed, increment trajectory segment and lock
-            else if (msg.position.back() > 0.95 && g_segment_swapped == false)
+            else if (msg.position.back() > 0.95 && segment_swapped_ == false)
             {
-                g_segment_index = (g_segment_index + 1) % static_cast<int>(g_goal_name_vector.size());
-                g_segment_swapped = true;
+                segment_index_ = (segment_index_ + 1) % static_cast<int>(goal_name_vector_.size());
+                segment_swapped_ = true;
             }
             // Else if neither stick is pressed, unlock
             else if (msg.position.back() <= 0.95 &&
-                    g_segment_swapped == true)
+                    segment_swapped_ == true)
             {
-                g_segment_swapped = false;
+                segment_swapped_ = false;
             }
         }
 
@@ -1130,8 +1121,8 @@ class TrajectoryNode
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "trajectory");
-    TrajectoryNode trajectory_node(argc, argv);
-    // trajectory_node.spin();
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<TrajectoryNode>());
+    rclcpp::shutdown();
     return 0;
 }

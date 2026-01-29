@@ -35,7 +35,7 @@
 /* Author: Ioan Sucan, Ridhwan Luthra*/
 
 // ROS
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 // MoveIt
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
@@ -87,10 +87,10 @@ moveit_msgs::CollisionObject createCollisionObject(std::string mesh_path,
   shapes::ShapeMsg shape_msg;
   shapes::constructMsgFromShape(mesh, shape_msg);
   shape_msgs::Mesh shape_msgs_mesh;
-  shape_msgs_mesh = boost::get<shape_msgs::Mesh>(shape_msg);
+  shape_msgs_mesh = std::get<shape_msgs::Mesh>(shape_msg);
 
   // Initialize the object id and frame.
-  collision_object.id = mesh_path + std::to_string(ros::Time::now().toSec());
+  collision_object.id = mesh_path + std::to_string(rclcpp::Time::now().toSec());
   collision_object.header.frame_id = "world";
 
   // Add the mesh and its dimensions.

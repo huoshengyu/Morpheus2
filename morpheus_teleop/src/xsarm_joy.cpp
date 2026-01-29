@@ -1,6 +1,6 @@
-#include <ros/ros.h>
-#include <sensor_msgs/Joy.h>
-#include "interbotix_xs_msgs/ArmJoy.h"
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/joy.hpp>
+#include "morpheus_msgs/msg/arm_joy.hpp"
 
 // PS3 Controller button mappings
 static const std::map<std::string, int> ps3 = {{"GRIPPER_PWM_DEC", 0}, // buttons start here
@@ -67,205 +67,215 @@ static const std::map<std::string, int> xbox360 = {{"GRIPPER_PWM_DEC", 0}, // bu
                                                    {"SPEED_TYPE", 6},
                                                    {"SPEED", 7}};
 
-
-ros::Publisher pub_joy_cmd;                                 // ROS Publisher to publish ArmJoy messages
-interbotix_xs_msgs::ArmJoy prev_joy_cmd;                  // Keep track of the previously commanded ArmJoy message so that only unique messages are published
-std::map<std::string, int> cntlr;                           // Holds the controller button mappings
-std::string controller_type;                                // Holds the name of the controller received from the ROS Parameter server
-double threshold;                                           // Joystick sensitivity threshold
-
-/// @brief Joystick callback to create custom ArmJoy messages to control the Arm
-/// @param msg - raw sensor_msgs::Joy data
-void joy_state_cb(const sensor_msgs::Joy &msg)
+class xsarm_joy : public rclcpp::Node
 {
-  static bool flip_ee_roll_cmd = false;
-  static bool flip_ee_roll_cmd_last_state = false;
-  static bool flip_ee_x_cmd = false;
-  static bool flip_ee_x_cmd_last_state = false;
-  static bool flip_torque_cmd = true;
-  static bool flip_torque_cmd_last_state = true;
-  static double time_start;
-  static bool timer_started = false;
-  interbotix_xs_msgs::ArmJoy joy_cmd;
-
-  // Check if the torque_cmd should be flipped
-  // if (msg.buttons.at(cntlr["TORQUE_ENABLE"]) == 1 && flip_torque_cmd_last_state == false)
-  // {
-  //   flip_torque_cmd = true;
-  //   joy_cmd.torque_cmd = interbotix_xs_msgs::ArmJoy::TORQUE_ON;
-  // }
-  // else if (msg.buttons.at(cntlr["TORQUE_ENABLE"]) == 1 && flip_torque_cmd_last_state == true)
-  // {
-  //   time_start = ros::Time::now().toSec();
-  //   timer_started = true;
-  // }
-  // else if (msg.buttons.at(cntlr["TORQUE_ENABLE"]) == 0)
-  // {
-  //   if (timer_started && ros::Time::now().toSec() - time_start > 3)
-  //   {
-  //     joy_cmd.torque_cmd = interbotix_xs_msgs::ArmJoy::TORQUE_OFF;
-  //     flip_torque_cmd = false;
-  //   }
-  //   flip_torque_cmd_last_state = flip_torque_cmd;
-  //   timer_started = false;
-  // }
-
-  //Disable flipping axes. Pressing the sticks can be remapped.
-  
-  // Check if the ee_x_cmd should be flipped
-  // if (msg.buttons.at(cntlr["FLIP_EE_X"]) == 1 && flip_ee_x_cmd_last_state == false)
-  //   flip_ee_x_cmd = true;
-  // else if (msg.buttons.at(cntlr["FLIP_EE_X"]) == 1 && flip_ee_x_cmd_last_state == true)
-  //   flip_ee_x_cmd = false;
-  // else if (msg.buttons.at(cntlr["FLIP_EE_X"]) == 0)
-  //   flip_ee_x_cmd_last_state = flip_ee_x_cmd;
-  
-
-  // Check the ee_x_cmd
-  if (msg.axes.at(cntlr["EE_X"]) >= threshold && flip_ee_x_cmd == false)
-    {joy_cmd.ee_x_cmd = interbotix_xs_msgs::ArmJoy::EE_X_INC;}
-  else if (msg.axes.at(cntlr["EE_X"]) <= -threshold && flip_ee_x_cmd == false)
-    {joy_cmd.ee_x_cmd = interbotix_xs_msgs::ArmJoy::EE_X_DEC;}
-  else if (msg.axes.at(cntlr["EE_X"]) >= threshold && flip_ee_x_cmd == true)
-    {joy_cmd.ee_x_cmd = interbotix_xs_msgs::ArmJoy::EE_X_DEC;}
-  else if (msg.axes.at(cntlr["EE_X"]) <= -threshold && flip_ee_x_cmd == true)
-    {joy_cmd.ee_x_cmd = interbotix_xs_msgs::ArmJoy::EE_X_INC;}
-
-  // Check the ee_y_cmd
-  if (controller_type == "ps3" || controller_type == "ps4")
+public:
+  xsarm_joy()
+  : Node("xsarm_joy")
   {
-    if (msg.buttons.at(cntlr["EE_Y_INC"]) == 1)
-      joy_cmd.ee_y_cmd = interbotix_xs_msgs::ArmJoy::EE_Y_INC;
-    else if (msg.buttons.at(cntlr["EE_Y_DEC"]) == 1)
-      joy_cmd.ee_y_cmd = interbotix_xs_msgs::ArmJoy::EE_Y_DEC;
-  }
-  else if (controller_type == "xbox360")
+    threshold = this->get_parameter("~threshold").as_double();
+    controller_type = this->get_parameter("~controller").as_string();
+    if (controller_type == "xbox360")
+      cntlr = xbox360;
+    else if (controller_type == "ps3")
+      cntlr = ps3;
+    else
+      cntlr = ps4;
+    sub_joy_raw = this->create_subscription<sensor_msgs::msg::Joy>("commands/joy_raw", 10, std::bind(&xsarm_joy::joy_state_cb, this, std::placeholders::_1));
+    pub_joy_cmd = this->create_publisher<morpheus_msgs::msg::ArmJoy>("commands/joy_processed", 10);
+  };
+
+private:
+  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr sub_joy_raw;   // ROS Subscriber to receive Joy messages
+  rclcpp::Publisher<morpheus_msgs::msg::ArmJoy>::SharedPtr pub_joy_cmd; // ROS Publisher to publish ArmJoy messages
+  morpheus_msgs::msg::ArmJoy prev_joy_cmd;                              // Keep track of the previously commanded ArmJoy message so that only unique messages are published
+  std::map<std::string, int> cntlr;                                     // Holds the controller button mappings
+  std::string controller_type;                                          // Holds the name of the controller received from the ROS Parameter server
+  double threshold;                                                     // Joystick sensitivity threshold
+
+  /// @brief Joystick callback to create custom ArmJoy messages to control the Arm
+  /// @param msg - raw sensor_msgs::Joy data
+  void joy_state_cb(const sensor_msgs::msg::Joy &msg)
   {
-    // Xbox trigger values are 1.0 when unpressed, 0.0 when fully pressed
-    // Note that if default_trig_val==false in joy node, they will incorrectly report 0.0 until pressed
-    // default_trig_val is set when initializing joy node, in morpheus_teleop/xsarm_joy.launch
-    if (msg.axes.at(cntlr["EE_Y_INC"]) <= 1.0 - 2.0 * threshold)
-      joy_cmd.ee_y_cmd = interbotix_xs_msgs::ArmJoy::EE_Y_INC;
-    else if (msg.axes.at(cntlr["EE_Y_DEC"]) <= 1.0 - 2.0 * threshold)
-      joy_cmd.ee_y_cmd = interbotix_xs_msgs::ArmJoy::EE_Y_DEC;
-  }
+    static bool flip_ee_roll_cmd = false;
+    static bool flip_ee_roll_cmd_last_state = false;
+    static bool flip_ee_x_cmd = false;
+    static bool flip_ee_x_cmd_last_state = false;
+    static bool flip_torque_cmd = true;
+    static bool flip_torque_cmd_last_state = true;
+    static double time_start;
+    static bool timer_started = false;
+    morpheus_msgs::msg::ArmJoy joy_cmd;
 
-  // Check the ee_z_cmd
-  if (msg.axes.at(cntlr["EE_Z"]) >= threshold)
-    joy_cmd.ee_z_cmd = interbotix_xs_msgs::ArmJoy::EE_Z_INC;
-  else if (msg.axes.at(cntlr["EE_Z"]) <= -threshold)
-    joy_cmd.ee_z_cmd = interbotix_xs_msgs::ArmJoy::EE_Z_DEC;
+    // Check if the torque_cmd should be flipped
+    // if (msg.buttons.at(cntlr["TORQUE_ENABLE"]) == 1 && flip_torque_cmd_last_state == false)
+    // {
+    //   flip_torque_cmd = true;
+    //   joy_cmd.torque_cmd = morpheus_msgs::msg::ArmJoy::TORQUE_ON;
+    // }
+    // else if (msg.buttons.at(cntlr["TORQUE_ENABLE"]) == 1 && flip_torque_cmd_last_state == true)
+    // {
+    //   time_start = rclcpp::Time::now().toSec();
+    //   timer_started = true;
+    // }
+    // else if (msg.buttons.at(cntlr["TORQUE_ENABLE"]) == 0)
+    // {
+    //   if (timer_started && rclcpp::Time::now().toSec() - time_start > 3)
+    //   {
+    //     joy_cmd.torque_cmd = morpheus_msgs::msg::ArmJoy::TORQUE_OFF;
+    //     flip_torque_cmd = false;
+    //   }
+    //   flip_torque_cmd_last_state = flip_torque_cmd;
+    //   timer_started = false;
+    // }
 
-  /* Disable flipping axes. Pressing the sticks can be remapped.
-  // Check if the ee_roll_cmd should be flipped
-  if (msg.buttons.at(cntlr["FLIP_EE_ROLL"]) == 1 && flip_ee_roll_cmd_last_state == false)
-    flip_ee_roll_cmd = true;
-  else if (msg.buttons.at(cntlr["FLIP_EE_ROLL"]) == 1 && flip_ee_roll_cmd_last_state == true)
-    flip_ee_roll_cmd = false;
-  else if (msg.buttons.at(cntlr["FLIP_EE_ROLL"]) == 0)
-    flip_ee_roll_cmd_last_state = flip_ee_roll_cmd;
-  */
+    //Disable flipping axes. Pressing the sticks can be remapped.
+    
+    // Check if the ee_x_cmd should be flipped
+    // if (msg.buttons.at(cntlr["FLIP_EE_X"]) == 1 && flip_ee_x_cmd_last_state == false)
+    //   flip_ee_x_cmd = true;
+    // else if (msg.buttons.at(cntlr["FLIP_EE_X"]) == 1 && flip_ee_x_cmd_last_state == true)
+    //   flip_ee_x_cmd = false;
+    // else if (msg.buttons.at(cntlr["FLIP_EE_X"]) == 0)
+    //   flip_ee_x_cmd_last_state = flip_ee_x_cmd;
+    
 
-  // Check the ee_roll_cmd
-  if (msg.axes.at(cntlr["EE_ROLL"]) >= threshold && flip_ee_roll_cmd == false)
-    joy_cmd.ee_roll_cmd = interbotix_xs_msgs::ArmJoy::EE_ROLL_CW;
-  else if (msg.axes.at(cntlr["EE_ROLL"]) <= -threshold && flip_ee_roll_cmd == false)
-    joy_cmd.ee_roll_cmd = interbotix_xs_msgs::ArmJoy::EE_ROLL_CCW;
-  else if (msg.axes.at(cntlr["EE_ROLL"]) >= threshold && flip_ee_roll_cmd == true)
-    joy_cmd.ee_roll_cmd = interbotix_xs_msgs::ArmJoy::EE_ROLL_CCW;
-  else if (msg.axes.at(cntlr["EE_ROLL"]) <= -threshold && flip_ee_roll_cmd == true)
-    joy_cmd.ee_roll_cmd = interbotix_xs_msgs::ArmJoy::EE_ROLL_CW;
+    // Check the ee_x_cmd
+    if (msg.axes.at(cntlr["EE_X"]) >= threshold && flip_ee_x_cmd == false)
+      {joy_cmd.ee_x_cmd = morpheus_msgs::msg::ArmJoy::EE_X_INC;}
+    else if (msg.axes.at(cntlr["EE_X"]) <= -threshold && flip_ee_x_cmd == false)
+      {joy_cmd.ee_x_cmd = morpheus_msgs::msg::ArmJoy::EE_X_DEC;}
+    else if (msg.axes.at(cntlr["EE_X"]) >= threshold && flip_ee_x_cmd == true)
+      {joy_cmd.ee_x_cmd = morpheus_msgs::msg::ArmJoy::EE_X_DEC;}
+    else if (msg.axes.at(cntlr["EE_X"]) <= -threshold && flip_ee_x_cmd == true)
+      {joy_cmd.ee_x_cmd = morpheus_msgs::msg::ArmJoy::EE_X_INC;}
 
-  // Check the ee_pitch_cmd
-  if (msg.axes.at(cntlr["EE_PITCH"]) >= threshold)
-    joy_cmd.ee_pitch_cmd = interbotix_xs_msgs::ArmJoy::EE_PITCH_UP;
-  else if (msg.axes.at(cntlr["EE_PITCH"]) <= -threshold)
-    joy_cmd.ee_pitch_cmd = interbotix_xs_msgs::ArmJoy::EE_PITCH_DOWN;
+    // Check the ee_y_cmd
+    if (controller_type == "ps3" || controller_type == "ps4")
+    {
+      if (msg.buttons.at(cntlr["EE_Y_INC"]) == 1)
+        joy_cmd.ee_y_cmd = morpheus_msgs::msg::ArmJoy::EE_Y_INC;
+      else if (msg.buttons.at(cntlr["EE_Y_DEC"]) == 1)
+        joy_cmd.ee_y_cmd = morpheus_msgs::msg::ArmJoy::EE_Y_DEC;
+    }
+    else if (controller_type == "xbox360")
+    {
+      // Xbox trigger values are 1.0 when unpressed, 0.0 when fully pressed
+      // Note that if default_trig_val==false in joy node, they will incorrectly report 0.0 until pressed
+      // default_trig_val is set when initializing joy node, in morpheus_teleop/xsarm_joy.launch
+      if (msg.axes.at(cntlr["EE_Y_INC"]) <= 1.0 - 2.0 * threshold)
+        joy_cmd.ee_y_cmd = morpheus_msgs::msg::ArmJoy::EE_Y_INC;
+      else if (msg.axes.at(cntlr["EE_Y_DEC"]) <= 1.0 - 2.0 * threshold)
+        joy_cmd.ee_y_cmd = morpheus_msgs::msg::ArmJoy::EE_Y_DEC;
+    }
 
-  // Check the waist_cmd
-  if (msg.buttons.at(cntlr["WAIST_CCW"]) == 1)
-    joy_cmd.waist_cmd = interbotix_xs_msgs::ArmJoy::WAIST_CCW;
-  else if (msg.buttons.at(cntlr["WAIST_CW"]) == 1)
-    joy_cmd.waist_cmd = interbotix_xs_msgs::ArmJoy::WAIST_CW;
+    // Check the ee_z_cmd
+    if (msg.axes.at(cntlr["EE_Z"]) >= threshold)
+      joy_cmd.ee_z_cmd = morpheus_msgs::msg::ArmJoy::EE_Z_INC;
+    else if (msg.axes.at(cntlr["EE_Z"]) <= -threshold)
+      joy_cmd.ee_z_cmd = morpheus_msgs::msg::ArmJoy::EE_Z_DEC;
 
-  // Check the gripper_cmd
-  if (msg.buttons.at(cntlr["GRIPPER_CLOSE"]) == 1)
-    joy_cmd.gripper_cmd = interbotix_xs_msgs::ArmJoy::GRIPPER_CLOSE;
-  else if (msg.buttons.at(cntlr["GRIPPER_OPEN"]) == 1)
-    joy_cmd.gripper_cmd = interbotix_xs_msgs::ArmJoy::GRIPPER_OPEN;
+    /* Disable flipping axes. Pressing the sticks can be remapped.
+    // Check if the ee_roll_cmd should be flipped
+    if (msg.buttons.at(cntlr["FLIP_EE_ROLL"]) == 1 && flip_ee_roll_cmd_last_state == false)
+      flip_ee_roll_cmd = true;
+    else if (msg.buttons.at(cntlr["FLIP_EE_ROLL"]) == 1 && flip_ee_roll_cmd_last_state == true)
+      flip_ee_roll_cmd = false;
+    else if (msg.buttons.at(cntlr["FLIP_EE_ROLL"]) == 0)
+      flip_ee_roll_cmd_last_state = flip_ee_roll_cmd;
+    */
 
-  // Check the pose_cmd
-  if (msg.buttons.at(cntlr["HOME_POSE"]) == 1)
-    joy_cmd.pose_cmd = interbotix_xs_msgs::ArmJoy::HOME_POSE;
-  else if (msg.buttons.at(cntlr["SLEEP_POSE"]) == 1)
-    joy_cmd.pose_cmd = interbotix_xs_msgs::ArmJoy::SLEEP_POSE;
+    // Check the ee_roll_cmd
+    if (msg.axes.at(cntlr["EE_ROLL"]) >= threshold && flip_ee_roll_cmd == false)
+      joy_cmd.ee_roll_cmd = morpheus_msgs::msg::ArmJoy::EE_ROLL_CW;
+    else if (msg.axes.at(cntlr["EE_ROLL"]) <= -threshold && flip_ee_roll_cmd == false)
+      joy_cmd.ee_roll_cmd = morpheus_msgs::msg::ArmJoy::EE_ROLL_CCW;
+    else if (msg.axes.at(cntlr["EE_ROLL"]) >= threshold && flip_ee_roll_cmd == true)
+      joy_cmd.ee_roll_cmd = morpheus_msgs::msg::ArmJoy::EE_ROLL_CCW;
+    else if (msg.axes.at(cntlr["EE_ROLL"]) <= -threshold && flip_ee_roll_cmd == true)
+      joy_cmd.ee_roll_cmd = morpheus_msgs::msg::ArmJoy::EE_ROLL_CW;
 
-  if (controller_type == "ps3")
-  {
-    // Check the speed_cmd
-    if (msg.buttons.at(cntlr["SPEED_INC"]) == 1)
-      joy_cmd.speed_cmd = interbotix_xs_msgs::ArmJoy::SPEED_INC;
-    else if (msg.buttons.at(cntlr["SPEED_DEC"]) == 1)
-      joy_cmd.speed_cmd = interbotix_xs_msgs::ArmJoy::SPEED_DEC;
+    // Check the ee_pitch_cmd
+    if (msg.axes.at(cntlr["EE_PITCH"]) >= threshold)
+      joy_cmd.ee_pitch_cmd = morpheus_msgs::msg::ArmJoy::EE_PITCH_UP;
+    else if (msg.axes.at(cntlr["EE_PITCH"]) <= -threshold)
+      joy_cmd.ee_pitch_cmd = morpheus_msgs::msg::ArmJoy::EE_PITCH_DOWN;
 
-    // Check the speed_toggle_cmd
-    if (msg.buttons.at(cntlr["SPEED_COARSE"]) == 1)
-      joy_cmd.speed_toggle_cmd = interbotix_xs_msgs::ArmJoy::SPEED_COURSE; // This typo comes from the official Interbotix library
-    else if (msg.buttons.at(cntlr["SPEED_FINE"]) == 1)
-      joy_cmd.speed_toggle_cmd = interbotix_xs_msgs::ArmJoy::SPEED_FINE;
-  }
-  else if (controller_type == "ps4" || controller_type == "xbox360")
-  {
-    // Check the speed_cmd
-    if (msg.axes.at(cntlr["SPEED"]) == 1)
-      joy_cmd.speed_cmd = interbotix_xs_msgs::ArmJoy::SPEED_INC;
-    else if (msg.axes.at(cntlr["SPEED"]) == -1)
-      joy_cmd.speed_cmd = interbotix_xs_msgs::ArmJoy::SPEED_DEC;
+    // Check the waist_cmd
+    if (msg.buttons.at(cntlr["WAIST_CCW"]) == 1)
+      joy_cmd.waist_cmd = morpheus_msgs::msg::ArmJoy::WAIST_CCW;
+    else if (msg.buttons.at(cntlr["WAIST_CW"]) == 1)
+      joy_cmd.waist_cmd = morpheus_msgs::msg::ArmJoy::WAIST_CW;
 
-    // Check the speed_toggle_cmd
-    if (msg.axes.at(cntlr["SPEED_TYPE"]) == 1)
-      joy_cmd.speed_toggle_cmd = interbotix_xs_msgs::ArmJoy::SPEED_COURSE; // This typo comes from the official Interbotix library
-    else if (msg.axes.at(cntlr["SPEED_TYPE"]) == -1)
-      joy_cmd.speed_toggle_cmd = interbotix_xs_msgs::ArmJoy::SPEED_FINE;
-  }
+    // Check the gripper_cmd
+    if (msg.buttons.at(cntlr["GRIPPER_CLOSE"]) == 1)
+      joy_cmd.gripper_cmd = morpheus_msgs::msg::ArmJoy::GRIPPER_CLOSE;
+    else if (msg.buttons.at(cntlr["GRIPPER_OPEN"]) == 1)
+      joy_cmd.gripper_cmd = morpheus_msgs::msg::ArmJoy::GRIPPER_OPEN;
 
-  // Check the gripper_pwm_cmd
-  if (msg.buttons.at(cntlr["GRIPPER_PWM_INC"]) == 1)
-    joy_cmd.gripper_pwm_cmd = interbotix_xs_msgs::ArmJoy::GRIPPER_PWM_INC;
-  else if (msg.buttons.at(cntlr["GRIPPER_PWM_DEC"]) == 1)
-    joy_cmd.gripper_pwm_cmd = interbotix_xs_msgs::ArmJoy::GRIPPER_PWM_DEC;
+    // Check the pose_cmd
+    if (msg.buttons.at(cntlr["HOME_POSE"]) == 1)
+      joy_cmd.pose_cmd = morpheus_msgs::msg::ArmJoy::HOME_POSE;
+    else if (msg.buttons.at(cntlr["SLEEP_POSE"]) == 1)
+      joy_cmd.pose_cmd = morpheus_msgs::msg::ArmJoy::SLEEP_POSE;
 
-  // Only publish a ArmJoy message if any of the following fields have changed.
-  // if (!(prev_joy_cmd.ee_x_cmd == joy_cmd.ee_x_cmd &&
-  //     prev_joy_cmd.ee_y_cmd == joy_cmd.ee_y_cmd &&
-  //     prev_joy_cmd.ee_z_cmd == joy_cmd.ee_z_cmd &&
-  //     prev_joy_cmd.ee_roll_cmd == joy_cmd.ee_roll_cmd &&
-  //     prev_joy_cmd.ee_pitch_cmd == joy_cmd.ee_pitch_cmd &&
-  //     prev_joy_cmd.waist_cmd == joy_cmd.waist_cmd &&
-  //     prev_joy_cmd.gripper_cmd == joy_cmd.gripper_cmd &&
-  //     prev_joy_cmd.pose_cmd == joy_cmd.pose_cmd &&
-  //     prev_joy_cmd.speed_cmd == joy_cmd.speed_cmd &&
-  //     prev_joy_cmd.speed_toggle_cmd == joy_cmd.speed_toggle_cmd &&
-  //     prev_joy_cmd.gripper_pwm_cmd == joy_cmd.gripper_pwm_cmd &&
-  //     prev_joy_cmd.torque_cmd == joy_cmd.torque_cmd))
-      pub_joy_cmd.publish(joy_cmd);
-  prev_joy_cmd = joy_cmd;
-}
+    if (controller_type == "ps3")
+    {
+      // Check the speed_cmd
+      if (msg.buttons.at(cntlr["SPEED_INC"]) == 1)
+        joy_cmd.speed_cmd = morpheus_msgs::msg::ArmJoy::SPEED_INC;
+      else if (msg.buttons.at(cntlr["SPEED_DEC"]) == 1)
+        joy_cmd.speed_cmd = morpheus_msgs::msg::ArmJoy::SPEED_DEC;
+
+      // Check the speed_toggle_cmd
+      if (msg.buttons.at(cntlr["SPEED_COARSE"]) == 1)
+        joy_cmd.speed_toggle_cmd = morpheus_msgs::msg::ArmJoy::SPEED_COURSE; // This typo comes from the official Interbotix library
+      else if (msg.buttons.at(cntlr["SPEED_FINE"]) == 1)
+        joy_cmd.speed_toggle_cmd = morpheus_msgs::msg::ArmJoy::SPEED_FINE;
+    }
+    else if (controller_type == "ps4" || controller_type == "xbox360")
+    {
+      // Check the speed_cmd
+      if (msg.axes.at(cntlr["SPEED"]) == 1)
+        joy_cmd.speed_cmd = morpheus_msgs::msg::ArmJoy::SPEED_INC;
+      else if (msg.axes.at(cntlr["SPEED"]) == -1)
+        joy_cmd.speed_cmd = morpheus_msgs::msg::ArmJoy::SPEED_DEC;
+
+      // Check the speed_toggle_cmd
+      if (msg.axes.at(cntlr["SPEED_TYPE"]) == 1)
+        joy_cmd.speed_toggle_cmd = morpheus_msgs::msg::ArmJoy::SPEED_COURSE; // This typo comes from the official Interbotix library
+      else if (msg.axes.at(cntlr["SPEED_TYPE"]) == -1)
+        joy_cmd.speed_toggle_cmd = morpheus_msgs::msg::ArmJoy::SPEED_FINE;
+    }
+
+    // Check the gripper_pwm_cmd
+    if (msg.buttons.at(cntlr["GRIPPER_PWM_INC"]) == 1)
+      joy_cmd.gripper_pwm_cmd = morpheus_msgs::msg::ArmJoy::GRIPPER_PWM_INC;
+    else if (msg.buttons.at(cntlr["GRIPPER_PWM_DEC"]) == 1)
+      joy_cmd.gripper_pwm_cmd = morpheus_msgs::msg::ArmJoy::GRIPPER_PWM_DEC;
+
+    // Only publish a ArmJoy message if any of the following fields have changed.
+    // if (!(prev_joy_cmd.ee_x_cmd == joy_cmd.ee_x_cmd &&
+    //     prev_joy_cmd.ee_y_cmd == joy_cmd.ee_y_cmd &&
+    //     prev_joy_cmd.ee_z_cmd == joy_cmd.ee_z_cmd &&
+    //     prev_joy_cmd.ee_roll_cmd == joy_cmd.ee_roll_cmd &&
+    //     prev_joy_cmd.ee_pitch_cmd == joy_cmd.ee_pitch_cmd &&
+    //     prev_joy_cmd.waist_cmd == joy_cmd.waist_cmd &&
+    //     prev_joy_cmd.gripper_cmd == joy_cmd.gripper_cmd &&
+    //     prev_joy_cmd.pose_cmd == joy_cmd.pose_cmd &&
+    //     prev_joy_cmd.speed_cmd == joy_cmd.speed_cmd &&
+    //     prev_joy_cmd.speed_toggle_cmd == joy_cmd.speed_toggle_cmd &&
+    //     prev_joy_cmd.gripper_pwm_cmd == joy_cmd.gripper_pwm_cmd &&
+    //     prev_joy_cmd.torque_cmd == joy_cmd.torque_cmd))
+    pub_joy_cmd->publish(joy_cmd);
+    prev_joy_cmd = joy_cmd;
+  };
+};
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "xsarm_joy");
-  ros::NodeHandle n;
-  ros::param::get("~threshold", threshold);
-  ros::param::get("~controller", controller_type);
-  if (controller_type == "xbox360")
-    cntlr = xbox360;
-  else if (controller_type == "ps3")
-    cntlr = ps3;
-  else
-    cntlr = ps4;
-  ros::Subscriber sub_joy_raw = n.subscribe("commands/joy_raw", 10, joy_state_cb);
-  pub_joy_cmd = n.advertise<interbotix_xs_msgs::ArmJoy>("commands/joy_processed", 10);
-  ros::spin();
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<xsarm_joy>());
+  rclcpp::shutdown();
   return 0;
 }

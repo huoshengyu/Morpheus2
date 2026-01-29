@@ -1,2 +1,2 @@
-moveit_msgs::AttachedCollisionObject createAttachedCollisionObject(moveit_msgs::CollisionObject,
+moveit_msgs::msg::AttachedCollisionObject createAttachedCollisionObject(moveit_msgs::msg::CollisionObject,
                                                             std::string);

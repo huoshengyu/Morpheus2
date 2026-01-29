@@ -65,7 +65,7 @@ public:
     if (controller_type_ == "ps4") {
       cntlr_ = ps4;
     } else {
-      ROS_WARN("Unknown controller '%s'; defaulting to ps4 mapping.", controller_type_.c_str());
+      RCLCPP_WARN("Unknown controller '%s'; defaulting to ps4 mapping.", controller_type_.c_str());
       cntlr_ = ps4;
     }
 
@@ -79,7 +79,7 @@ public:
     timer_ = nh_.createTimer(ros::Duration(1.0 / safe_rate),
                              &JoyDualLogger::timerCb, this);
 
-    ROS_INFO_STREAM("JoyDualLogger starting. base_dir=" << base_dir_
+    RCLCPP_INFO_STREAM("JoyDualLogger starting. base_dir=" << base_dir_
                     << " controller=" << controller_type_
                     << " on_threshold=" << on_thr_
                     << " write_combined=" << (write_combined_ ? "true" : "false")
@@ -101,14 +101,14 @@ private:
       joy_header_written_ = armjoy_header_written_ = combined_header_written_ = false;
       active_base_.clear();
       have_t0_ = false;  // reset session origin
-      ROS_INFO("[JoyDualLogger] Session ended closed CSVs; waiting for next basename.");
+      RCLCPP_INFO("[JoyDualLogger] Session ended closed CSVs; waiting for next basename.");
     } else {
       // New trial: rotate files
       active_base_ = s;
       reopenAllCsvWithBase(active_base_);
       session_t0_ = ros::Time::now();   // session origin for t_rel
       have_t0_ = true;
-      ROS_INFO_STREAM("[JoyDualLogger] Session started base=" << active_base_
+      RCLCPP_INFO_STREAM("[JoyDualLogger] Session started base=" << active_base_
                       << " t0=" << session_t0_.toSec());
     }
   }
@@ -120,7 +120,7 @@ private:
     try {
       std::filesystem::create_directories(base_dir_);
     } catch (...) {
-      ROS_WARN_STREAM("Could not ensure directory exists: " << base_dir_);
+      RCLCPP_WARN_STREAM("Could not ensure directory exists: " << base_dir_);
     }
 
     // Reset headers so we re-emit for the new files
@@ -139,7 +139,7 @@ private:
     openCsv(cal_csv_,  cal_csv_path_,  /*append=*/false);
     if (write_combined_) openCsv(combined_csv_, combined_csv_path_, /*append=*/false);
 
-    ROS_INFO_STREAM("[JoyDualLogger] Writing to:"
+    RCLCPP_INFO_STREAM("[JoyDualLogger] Writing to:"
                     << "\n  joy_csv=" << joy_csv_path_
                     << "\n  armjoy_csv=" << armjoy_csv_path_
                     << "\n  cal_csv=" << cal_csv_path_
@@ -162,7 +162,7 @@ private:
   void openCsv(std::ofstream& f, const std::string& path, bool append) {
     std::ios_base::openmode mode = std::ios::out | (append ? std::ios::app : std::ios::trunc);
     f.open(path.c_str(), mode);
-    if (!f) ROS_ERROR_STREAM("Failed to open CSV: " << path);
+    if (!f) RCLCPP_ERROR_STREAM("Failed to open CSV: " << path);
   }
 
   // ========================= Joy → ArmJoy derivation =========================

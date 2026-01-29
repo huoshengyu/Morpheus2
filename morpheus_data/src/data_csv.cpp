@@ -106,11 +106,11 @@ class DataNode
             // Ensure the PlanningSceneMonitor is ready
             if (g_planning_scene_monitor->requestPlanningSceneState("/get_planning_scene"))
             {
-                ROS_INFO("Planning Scene Monitor is active and ready.");
+                RCLCPP_INFO("Planning Scene Monitor is active and ready.");
             }
             else
             {
-                ROS_ERROR("Failed to set up Planning Scene Monitor.");
+                RCLCPP_ERROR("Failed to set up Planning Scene Monitor.");
             }
             
             // Start the PlanningSceneMonitor
@@ -136,7 +136,7 @@ class DataNode
             g_filename = header.str();
 
             // Open file
-            ROS_INFO_STREAM("Creating file with name: " << g_filename);
+            RCLCPP_INFO_STREAM("Creating file with name: " << g_filename);
             std::stringstream filepath;
             filepath << data_dir << g_filename << ".csv";
             g_file = std::ofstream(filepath.str());
@@ -214,9 +214,9 @@ class DataNode
                 // Check if a new contactmap was received
                 if (received_contactmap and received_nearest_collision)
                 {
-                    ROS_INFO_STREAM("Updating...");
+                    RCLCPP_INFO_STREAM("Updating...");
                     update();
-                    ROS_INFO_STREAM("Publishing...");
+                    RCLCPP_INFO_STREAM("Publishing...");
                     publish();
                 }
                 // If no new contact map, don't publish and print to terminal
@@ -224,11 +224,11 @@ class DataNode
                 {
                     if (!received_contactmap)
                     {
-                        ROS_INFO_STREAM("Waiting for collision/contactmap topic...");
+                        RCLCPP_INFO_STREAM("Waiting for collision/contactmap topic...");
                     }
                     if (!received_nearest_collision)
                     {
-                        ROS_INFO_STREAM("Waiting for collision/nearest topic...");
+                        RCLCPP_INFO_STREAM("Waiting for collision/nearest topic...");
                     }   
                 }
                 
@@ -350,7 +350,7 @@ class DataNode
 
         void publish()
         {
-            ROS_INFO_STREAM("Adding line: " << g_next_line.str());
+            RCLCPP_INFO_STREAM("Adding line: " << g_next_line.str());
             g_file << g_next_line.str() << std::endl;
         }
 
@@ -368,14 +368,14 @@ class DataNode
         {
             g_latest_contactmap = msg;
             received_contactmap = true;
-            ROS_INFO_STREAM("Received contactmap");
+            RCLCPP_INFO_STREAM("Received contactmap");
         }
 
         static void nearestCollisionCallback(moveit_msgs::ContactInformation nearest)
         {
             g_nearest_collision = nearest;
             received_nearest_collision = true;
-            ROS_INFO_STREAM("Received nearest collision");
+            RCLCPP_INFO_STREAM("Received nearest collision");
         }
 
 

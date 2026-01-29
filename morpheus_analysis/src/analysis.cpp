@@ -6,11 +6,11 @@
 #include <chrono>
 #include <ctime>
 
-#include <ros/ros.h>
-#include <std_msgs/String.h>
-#include <std_msgs/Float64.h>
-#include <geometry_msgs/Point.h>
-#include <visualization_msgs/Marker.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/float64.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 #include <moveit/moveit_cpp/moveit_cpp.h>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
 #include <moveit/collision_detection_bullet/collision_env_bullet.h>
@@ -19,8 +19,8 @@
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/robot_model/robot_model.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
-#include <morpheus_msgs/ContactMap.h>
-#include <morpheus_msgs/StringPair.h>
+#include <morpheus_msgs/msg/contact_map.hpp>
+#include <morpheus_msgs/msg/string_pair.hpp>
 
 // name of the robot description (a param name, so it can be changed externally)
 static const std::string ROBOT_DESCRIPTION =
@@ -72,7 +72,7 @@ namespace analysis
 // Get directory of data folder. Note: cwd is /root/.ros/ by default
 static const std::string data_dir = "/root/catkin_ws/src/morpheus_data/data/";
 
-class AnalysisNode
+class AnalysisNode : public rclcpp::Node
 {
     public:
         std::shared_ptr<planning_scene_monitor::PlanningSceneMonitor> g_planning_scene_monitor;
@@ -89,7 +89,7 @@ class AnalysisNode
 
         // Need some variables to be global
 
-        AnalysisNode(int argc, char** argv)
+        AnalysisNode(int argc, char** argv) : Node("analysis_node")
         {
             // Select links to track
             g_robot_links = A_BOT_LINK_VECTOR;
@@ -101,7 +101,7 @@ class AnalysisNode
         {
             // Read from file
             g_filename = filename;
-            ROS_INFO_STREAM("Reading file with name: " << filename);
+            RCLCPP_INFO_STREAM(this->get_logger(), "Reading file with name: " << filename);
             std::stringstream filepath;
             filepath << data_dir << filename << ".csv";
             g_ifile = std::ifstream(filepath.str());
@@ -132,7 +132,7 @@ class AnalysisNode
             // Analyze data that has been previously read and save the results
             // Base write filename on read filename
             std::string write_filename = "analyze" + g_filename;
-            ROS_INFO_STREAM("Writing file with name: " << write_filename);
+            RCLCPP_INFO_STREAM(this->get_logger(), "Writing file with name: " << write_filename);
             std::stringstream filepath;
             filepath << data_dir << write_filename << ".csv";
             g_ofile = std::ofstream(filepath.str());
@@ -160,7 +160,7 @@ class AnalysisNode
             return result;
         }
 
-        static void emptyCallback(std_msgs::String msg)
+        static void emptyCallback(std_msgs::msg::String msg)
         {
             
         }
@@ -172,7 +172,7 @@ int main(int argc, char** argv)
     AnalysisNode analysis_node(argc, argv);
     if (argc == 1)
     {
-        ROS_INFO("No command line arguments given. Please provide data filenames");
+        RCLCPP_INFO(analysis_node.get_logger(),"No command line arguments given. Please provide data filenames");
     }
     else
     {

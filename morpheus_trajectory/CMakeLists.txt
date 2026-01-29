@@ -1,5 +1,11 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(morpheus_trajectory)
+
+# Add support for C++14
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -7,17 +13,6 @@ project(morpheus_trajectory)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  interbotix_xs_msgs
-  roscpp
-  moveit_core
-  moveit_ros_planning
-  moveit_ros_planning_interface
-  moveit_visual_tools
-  moveit_msgs
-  eigen_conversions
-  morpheus_teleop
-)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -108,12 +103,6 @@ find_package(catkin REQUIRED COMPONENTS
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES morpheus_teleop
-#  CATKIN_DEPENDS geometry_msgs joy rospy
-#  DEPENDS system_lib
-)
 
 ###########
 ## Build ##
@@ -121,10 +110,6 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -139,8 +124,32 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
+find_package(ament_cmake REQUIRED)
+find_package(morpheus_teleop REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
+find_package(moveit_ros_planning REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(moveit_visual_tools REQUIRED)
+find_package(moveit_core REQUIRED)
+find_package(moveit_msgs REQUIRED)
+find_package(morpheus_teleop REQUIRED)
+
+include_directories(include)
+
 add_executable(${PROJECT_NAME} src/trajectory.cpp)
-add_executable(serial_trajec_sender src/goal_vibration.cpp)
+ament_target_dependencies(${PROJECT_NAME} rclcpp moveit_ros_planning_interface moveit_visual_tools morpheus_teleop)
+
+set(LIBRARY_DIRS ${ament_cmake_LIBRARIES} ${morpheus_teleop_LIBRARIES}
+  ${moveit_ros_planning_interface_LIBRARIES}
+  ${moveit_ros_planning_LIBRARIES} ${rclcpp_LIBRARIES}
+  ${moveit_visual_tools_LIBRARIES} ${moveit_core_LIBRARIES}
+  ${moveit_msgs_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${LIBRARY_DIRS})
+
+# add_executable(serial_trajec_sender src/goal_vibration.cpp)
+
+# target_link_libraries(serial_trajec_sender ${LIBRARY_DIRS})
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -152,10 +161,6 @@ add_executable(serial_trajec_sender src/goal_vibration.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-)
-target_link_libraries(serial_trajec_sender ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############
@@ -167,26 +172,26 @@ target_link_libraries(serial_trajec_sender ${catkin_LIBRARIES})
 ## in contrast to setup.py, you can choose the destination
 # catkin_install_python(PROGRAMS
 #   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#   DESTINATION bin
 # )
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 # install(TARGETS ${PROJECT_NAME}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#   RUNTIME DESTINATION bin
 # )
 
 ## Mark libraries for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
 # install(TARGETS ${PROJECT_NAME}
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+#   ARCHIVE DESTINATION lib
+#   LIBRARY DESTINATION lib
+#   RUNTIME DESTINATION bin
 # )
 
 ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+#   DESTINATION include/${PROJECT_NAME}
 #   FILES_MATCHING PATTERN "*.h"
 #   PATTERN ".svn" EXCLUDE
 # )
@@ -195,7 +200,7 @@ target_link_libraries(serial_trajec_sender ${catkin_LIBRARIES})
 # install(FILES
 #   # myfile1
 #   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+#   DESTINATION share/${PROJECT_NAME}
 # )
 
 #############
@@ -210,3 +215,16 @@ target_link_libraries(serial_trajec_sender ${catkin_LIBRARIES})
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+ament_export_dependencies(ament_cmake)
+ament_export_dependencies(morpheus_teleop)
+ament_export_dependencies(moveit_ros_planning_interface)
+ament_export_dependencies(moveit_ros_planning)
+ament_export_dependencies(rclcpp)
+ament_export_dependencies(moveit_visual_tools)
+ament_export_dependencies(moveit_core)
+ament_export_dependencies(moveit_msgs)
+ament_export_dependencies(morpheus_teleop)
+ament_export_include_directories(${INCLUDE_DIRS})
+
+ament_package()

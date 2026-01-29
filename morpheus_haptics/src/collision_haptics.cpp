@@ -1,6 +1,6 @@
-#include <ros/ros.h>
-#include <moveit_msgs/ContactInformation.h>
-#include <sensor_msgs/JointState.h>
+#include <rclcpp/rclcpp.hpp>
+#include <moveit_msgs/msg/contact_information.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 
 #include <fcntl.h>          // open
 #include <termios.h>        // termios
@@ -17,23 +17,25 @@
 #include <set>
 #include <cmath>
 
-class SerialCollisionSender
+using namespace std::chrono_literals;
+
+class SerialCollisionSender : public rclcpp::Node
 {
 public:
-    SerialCollisionSender()
+    SerialCollisionSender() :  Node("serial_collision_sender")
     {
         // --- Open & configure serial port ---
         std::string port_name;
-        nh_.param<std::string>("serial_port", port_name, "/dev/arduino");
+        this->get_parameter_or("serial_port", port_name, std::string("/dev/arduino"));
         serial_port_ = open(port_name.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
         if (serial_port_ < 0) {
-            ROS_FATAL("Failed to open %s: %s", port_name.c_str(), strerror(errno));
+            RCLCPP_FATAL(this->get_logger(), "Failed to open %s: %s", port_name.c_str(), strerror(errno));
             std::exit(1);
         }
 
         memset(&tty_, 0, sizeof tty_);
         if (tcgetattr(serial_port_, &tty_) != 0) {
-            ROS_FATAL("tcgetattr: %s", strerror(errno));
+            RCLCPP_FATAL(this->get_logger(), "tcgetattr: %s", strerror(errno));
             std::exit(1);
         }
 
@@ -58,7 +60,7 @@ public:
         cfsetospeed(&tty_, B115200);
 
         if (tcsetattr(serial_port_, TCSANOW, &tty_) != 0) {
-            ROS_FATAL("tcsetattr: %s", strerror(errno));
+            RCLCPP_FATAL(this->get_logger(), "tcsetattr: %s", strerror(errno));
             std::exit(1);
         }
 
@@ -73,25 +75,25 @@ public:
 
         // flush and wait 2s for boot
         tcflush(serial_port_, TCIFLUSH);
-        ros::Duration(2.0).sleep();
+        rclcpp::sleep_for(2s);
 
-        ROS_INFO("Serial port %s up at 115200 bps", port_name.c_str());
+        RCLCPP_INFO(this->get_logger(),"Serial port %s up at 115200 bps",port_name.c_str());
 
         // --- Start writer thread ---
         writer_thread_ = std::thread(&SerialCollisionSender::writerLoop, this);
 
         // --- Subscribers ---
-        collision_sub_ = nh_.subscribe(
-            "/vx300s/collision/nearest/contact", 10,
-            &SerialCollisionSender::collisionCallback, this);
-        joint_state_sub_ = nh_.subscribe(
-            "/vx300s/joint_states", 10,
-            &SerialCollisionSender::jointStateCallback, this);
+        collision_sub_ = this->create_subscription<moveit_msgs::msg::ContactInformation>(
+            "/vx300s/collision/yaw/contact", 10, 
+            std::bind(&SerialCollisionSender::collisionCallback, this, std::placeholders::_1));
+        joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
+            "/vx300s/joint_states", 10, 
+            std::bind(&SerialCollisionSender::jointStateCallback, this, std::placeholders::_1));
 
         // --- Heartbeat timer: resend last packet at 50 Hz ---
-        heartbeat_timer_ = nh_.createTimer(
-            ros::Duration(0.02),
-            &SerialCollisionSender::onHeartbeat, this);
+        heartbeat_timer_ = this->create_wall_timer(
+            20ms,
+            std::bind(&SerialCollisionSender::onHeartbeat, this));
     }
 
     ~SerialCollisionSender()
@@ -109,9 +111,9 @@ public:
 
 private:
     // ROS
-    ros::NodeHandle nh_;
-    ros::Subscriber collision_sub_, joint_state_sub_;
-    ros::Timer      heartbeat_timer_;
+    rclcpp::Subscription<moveit_msgs::msg::ContactInformation>::SharedPtr collision_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
+    rclcpp::TimerBase::SharedPtr      heartbeat_timer_;
 
     // Serial
     int serial_port_;
@@ -147,7 +149,7 @@ private:
     }
 
     // Joint state callback
-    void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg)
+    void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
         current_joint_state_.clear();
         for (size_t i = 0; i < msg->name.size(); ++i)
@@ -170,10 +172,10 @@ private:
     }
 
     // Collision callback: build & enqueue packet
-    void collisionCallback(const moveit_msgs::ContactInformation& msg)
+    void collisionCallback(const moveit_msgs::msg::ContactInformation& msg)
     {
         if (isInSleepState()) {
-            ROS_INFO("Sleeping: skipping feedback");
+            RCLCPP_INFO(this->get_logger(), "Sleeping: skipping feedback");
             return;
         }
 
@@ -210,7 +212,7 @@ private:
     }
 
     // Heartbeat: resend last_packet_ at fixed rate
-    void onHeartbeat(const ros::TimerEvent&)
+    void onHeartbeat()
     {
         if (last_packet_.empty()) return;
         {
@@ -231,10 +233,10 @@ private:
             std::string pkt = std::move(write_queue_.front());
             write_queue_.pop();
             lk.unlock();
-            ROS_INFO_STREAM("[ → Arduino ] " << pkt);
+            RCLCPP_INFO_STREAM(this->get_logger(), "[ → Arduino ] " << pkt);
             ssize_t w = write(serial_port_, pkt.c_str(), pkt.size());
             if (w != (ssize_t)pkt.size()) {
-                ROS_WARN("Serial write mismatch: %zd/%zu", w, pkt.size());
+                RCLCPP_WARN(this->get_logger(), "Serial write mismatch: %zd/%zu", w, pkt.size());
             }
         }
     }
@@ -242,8 +244,8 @@ private:
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "serial_collision_sender");
-    SerialCollisionSender node;
-    ros::spin();
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<SerialCollisionSender>());
+    rclcpp::shutdown();
     return 0;
 }

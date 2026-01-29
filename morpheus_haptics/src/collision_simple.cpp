@@ -1,19 +1,20 @@
-#include <ros/ros.h>
-#include <moveit_msgs/ContactInformation.h>
-#include <sensor_msgs/JointState.h>
-#include <geometry_msgs/Vector3.h>
+#include <rclcpp/rclcpp.hpp>
+#include <moveit_msgs/msg/contact_information.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
 #include <map>
 #include <cmath>
 #include <set>
 #include <string>
 
-class CollisionFeedbackPublisher
+using namespace std::chrono_literals;
+
+class CollisionFeedbackPublisher : public rclcpp::Node
 {
 public:
-    ros::NodeHandle nh;
-    ros::Subscriber collision_sub;
-    ros::Subscriber joint_state_sub;
-    ros::Publisher haptic_pub;
+    rclcpp::Subscription<moveit_msgs::msg::ContactInformation>::SharedPtr collision_sub;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr haptic_pub;
 
     std::map<std::string, double> current_joint_state;
 
@@ -22,14 +23,18 @@ public:
         {"waist", 0.0}, {"wrist_angle", 0.8}, {"wrist_rotate", 0.0}
     };
 
-    CollisionFeedbackPublisher()
+    CollisionFeedbackPublisher() : Node("collision_feedback_publisher")
     {
-        collision_sub = nh.subscribe("/vx300s/collision/yaw/contact", 10, &CollisionFeedbackPublisher::collisionCallback, this);
-        joint_state_sub = nh.subscribe("/vx300s/joint_states", 10, &CollisionFeedbackPublisher::jointStateCallback, this);
-        haptic_pub = nh.advertise<geometry_msgs::Vector3>("/vx300s/collision/yaw/yaw_distance", 10);
+        collision_sub = this->create_subscription<moveit_msgs::msg::ContactInformation>(
+            "/vx300s/collision/yaw/contact", 10, 
+            std::bind(&CollisionFeedbackPublisher::collisionCallback, this, std::placeholders::_1));
+        joint_state_sub = this->create_subscription<sensor_msgs::msg::JointState>(
+            "/vx300s/joint_states", 10, 
+            std::bind(&CollisionFeedbackPublisher::jointStateCallback, this, std::placeholders::_1));
+        haptic_pub = this->create_publisher<geometry_msgs::msg::Vector3>("/vx300s/collision/yaw/yaw_distance", 10);
     }
 
-    void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg)
+    void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
         current_joint_state.clear();
         for (size_t i = 0; i < msg->name.size(); ++i)
@@ -49,10 +54,10 @@ public:
         return true;
     }
 
-    void collisionCallback(const moveit_msgs::ContactInformation& msg)
+    void collisionCallback(const moveit_msgs::msg::ContactInformation& msg)
     {
         if (isInSleepState()) {
-            ROS_INFO("In sleep pose, skipping haptic feedback.");
+            RCLCPP_INFO(this->get_logger(),"In sleep pose, skipping haptic feedback.");
             return;
         }
 
@@ -79,14 +84,15 @@ public:
 
         float distance_y = std::round(msg.normal.y * msg.depth * 1000.0f) / 1000.0f;
         float distance_z = std::round(msg.normal.z * msg.depth * 1000.0f) / 1000.0f;
-        geometry_msgs::Vector3 feedback;
+        geometry_msgs::msg::Vector3 feedback;
         feedback.x = std::stof(mode);  // Encode mode in x
         feedback.y = distance_y;
         feedback.z = distance_z;
-        ros::Duration(0.1).sleep();  // Delay for 0.1 seconds (100 ms)
-        haptic_pub.publish(feedback);
+        rclcpp::sleep_for(100ms);  // Delay for 0.1 seconds (100 ms)
+        haptic_pub->publish(feedback);
 
-        ROS_INFO_STREAM("Published HapticCommand: M:" << mode
+        RCLCPP_INFO_STREAM(this->get_logger(),
+                        "Published HapticCommand: M:" << mode
                         << " Y:" << distance_y
                         << " Z:" << distance_z);
     }
@@ -94,8 +100,8 @@ public:
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "collision_feedback_publisher");
-    CollisionFeedbackPublisher node;
-    ros::spin();
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<CollisionFeedbackPublisher>());
+    rclcpp::shutdown();
     return 0;
 }

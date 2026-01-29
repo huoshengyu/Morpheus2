@@ -1,46 +1,16 @@
 collision_object_presets:
   dragon:
     mesh_path: "/meshes/components/collision/dragon_simple.obj"
-    scale: 
-      x: 0.0254
-      y: 0.0254
-      z: 0.0254
-    position:
-      x: 0.6
-      y: 0.2
-      z: 1.2
-    quaternion:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-      w: 1.0
+    scale: [0.0254, 0.0254, 0.0254]
+    position: [0.6, 0.2, 1.2]
+    quaternion: [0.0, 0.0, 0.0, 1.0]
   teapot:
     mesh_path: "/meshes/components/collision/teapot.obj"
-    scale:
-      x: 0.0254
-      y: 0.0254
-      z: 0.0254
-    position:
-      x: -0.1
-      y: 0.8528
-      z: 0.91915
-    quaternion:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-      w: 1.0
+    scale: [0.0254, 0.0254, 0.0254]
+    position: [-0.1, 0.8528, 0.91915]
+    quaternion: [0.0, 0.0, 0.0, 1.0]
   bar_12in:
     mesh_path: "/meshes/components/collision/bar_12in.obj"
-    scale:
-      x: 0.0254
-      y: 0.0254
-      z: 0.0254
-    position:
-      x: -0.1
-      y: 0.8528
-      z: 0.91915
-    quaternion:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-      w: 1.0
+    scale: [0.0254, 0.0254, 0.0254]
+    position: [-0.1, 0.8528, 0.91915]
+    quaternion: [0.0, 0.0, 0.0, 1.0]

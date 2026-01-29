@@ -1,8 +1,9 @@
 services:
-  morpheus:
+  morpheus2:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: morpheus2
     command: tail -F /dev/null # Entrypoint. /dev/null discards print
     environment:
       # Display X Server GUI.
@@ -19,7 +20,7 @@ services:
       # Grant display access to X Server.
       - /tmp/.X11-unix:/tmp/.X11-unix
       - "/dev:/dev"
-      - .:/root/catkin_ws/src
+      - .:/root/ros2_ws/src
     deploy:
       resources:
         reservations:
@@ -27,5 +28,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    runtime: nvidia
     privileged: true
     network_mode: host

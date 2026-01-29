@@ -44,7 +44,7 @@ public:
 
     // Ensure dir exists
     try { std::filesystem::create_directories(base_dir_); }
-    catch (...) { ROS_WARN_STREAM("[TFPoseLogger] Could not ensure directory: " << base_dir_); }
+    catch (...) { RCLCPP_WARN_STREAM("[TFPoseLogger] Could not ensure directory: " << base_dir_); }
 
     const std::string base_full = joinPath(base_dir_, active_base_);
     csv_path_ = base_full + "_tf_pose.csv";
@@ -52,7 +52,7 @@ public:
     std::ios_base::openmode mode = std::ios::out | (append_ ? std::ios::app : std::ios::trunc);
     ofs_.open(csv_path_.c_str(), mode);
     if (!ofs_) {
-      ROS_ERROR_STREAM("[TFPoseLogger] Failed to open CSV: " << csv_path_);
+      RCLCPP_ERROR_STREAM("[TFPoseLogger] Failed to open CSV: " << csv_path_);
       active_base_.clear();
       return;
     }
@@ -60,7 +60,7 @@ public:
     ofs_.precision(csv_precision_);
     header_written_ = false;
 
-    ROS_INFO_STREAM("[TFPoseLogger] Writing to: " << csv_path_
+    RCLCPP_INFO_STREAM("[TFPoseLogger] Writing to: " << csv_path_
                     << " (precision=" << csv_precision_
                     << ", clamp=[" << save_pos_min_m_ << "," << save_pos_max_m_
                     << "], pos_res=" << save_pos_resolution_m_
@@ -212,7 +212,7 @@ public:
     timer_ = nh.createTimer(ros::Duration(1.0 / hz),
                             &TopicPublisher::onTimer, this, /*oneshot=*/false, /*autostart=*/true);
 
-    ROS_INFO_STREAM("[TFPoseLogger] world=" << world_
+    RCLCPP_INFO_STREAM("[TFPoseLogger] world=" << world_
                     << " | log_rate_hz=" << log_rate_hz_);
   }
 
@@ -239,7 +239,7 @@ private:
         listener_.lookupTransform(world_, child, ros::Time(0), out);
         return true;
       } catch (tf::TransformException& ex) {
-        ROS_WARN_THROTTLE(1.0, "TF latest lookup failed for %s -> %s: %s",
+        RCLCPP_WARN_THROTTLE(1.0, "TF latest lookup failed for %s -> %s: %s",
                           world_.c_str(), child.c_str(), ex.what());
         return false;
       }
@@ -325,7 +325,7 @@ public:
   {
     pnh_.param<std::string>("basename_topic", basename_topic_, std::string("/UCDsession/csv_basename"));
     csv_base_sub_ = nh_.subscribe(basename_topic_, 1, &TFPoseLoggerNode::csvBaseCb, this);
-    ROS_INFO_STREAM("[TFPoseLogger] starting. basename_topic=" << basename_topic_);
+    RCLCPP_INFO_STREAM("[TFPoseLogger] starting. basename_topic=" << basename_topic_);
   }
 
   void csvBaseCb(const std_msgs::String::ConstPtr& msg) {
@@ -333,11 +333,11 @@ public:
     if (s.empty()) {
       csv_.endSession();
       pub_.endSession(); // stop using old t0
-      ROS_INFO("[TFPoseLogger] Session ended closed CSV; waiting for next basename.");
+      RCLCPP_INFO("[TFPoseLogger] Session ended closed CSV; waiting for next basename.");
     } else {
       csv_.reopenWithBase(s);
       pub_.startSessionT0(); // align origin with joy logger
-      ROS_INFO_STREAM("[TFPoseLogger] Session started base=" << s);
+      RCLCPP_INFO_STREAM("[TFPoseLogger] Session started base=" << s);
     }
   }
 

@@ -1,156 +1,170 @@
-FROM nvidia/cuda:12.9.0-base-ubuntu20.04 AS base
-# RUN  rm /etc/apt/sources.list.d/nvidia-ml.list && apt-get clean && apt-get update
+FROM nvidia/cuda:13.1.0-base-ubuntu24.04 AS base
+# RUN rm /etc/apt/sources.list.d/nvidia-ml.list && apt-get clean && apt-get update
 
-SHELL ["/bin/bash", "-c"]
+# Use bash as shell for RUN commands, and use --login to ensure conda loads once installed
+SHELL ["/bin/bash", "--login", "-c"]
 
-# Install git and wget
-RUN apt-get update && \
-    apt-get install git wget udev -y
+# Ensure apt-get is up to date
+RUN apt-get update && apt-get upgrade --no-install-recommends -y
 
-# Install Miniconda
-RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3.sh
-RUN bash ~/miniconda3.sh -b -p ~/miniconda3
-RUN rm ~/miniconda3.sh
+# Install basic dependencies
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    git \
+    wget \
+    udev \
+    ca-certificates \
+    bzip2 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN export PATH=~/miniconda3/bin:$PATH
-
-# Minimal setup
-ENV ROS_DISTRO=noetic
+# Minimal ROS setup
+ENV ROS_DISTRO=jazzy
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install --no-install-recommends -y \
     locales \
     lsb-release \
-    curl \
+    software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 RUN dpkg-reconfigure locales
+RUN add-apt-repository universe
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+RUN sh -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null'
+RUN apt-get update && apt-get install ros-dev-tools -y
 
-# Install ROS Noetic Desktop Full
-RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
+# Install ROS ${ROS_DISTRO} Desktop
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-noetic-desktop-full \
+    ros-${ROS_DISTRO}-desktop \
     && rm -rf /var/lib/apt/lists/*
 
+# Source ROS setup files on interactive terminal startup
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc
+
+# Install rosdep and related tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-rosdep \
-    python3-rosinstall \
-    python3-rosinstall-generator \
     python3-vcstools \
-    python3-wstool \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#     ros-noetic-rosserial \
-#     ros-noetic-rosserial-python \
-#     ros-noetic-rosserial-arduino \
-#     && rm -rf /var/lib/apt/lists/*
 # Initialize rosdep
 RUN rosdep init \
  && rosdep fix-permissions \
  && rosdep update --rosdistro $ROS_DISTRO
 
-# Source ROS setup files on container startup
-RUN echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+# Install rosserial for network communications
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     ros-${ROS_DISTRO}-rosserial \
+#     ros-${ROS_DISTRO}-rosserial-python \
+#     ros-${ROS_DISTRO}-rosserial-arduino \
+#     && rm -rf /var/lib/apt/lists/*
 
 FROM base AS dev
 
-# Install ROS dependencies
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    ros-noetic-moveit \
-    ros-noetic-cartesian-control-msgs \
-    ros-noetic-teleop-twist-keyboard \
-    python3-tk \
-    && rm -rf /var/lib/apt/lists/*
-
 # Set the working directory in the container
-WORKDIR /root/catkin_ws/
+WORKDIR /root/ros2_ws/
 
 # Copy the morpheus repo
 COPY ./ ./src/
 
-# Install general dependencies
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    python3-pip \
-    python3-catkin-tools \
-    python3-zipp \
-    python-is-python3 \
-    libspnav-dev \
-    spacenavd \
-    ros-noetic-spacenav-node \
-    udev \
+# General rosdep install
+RUN source /opt/ros/$ROS_DISTRO/setup.bash \
+    && apt-get update \
+    && rosdep update --rosdistro $ROS_DISTRO \
+    && rosdep install -q -y \
+      --from-paths ./src/ \
+      --ignore-src \
+      --rosdistro $ROS_DISTRO \
     && rm -rf /var/lib/apt/lists/*
 
-# Install python dependencies 
-# (Relatively error-prone dependencies installed individually for readability of error messages)
-RUN pip install --upgrade pip
-RUN pip install --upgrade \ 
-    pyserial \
-    pymodbus===2.1.0 \
-    numpy \
-    numpy-quaternion \
-    scipy \
-    readchar \
-    pynput \
-    pygame-ce
-RUN pip install --upgrade importlib_metadata
-RUN pip install --upgrade six
-RUN pip install --upgrade setuptools
-RUN pip install --upgrade PyQt6
-RUN pip install --upgrade modern_robotics
+# # Install Miniconda
+# RUN mkdir -p ~/miniconda3
+# RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+# RUN bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+# RUN rm ~/miniconda3/miniconda.sh
+# ENV CONDA_PLUGINS_AUTO_ACCEPT_TOS=true
+# ENV PATH=/opt/miniconda3/bin:$PATH
+# # RUN echo "source ~/miniconda3/bin/activate" >> ~/.bashrc
+# RUN source ~/miniconda3/bin/activate \
+#     && conda update -n base -c defaults conda \
+#     && conda init --all \
+#     && conda config --set auto_activate_base true
+# # Create virtual environment to handle dependencies
+# COPY environment.yml .
+# RUN echo "conda activate" >> ~/.bashrc
+# #RUN conda env create -f environment.yml
 
-# Install GELLO dependencies
-RUN pip install -r ./src/gello_software/requirements.txt
-RUN pip install -e ./src/gello_software/. --use-pep517
-RUN pip install -e ./src/gello_software/third_party/DynamixelSDK/python/.
-RUN pip install pylsl
+# # Install ROS dependencies
+# RUN apt-get update && apt-get install --no-install-recommends -y \
+#     ros-${ROS_DISTRO}-moveit \
+#     ros-${ROS_DISTRO}-teleop-twist-keyboard \
+#     python3-tk \
+#     && rm -rf /var/lib/apt/lists/*
 
-# --- build liblsl from source (for pylsl) ---
-RUN apt-get update && apt-get install -y \
-      git cmake g++ libpugixml-dev && \
-    rm -rf /var/lib/apt/lists/*
+# # Install general dependencies
+# RUN apt-get update && apt-get install --no-install-recommends -y \
+#     python3-pip \
+#     python3-venv \
+#     python3-zipp \
+#     python-is-python3 \
+#     libspnav-dev \
+#     spacenavd \
+#     && rm -rf /var/lib/apt/lists/*
 
-# cmake in Ubuntu 20.04 is too old for liblsl, so grab a newer one
-RUN cd /tmp && \
-    wget https://github.com/Kitware/CMake/releases/download/v3.29.6/cmake-3.29.6-linux-x86_64.tar.gz && \
-    tar -xzf cmake-3.29.6-linux-x86_64.tar.gz && \
-    mv cmake-3.29.6-linux-x86_64 /opt/cmake-3.29
+# # Install python dependencies 
+# # (Relatively error-prone dependencies installed individually for readability of error messages)
+# RUN pip install --upgrade pip
+# RUN pip install --upgrade \ 
+#     pyserial \
+#     pymodbus===2.1.0 \
+#     numpy \
+#     numpy-quaternion \
+#     scipy \
+#     readchar \
+#     pynput \
+#     pygame-ce
+# RUN pip install --upgrade importlib_metadata
+# RUN pip install --upgrade six
+# RUN pip install --upgrade setuptools
+# RUN pip install --upgrade PyQt6
+# RUN pip install --upgrade modern_robotics
 
-# clone and build liblsl
-RUN cd /root && \
-    git clone https://github.com/sccn/liblsl.git && \
-    cd liblsl && \
-    mkdir build && cd build && \
-    /opt/cmake-3.29/bin/cmake .. && \
-    make -j"$(nproc)" && \
-    make install && \
-    ldconfig
+# # Install GELLO dependencies
+# RUN pip install -r ./src/gello_software/requirements.txt
+# RUN pip install -e ./src/gello_software/. --use-pep517
+# RUN pip install -e ./src/gello_software/third_party/DynamixelSDK/python/.
+# RUN pip install pylsl
+
+# # Build liblsl from source (for pylsl)
+# RUN apt-get update && apt-get install -y \
+#       git cmake g++ libpugixml-dev && \
+#     rm -rf /var/lib/apt/lists/*
+
+# # Clone and build liblsl
+# RUN cd /root && \
+#     git clone https://github.com/sccn/liblsl.git && \
+#     cd liblsl && \
+#     mkdir build && cd build && \
+#     /opt/cmake-3.29/bin/cmake .. && \
+#     make -j"$(nproc)" && \
+#     make install && \
+#     ldconfig
+
 # Install Trossen robot arm software (For AMD64 architectures, not Raspberry Pi) (This step may take up to 15 minutes)
 #RUN sudo apt install curl
 #RUN curl 'https://raw.githubusercontent.com/Interbotix/interbotix_ros_manipulators/main/interbotix_ros_xsarms/install/amd64/xsarm_amd64_install.sh' > xsarm_amd64_install.sh
 #RUN chmod +x xsarm_amd64_install.sh
-#RUN ./xsarm_amd64_install.sh -d noetic -n
+#RUN ./xsarm_amd64_install.sh -d $ROS_DISTRO -n
 #RUN cp ./src/trossen/interbotix_ros_core/interbotix_ros_xseries/interbotix_xs_sdk/99-interbotix-udev.rules /etc/udev/rules.d
 #RUN cd ./src/trossen/interbotix_ros_core/interbotix_ros_xseries/interbotix_xs_sdk/ && \
 #    service udev start && udevadm control --reload-rules && udevadm trigger
 #RUN echo 'export ROS_IP=$(echo `hostname -I | cut -d" " -f1`)' >> ~/.bashrc && \
 #    echo -e 'if [ -z "$ROS_IP" ]; then\n\texport ROS_IP=127.0.0.1\nfi' >> ~/.bashrc
 
-# General rosdep install
-RUN source /opt/ros/noetic/setup.bash \
-    && apt-get update \
-    && rosdep update --rosdistro $ROS_DISTRO \
-    && rosdep install -q -y \
-      --from-paths ./src/ \
-      --ignore-src \
-      --rosdistro noetic \
-    && rm -rf /var/lib/apt/lists/*
-
-# Build the ROS workspace
-RUN source /opt/ros/noetic/setup.bash \
-    && catkin build
+# # Build the ROS workspace
+# RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
+#     && colcon build
 
 # Source the workspace setup files on container startup
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> ~/.bashrc
+RUN echo "source /root/ros2_ws/devel/setup.bash" >> ~/.bashrc
 
 # Configure display access (Unsets variable. Setting it may cause Rviz to fail.)
 RUN echo "export LIBGL_ALWAYS_INDIRECT=" >> ~/.bashrc
@@ -160,14 +174,14 @@ RUN echo "export LIBGL_ALWAYS_SOFTWARE=1" >> ~/.bashrc
 RUN echo "export DISABLE_ROS1_EOL_WARNINGS=1" >> ~/.bashrc
 
 # Install Trossen Interbotix software
-# WORKDIR /root/catkin_ws/src/trossen
+# WORKDIR /root/ros2_ws/src/trossen
 # RUN sudo apt install curl
 # RUN curl 'https://raw.githubusercontent.com/Interbotix/interbotix_ros_manipulators/main/interbotix_ros_xsarms/install/amd64/xsarm_amd64_install.sh' > xsarm_amd64_install.sh
 # RUN chmod +x xsarm_amd64_install.sh
-# RUN ./xsarm_amd64_install.sh -d noetic -n
+# RUN ./xsarm_amd64_install.sh -d $ROS_DISTRO -n
 
 # Restore workdir
-WORKDIR /root/catkin_ws/
+WORKDIR /root/ros2_ws/
 
 # Set udev rules
 # COPY ./trossen/99-interbotix-udev.rules /etc/udev/rules.d/99-interbotix-udev.rules

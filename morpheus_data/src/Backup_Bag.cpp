@@ -95,7 +95,7 @@ public:
                            ros::Time(0), ros::Duration(0.1), lower_forearm_twist);
     }
     catch (tf::TransformException &ex) {
-      ROS_WARN_THROTTLE(2.0, "%s", ex.what());
+      RCLCPP_WARN_THROTTLE(2.0, "%s", ex.what());
       return;
     }
 
@@ -208,7 +208,7 @@ public:
     joy_raw_sub_       = nh_.subscribe("/vx300s/joy", 50, &TFBagLogger::joyRawCb, this);
     joy_processed_sub_ = nh_.subscribe("/vx300s/commands/joy_processed", 50, &TFBagLogger::joyProcessedCb, this);
 
-    ROS_INFO_STREAM("[TFBagLogger] listening on " << basename_topic_
+    RCLCPP_INFO_STREAM("[TFBagLogger] listening on " << basename_topic_
                     << " base_dir=" << base_dir_ << " suffix=" << suffix_);
   }
 
@@ -240,7 +240,7 @@ private:
       // end session
       if (bag_.isOpen()) {
         bag_.close();
-        ROS_INFO("[TFBagLogger] session ended, bag closed.");
+        RCLCPP_INFO("[TFBagLogger] session ended, bag closed.");
       }
       return;
     }
@@ -249,7 +249,7 @@ private:
     try {
       std::filesystem::create_directories(base_dir_);
     } catch (...) {
-      ROS_WARN_STREAM("[TFBagLogger] could not create directory " << base_dir_);
+      RCLCPP_WARN_STREAM("[TFBagLogger] could not create directory " << base_dir_);
     }
 
     std::string fullpath = joinPath(base_dir_, base) + suffix_;
@@ -259,9 +259,9 @@ private:
 
     try {
       bag_.open(fullpath, rosbag::bagmode::Write);
-      ROS_INFO_STREAM("[TFBagLogger] opened bag: " << fullpath);
+      RCLCPP_INFO_STREAM("[TFBagLogger] opened bag: " << fullpath);
     } catch (...) {
-      ROS_ERROR_STREAM("[TFBagLogger] failed to open bag: " << fullpath);
+      RCLCPP_ERROR_STREAM("[TFBagLogger] failed to open bag: " << fullpath);
     }
   }
 

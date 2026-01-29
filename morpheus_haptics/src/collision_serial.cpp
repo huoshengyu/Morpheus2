@@ -1,6 +1,7 @@
-#include <ros/ros.h>
-#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
-#include <moveit_msgs/ContactInformation.h>
+#include <rclcpp/rclcpp.hpp>
+#include <moveit/planning_scene_monitor/planning_scene_monitor.hpp>
+#include <moveit_msgs/msg/contact_information.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 
 #include <fcntl.h>      // File control (open)
 #include <termios.h>    // Terminal control
@@ -8,18 +9,18 @@
 #include <errno.h>      // Error number
 #include <string.h>     // String operations
 #include <iostream>     // IO Stream
-#include <sensor_msgs/JointState.h>
 #include <map>
 #include <cmath>
 #include <sys/ioctl.h>  // ✅ Add this line to fix your build
 #include <thread>
 
-class SerialCollisionSender
+using namespace std::chrono_literals;
+
+class SerialCollisionSender : public rclcpp::Node
 {
 public:
-    ros::NodeHandle nh;
-    ros::Subscriber collision_sub;
-    ros::Subscriber joint_state_sub;
+    rclcpp::Subscription<moveit_msgs::msg::ContactInformation>::SharedPtr collision_sub;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub;
 
     int serial_port;
     struct termios tty;
@@ -35,14 +36,14 @@ public:
         {"wrist_rotate", 0.0}
     };
 
-    SerialCollisionSender()
+    SerialCollisionSender() : Node("serial_collision_sender")
     {
-            std::string port_name;
-            nh.param<std::string>("serial_port", port_name, "/dev/arduino"); // Use ROS param if available
-            serial_port = open(port_name.c_str(), O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
+        std::string port_name;
+        this->get_parameter_or("serial_port", port_name, std::string("/dev/arduino")); // Use ROS param if available
+        serial_port = open(port_name.c_str(), O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
         if (serial_port < 0)
         {
-            ROS_ERROR("Error %i from open: %s", errno, strerror(errno));
+            RCLCPP_ERROR(this->get_logger(), "Error %i from open: %s", errno, strerror(errno));
             exit(1);
         }
 
@@ -50,7 +51,7 @@ public:
 
         if (tcgetattr(serial_port, &tty) != 0)
         {
-            ROS_ERROR("Error %i from tcgetattr: %s", errno, strerror(errno));
+            RCLCPP_ERROR(this->get_logger(), "Error %i from tcgetattr: %s", errno, strerror(errno));
             exit(1);
         }
 
@@ -82,7 +83,7 @@ public:
 
         if (tcsetattr(serial_port, TCSANOW, &tty) != 0)
         {
-            ROS_ERROR("Error %i from tcsetattr: %s", errno, strerror(errno));
+            RCLCPP_ERROR(this->get_logger(), "Error %i from tcsetattr: %s", errno, strerror(errno));
             exit(1);
         }
             // === Force reset Arduino via DTR toggle ===
@@ -96,15 +97,19 @@ public:
 
         // === Flush garbage and wait for Arduino to boot ===
         tcflush(serial_port, TCIFLUSH);          // Clean buffer
-        ros::Duration(2.0).sleep();               // Wait for Arduino to be ready
+        rclcpp::sleep_for(2s);               // Wait for Arduino to be ready
 
-        ROS_INFO("Serial port configured and Arduino reset successfully!");
+        RCLCPP_INFO(this->get_logger(),"Serial port configured and Arduino reset successfully!");
 
-        ROS_INFO("Serial port configured successfully!");
+        RCLCPP_INFO(this->get_logger(),"Serial port configured successfully!");
 
         // Subscribe to nearest collision contact
-        collision_sub = nh.subscribe("/vx300s/collision/yaw/contact", 10, &SerialCollisionSender::collisionCallback, this);
-        joint_state_sub = nh.subscribe("/vx300s/joint_states", 10, &SerialCollisionSender::jointStateCallback, this);
+        collision_sub = this->create_subscription<moveit_msgs::msg::ContactInformation>(
+            "/vx300s/collision/yaw/contact", 10, 
+            std::bind(&SerialCollisionSender::collisionCallback, this, std::placeholders::_1));
+        joint_state_sub = this->create_subscription<sensor_msgs::msg::JointState>(
+            "/vx300s/joint_states", 10, 
+            std::bind(&SerialCollisionSender::jointStateCallback, this, std::placeholders::_1));
     }
 
     ~SerialCollisionSender()
@@ -113,7 +118,7 @@ public:
     }
 
     // === Joint State Callback ===
-    void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg)
+    void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
         current_joint_state.clear();
         for (size_t i = 0; i < msg->name.size(); ++i)
@@ -156,7 +161,7 @@ public:
         return oss.str();
     }
 
-    void collisionCallback(const moveit_msgs::ContactInformation& msg)
+    void collisionCallback(const moveit_msgs::msg::ContactInformation& msg)
     {
         static const std::set<std::string> ignored_links = {
             "hera_obstacle_course_easy_pick_goal",
@@ -167,14 +172,15 @@ public:
     if (ignored_links.count(msg.contact_body_1) ||
         ignored_links.count(msg.contact_body_2))
     {
-        // ROS_INFO_STREAM("Ignoring collision with goal link "
+        // RCLCPP_INFO_STREAM(this->get_logger(),
+        //                  "Ignoring collision with goal link "
         //                  << msg.contact_body_1 << " / "
         //                  << msg.contact_body_2);
         return;                         // ← nothing is sent to the Arduino
     }
 
         if (isInSleepState()) {
-            // ROS_INFO_STREAM("Robot is in Sleep state. Skipping haptic feedback.");
+            // RCLCPP_INFO_STREAM(this->get_logger(), "Robot is in Sleep state. Skipping haptic feedback.");
             return;
         }
         std::string link1 = msg.contact_body_1;
@@ -194,8 +200,8 @@ public:
         // {
             last_contact_link = link1 + "_" + link2;
             if (end_effector_links.count(link1) || end_effector_links.count(link2)) {
-                ROS_INFO_STREAM("Collision with end effector. Sending '1'");
-                ROS_INFO_STREAM("which link could be collided" 
+                RCLCPP_INFO_STREAM(this->get_logger(), "Collision with end effector. Sending '1'");
+                RCLCPP_INFO_STREAM(this->get_logger(), "which link could be collided" 
                                     << link1 << "/"
                                     << link2);
 
@@ -204,9 +210,9 @@ public:
                 // write(serial_port, full_message.c_str(), full_message.length());
             }
             else if (lower_arm_links.count(link1) || lower_arm_links.count(link2) || link1 == "vx300s/upper_forearm_link" || link2 == "vx300s/upper_forearm_link") {
-                ROS_INFO_STREAM("Collision with lower arm. Sending '2'");
+                RCLCPP_INFO_STREAM(this->get_logger(), "Collision with lower arm. Sending '2'");
                 send_char = '2';
-                ROS_INFO_STREAM("which link could be collided" 
+                RCLCPP_INFO_STREAM(this->get_logger(), "which link could be collided" 
                     << link1 << "/"
                     << link2);
 
@@ -214,16 +220,16 @@ public:
                 // write(serial_port, full_message.c_str(), full_message.length());
             }
             // else if (link1 == "vx300s/upper_forearm_link" || link2 == "vx300s/upper_forearm_link") {
-            //     ROS_INFO_STREAM("Collision with upper forearm. Sending '3'");
+            //     RCLCPP_INFO_STREAM(this->get_logger(), "Collision with upper forearm. Sending '3'");
             //     send_char = '3';
             //     // send_char = '0';
             //     // write(serial_port, &send_char, 1);
             //     // write(serial_port, full_message.c_str(), full_message.length());
             // }
             else if (link1 == "vx300s/upper_arm_link" || link2 == "vx300s/upper_arm_link") {
-                ROS_INFO_STREAM("Collision with upper arm. Sending '4'");
+                RCLCPP_INFO_STREAM(this->get_logger(), "Collision with upper arm. Sending '4'");
                 send_char = '3';
-                ROS_INFO_STREAM("which link could be collided" 
+                RCLCPP_INFO_STREAM(this->get_logger(), "which link could be collided" 
                     << link1 << "/"
                     << link2);
 
@@ -235,7 +241,7 @@ public:
             float distancey = msg.normal.y * msg.depth; //right, left
             float distancez = msg.normal.z * msg.depth; //up, down
             // float angle = std::atan2(distancez,distancey) * 180.0f / M_PI; 
-            // ROS_INFO_STREAM("What is the angle:" << msg.depth);
+            // RCLCPP_INFO_STREAM(this->get_logger(), "What is the angle:" << msg.depth);
 
             if (msg.depth < 0.07f){
                 float angle = std::atan2(distancez, distancey) * 180.0f / M_PI;  
@@ -267,10 +273,10 @@ public:
                 ssize_t bytes_written = write(serial_port,full_msg.c_str(),full_msg.length());
                 std::this_thread::yield();
                 if (bytes_written != (ssize_t)full_msg.length()) {
-                    ROS_WARN_STREAM("Serial write mismatch! Expected " << full_msg.length()
+                    RCLCPP_WARN_STREAM(this->get_logger(), "Serial write mismatch! Expected " << full_msg.length()
                                     << ", wrote " << bytes_written);
                 } else {
-                    ROS_INFO_STREAM("Sent to Arduino: " << full_msg);
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Sent to Arduino: " << full_msg);
                 }
             }
 
@@ -283,18 +289,18 @@ public:
             // ✅ Optional debug check
         
             // if (bytes_written != (ssize_t)full_msg.length()) {
-            //     ROS_WARN_STREAM("Serial write mismatch! Expected " << full_msg.length()
+            //     RCLCPP_WARN_STREAM(this->get_logger(), "Serial write mismatch! Expected " << full_msg.length()
             //                     << ", wrote " << bytes_written);
             // } else {
-            //     ROS_INFO_STREAM("Sent to Arduino: " << full_msg);
+            //     RCLCPP_INFO_STREAM(this->get_logger(), "Sent to Arduino: " << full_msg);
             // }
     }
 };
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "serial_collision_sender");
-    SerialCollisionSender node;
-    ros::spin();
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<SerialCollisionSender>());
+    rclcpp::shutdown();
     return 0;
 }

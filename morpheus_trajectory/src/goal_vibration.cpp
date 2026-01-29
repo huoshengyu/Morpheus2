@@ -1,8 +1,8 @@
 // serial_trajec_sender.cpp
 
-#include <ros/ros.h>
-#include <std_msgs/Float64.h>
-#include <geometry_msgs/Vector3.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/float64.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
 
 #include <fcntl.h>      // open()
 #include <termios.h>    // serial port control
@@ -13,27 +13,27 @@
 #include <iomanip>
 #include <sys/ioctl.h>
 
-class SerialTrajecSender
+class SerialTrajecSender : public rclcpp::Node
 {
   bool prev_active_{false};
 
 public:
   SerialTrajecSender()
-    : nh_("~"),
+    : Node("~"),
       send_interval_(0.05)  // 20 Hz
   {
     // --- Serial port setup ---
-    nh_.param<std::string>("serial_port", port_name_, "/dev/arduino");
+    this->get_parameter("serial_port", port_name_, "/dev/arduino");
     serial_fd_ = open(port_name_.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
     if (serial_fd_ < 0)
     {
-      ROS_FATAL("Failed to open %s: %s", port_name_.c_str(), strerror(errno));
-      ros::shutdown();
+      RCLCPP_FATAL("Failed to open %s: %s", port_name_.c_str(), strerror(errno));
+      rclcpp::shutdown();
       return;
     }
     configurePort();
-    ros::Duration(2.0).sleep();  // wait for Arduino reset
-    ROS_INFO("Serial port %s opened at 115200 baud", port_name_.c_str());
+    rclcpp::Duration(2.0).sleep();  // wait for Arduino reset
+    RCLCPP_INFO(this->get_logger(),"Serial port %s opened at 115200 baud",port_name_.c_str());
 
     // --- Subscribers ---
     dist_sub_  = nh_.subscribe("/vx300s/trajectory/goal/distance", 10,
@@ -48,14 +48,14 @@ public:
   }
 
 private:
-  ros::NodeHandle        nh_;
-  ros::Subscriber        dist_sub_, direc_sub_;
+  rclcpp::NodeHandle        nh_;
+  rclcpp::Subscription      dist_sub_, direc_sub_;
   int                    serial_fd_{-1};
   std::string            port_name_;
   termios                tty_;
   geometry_msgs::Vector3 latest_direction_;
-  ros::Time              last_send_time_;
-  ros::Duration          send_interval_;
+  rclcpp::Time              last_send_time_;
+  rclcpp::Duration          send_interval_;
 
   // Configure baud & raw mode
   void configurePort()
@@ -63,7 +63,7 @@ private:
     memset(&tty_, 0, sizeof tty_);
     if (tcgetattr(serial_fd_, &tty_) != 0)
     {
-      ROS_FATAL("tcgetattr error: %s", strerror(errno));
+      RCLCPP_FATAL("tcgetattr error: %s", strerror(errno));
       return;
     }
     cfsetospeed(&tty_, B115200);
@@ -91,7 +91,7 @@ private:
       if (n < 0)
       {
         if (errno == EINTR) continue;
-        ROS_ERROR("Serial write error: %s", strerror(errno));
+        RCLCPP_ERROR("Serial write error: %s", strerror(errno));
         return false;
       }
       written += n;
@@ -121,30 +121,30 @@ private:
   }
 
   // Called whenever a new direction vector arrives
-  void directionCallback(const geometry_msgs::Vector3::ConstPtr& msg)
+  void directionCallback(const geometry_msgs::Vector3::SharedPtr msg)
   {
     latest_direction_ = *msg;
   }
 
   // Received new distance; send ACT once on edge and DIR at 20 Hz while active
-  void distanceCallback(const std_msgs::Float64::ConstPtr& msg)
+  void distanceCallback(const std_msgs::msg::Float64::SharedPtr msg)
   {
     bool active = (msg->data > 0.02);
     if (active != prev_active_) {
       // only send ACT when the boolean changes
       std::string act_msg = makeActMsg(active);
       robustWrite(act_msg.c_str(), act_msg.size());
-      ROS_INFO_STREAM("Sent " << act_msg);
+      RCLCPP_INFO_STREAM("Sent " << act_msg);
       prev_active_ = active;
     }
 
     if (active) {
       // send DIR at up to 20 Hz so Arduino can adjust strength/direction
-      if ((ros::Time::now() - last_send_time_) >= send_interval_) {
-        last_send_time_ = ros::Time::now();
+      if ((rclcpp::Time::now() - last_send_time_) >= send_interval_) {
+        last_send_time_ = rclcpp::Time::now();
         std::string dir_msg = makeDirMsg(latest_direction_);
         robustWrite(dir_msg.c_str(), dir_msg.size());
-        ROS_INFO_STREAM("Sent " << dir_msg);
+        RCLCPP_INFO_STREAM("Sent " << dir_msg);
       }
     }
   }
@@ -152,8 +152,8 @@ private:
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "serial_trajec_sender");
-  SerialTrajecSender node;
-  ros::spin();
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<SerialTrajecSender>());
+  rclcpp::shutdown();
   return 0;
 }
