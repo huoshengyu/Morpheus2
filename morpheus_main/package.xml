@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <package format="3">
   <name>morpheus_main</name>
-  <version>1.0.0</version>
+  <version>2.0.0</version>
   <description>The morpheus_main package</description>
   <maintainer email="bshuo@ucdavis.edu">Brian Sanyu Huo</maintainer>
   <license>GPLv3</license>

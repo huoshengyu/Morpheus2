@@ -40,10 +40,6 @@ set(LIBS ${ament_cmake_LIBRARIES} ${moveit_ros_planning_interface_LIBRARIES}
   ${rosidl_default_generators_LIBRARIES} ${moveit_ros_planning_LIBRARIES}
   ${moveit_visual_tools_LIBRARIES})
 
-install(TARGETS collision_serial
-  RUNTIME
-  DESTINATION bin)
-
 ament_export_dependencies(ament_cmake)
 ament_export_dependencies(moveit_ros_planning)
 ament_export_dependencies(moveit_ros_planning_interface)
