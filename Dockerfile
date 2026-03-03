@@ -76,6 +76,11 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
     && rm -rf /var/lib/apt/lists/*
 
 # # Install Miniconda
+# RUN wget --progress=dot:giga \
+#       https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+#     bash /tmp/miniconda.sh -b -p /opt/conda && \
+#     rm /tmp/miniconda.sh && \
+#     /opt/conda/bin/conda clean -afy
 # RUN mkdir -p ~/miniconda3
 # RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
 # RUN bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
@@ -164,7 +169,7 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
 #     && colcon build
 
 # Source the workspace setup files on container startup
-RUN echo "source /root/ros2_ws/devel/setup.bash" >> ~/.bashrc
+RUN echo "source /root/ros2_ws/install/setup.bash" >> ~/.bashrc
 
 # Configure display access (Unsets variable. Setting it may cause Rviz to fail.)
 RUN echo "export LIBGL_ALWAYS_INDIRECT=" >> ~/.bashrc

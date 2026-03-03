@@ -3,8 +3,8 @@
   <arg name="load_robot_description" default="false"/>
   <arg name="xacro_path" default="$(find morpheus_description)/urdf/scenes/test_scene.xacro"/>
   <arg name="srdf_path" default="$(find morpheus_description)/srdf/scenes/test_scene.srdf"/>
-  <arg name="joint_limits_path" default="$(find homestri_a_bot_moveit_config)/config/joint_limits.yaml"/>
-  <arg name="cartesian_limits_path" default="$(find homestri_a_bot_moveit_config)/config/cartesian_limits.yaml"/>
+  <arg name="joint_limits_path" default="$(find morpheus_moveit)/config/joint_limits.yaml"/>
+  <arg name="cartesian_limits_path" default="$(find morpheus_moveit)/config/cartesian_limits.yaml"/>
   <arg name="kinematics_path" default="$(find morpheus_moveit)/config/ur5e_kinematics.yaml"/>
 
   <!-- The name of the parameter under which the URDF is loaded -->

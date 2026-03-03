@@ -7,7 +7,7 @@
     <arg name="srdf_path" default="$(find morpheus_description)/config/test_scene.srdf"/> -->
 
     <!-- launch gazebo -->
-    <include file="$(find homestri_gazebo)/launch/a_bot_gazebo.launch">
+    <include file="$(find morpheus_moveit)/launch/a_bot_gazebo.launch">
         <arg name="urdf_path" value="$(arg urdf_path)" />
         <arg name="use_rviz" default="true" />
     </include>

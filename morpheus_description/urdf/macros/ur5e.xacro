@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="${name}">
+
+  <xacro:macro name="ur5e" params="
+    *origin
+    name:='ur5e'
+    ur_type:='ur5e'
+    tf_prefix:=''
+    parent:='world'
+    joint_limits_parameters_file:='$(find ur_description)/config/ur5e/joint_limits.yaml'
+    kinematics_parameters_file:='$(find ur_description)/config/ur5e/default_kinematics.yaml'
+    physical_parameters_file:='$(find ur_description)/config/ur5e/physical_parameters.yaml'
+    visual_parameters_file:='$(find ur_description)/config/ur5e/visual_parameters.yaml'
+    safety_limits:=false
+    safety_pos_margin:=0.15
+    safety_k_position:=20
+    force_abs_paths:=false
+
+    control:=false
+    gazebo:=false
+    end_effector:=none
+
+    simulation_controllers:=''
+    ros_namespace:=''
+    initial_positions_file:='$(find ur_description)/config/initial_positions.yaml'
+
+    robot_ip:='0.0.0.0'
+    script_filename:=''
+    input_recipe_filename:=''
+    output_recipe_filename:=''
+    transmission_hw_interface:=hardware_interface/PositionJointInterface
+    use_mock_hardware:=false mock_sensor_commands:=false
+    headless_mode:=false
+    initial_positions:=${dict(shoulder_pan_joint=0.0,shoulder_lift_joint=-1.57,elbow_joint=0.0,wrist_1_joint=-1.57,wrist_2_joint=0.0,wrist_3_joint=0.0)}
+    use_tool_communication:=false
+    tool_voltage:=0 tool_parity:=0 tool_baud_rate:=115200 tool_stop_bits:=1
+    tool_rx_idle_chars:=1.5 tool_tx_idle_chars:=3.5 tool_device_name:=/tmp/ttyUR tool_tcp_port:=54321
+    reverse_port:=50001
+    script_sender_port:=50002
+    reverse_ip:=0.0.0.0
+    script_command_port:=50004
+    trajectory_port:=50003
+    non_blocking_read:=true
+    robot_receive_timeout:=0.04
+    rw_rate:=0
+    ">
+
+    <xacro:if value="${control}">
+      <xacro:if value="${gazebo}">
+        <xacro:include filename="$(find ur_simulation_gz)/urdf/ur_gz.urdf.xacro" />
+      </xacro:if>
+      <xacro:unless value="${gazebo}">
+        <xacro:include filename="$(find ur_robot_driver)/urdf/ur.urdf.xacro" />
+      </xacro:unless>
+    </xacro:if>
+    <xacro:unless value="${control}">
+      <xacro:include filename="$(find ur_description)/urdf/ur.urdf.xacro" />
+    </xacro:unless>
+
+    <!-- Add an additional link to plan with. Oriented like the Trossen ee_gripper_link frame. -->
+    <link name="${tf_prefix}tcp_link" />
+    <joint name="${tf_prefix}tcp_joint" type="fixed">
+      <parent link="${tf_prefix}wrist_3_link" />
+      <child link="${tf_prefix}tcp_link" />
+      <origin rpy="0 ${-pi/2} ${-pi/2}" xyz="0 0 ${tcp_offset}" />
+    </joint>
+  </xacro:macro>
+</robot>

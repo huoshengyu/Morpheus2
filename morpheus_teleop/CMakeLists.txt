@@ -35,20 +35,20 @@ install(TARGETS
 # ------------------------------------------------------------------------------
 # Python Modules & Scripts
 # ------------------------------------------------------------------------------
-install(DIRECTORY
-  scripts/
-  DESTINATION lib/${PROJECT_NAME}
-  USE_SOURCE_PERMISSIONS  # Keep original executable permissions
-  FILES_MATCHING PATTERN "*.py"
+file(GLOB PYTHON_SCRIPTS
+  RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+  scripts/*.py
 )
 
+install(PROGRAMS ${PYTHON_SCRIPTS}
+  DESTINATION lib/${PROJECT_NAME}
+)
+  
 # ------------------------------------------------------------------------------
-# Launch Files
+# Shared Resources
 # ------------------------------------------------------------------------------
-install(DIRECTORY
-  launch/
-  DESTINATION share/${PROJECT_NAME}/launch
-  FILES_MATCHING PATTERN "*.launch.py" PATTERN "*.launch.xml" PATTERN "*.launch.yaml"
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
 )
 
 # ------------------------------------------------------------------------------

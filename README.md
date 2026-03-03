@@ -2,7 +2,7 @@
 
 This repository combines UR and Trossen robot drivers, multiple hand controller types, robot and environment simulation, tools for collision and trajectory guidance and visualization, and data collection. It is currently in active development, and not all commits will be stable.
 
-All software and documentation herein is distributed under a GPLv3 License. See file "COPYING" for details.
+All software and documentation herein is distributed under a GPL-3.0-only License. See file "COPYING" for details.
 
 As of 07/2025, the primary author and maintainer of this repository is Brian Sanyu Huo (bshuo@ucdavis.edu) at the Human/Robotics/Vehicle Integration & Performance Laboratory at the University of California, Davis (https://hrvip.ucdavis.edu/).
 

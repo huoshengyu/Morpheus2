@@ -6,7 +6,7 @@
     <arg name="controllers" default="joint_state_controller cartesian_compliance_controller gripper_action_controller"/>
     <arg name="stopped_controllers" default="cartesian_motion_controller motion_control_handle cartesian_force_controller pos_joint_traj_controller joint_group_pos_controller"/>
     <arg name="controller_config_file" default="$(find morpheus_moveit)/config/gazebo_controllers.yaml" />
-    <arg name="moveit_controller_config_file" default="$(find homestri_gazebo)/config/a_bot_moveit_controllers.yaml" />
+    <arg name="moveit_controller_config_file" default="$(find morpheus_moveit)/config/a_bot_moveit_controllers.yaml" />
     <arg name="use_rviz" default="true" />
 
     <arg name="xacro_path" default="$(find morpheus_description)/urdf/scenes/a_bot_keyhole_scene.xacro"/>

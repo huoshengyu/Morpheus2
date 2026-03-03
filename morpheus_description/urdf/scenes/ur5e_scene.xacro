@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ur5e_scene">
+
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/ur5e.xacro" />
+
+    <xacro:ur5e
+        name="ur5e"
+        tf_prefix=""
+        parent="world"
+        tcp_offset="0.223"
+        control="true"
+        gazebo="true"
+    >
+        <origin xyz="0 0 ${0.0254 * 34.75}" rpy="0 0 0" />
+    </xacro:ur5e>
+
+</robot>

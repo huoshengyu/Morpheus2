@@ -39,20 +39,12 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='controller_config_file',
             default_value=get_package_share_directory(
-                'homestri_gazebo') + '/config/a_bot_controllers.yaml'
+                'morpheus_moveit') + '/config/a_bot_controllers.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='urdf_path',
             default_value=get_package_share_directory(
-                'homestri_description') + '/urdf/scenes/a_bot_scene.xacro'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='load_robot_description',
-            default_value='true'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='robot_name',
-            default_value=''
+                'morpheus_description') + '/urdf/scenes/a_bot_scene.xacro'
         ),
         launch.actions.DeclareLaunchArgument(
             name='unpause',
@@ -65,7 +57,7 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
-                    '/$(arg robot_name)/robot_description': None
+                    'robot_description': None
                 }
             ]
         ),
@@ -76,7 +68,7 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
-                    '/$(arg robot_name)/robot_description': None
+                    'robot_description': None
                 }
             ]
         ),
@@ -87,7 +79,7 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
-                    '/$(arg robot_name)/robot_description': None
+                    'robot_description': None
                 }
             ]
         ),
@@ -98,7 +90,7 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
-                    '/$(arg robot_name)/robot_description': None
+                    'robot_description': None
                 }
             ]
         ),

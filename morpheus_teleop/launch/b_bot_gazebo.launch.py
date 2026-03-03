@@ -38,7 +38,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='moveit_controller_config_file',
             default_value=get_package_share_directory(
-                'homestri_gazebo') + '/config/b_bot_moveit_controllers.yaml'
+                'morpheus_moveit') + '/config/b_bot_moveit_controllers.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='use_rviz',
@@ -57,7 +57,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='joint_limits_path',
             default_value=get_package_share_directory(
-                'homestri_b_bot_moveit_config') + '/config/joint_limits.yaml'
+                'morpheus_moveit') + '/config/joint_limits.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='cartesian_limits_path',
@@ -67,7 +67,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='kinematics_path',
             default_value=get_package_share_directory(
-                'homestri_b_bot_moveit_config') + '/config/kinematics.yaml'
+                'morpheus_moveit') + '/config/kinematics.yaml'
         ),
         launch_ros.actions.Node(
             package='rviz',
@@ -86,7 +86,7 @@ def generate_launch_description():
         launch.actions.IncludeLaunchDescription(
             launch.launch_description_sources.PythonLaunchDescriptionSource(
                 os.path.join(get_package_share_directory(
-                    'homestri_gazebo'), 'launch/common_gazebo.launch.py')
+                    'morpheus_moveit'), 'launch/common_gazebo.launch.py')
             ),
             launch_arguments={
                 'initial_joint_positions': launch.substitutions.LaunchConfiguration('initial_joint_positions'),

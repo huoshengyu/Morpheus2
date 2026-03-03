@@ -25,12 +25,12 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='joint_limits_path',
             default_value=get_package_share_directory(
-                'homestri_a_bot_moveit_config') + '/config/joint_limits.yaml'
+                'morpheus_moveit') + '/config/joint_limits.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='cartesian_limits_path',
             default_value=get_package_share_directory(
-                'homestri_a_bot_moveit_config') + '/config/cartesian_limits.yaml'
+                'morpheus_moveit') + '/config/cartesian_limits.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='kinematics_path',

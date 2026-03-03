@@ -6,14 +6,14 @@
     <arg name="controllers" default="joint_state_controller pos_joint_traj_controller gripper_action_controller"/>
     <arg name="stopped_controllers" default="cartesian_motion_controller motion_control_handle cartesian_force_controller cartesian_compliance_controller"/>
     <arg name="controller_config_file" default="$(find morpheus_moveit)/config/gazebo_controllers.yaml" />
-    <arg name="moveit_controller_config_file" default="$(find homestri_gazebo)/config/a_bot_moveit_controllers.yaml" />
+    <arg name="moveit_controller_config_file" default="$(find morpheus_moveit)/config/a_bot_moveit_controllers.yaml" />
     <arg name="use_rviz" default="true" />
 
     <arg name="xacro_path" default="$(find morpheus_description)/urdf/scenes/a_bot_double_sided_shelf_scene.xacro"/>
     <arg name="srdf_path" default="$(find morpheus_description)/srdf/scenes/a_bot_double_sided_shelf_scene.srdf"/>
-    <arg name="joint_limits_path" default="$(find homestri_a_bot_moveit_config)/config/joint_limits.yaml"/>
+    <arg name="joint_limits_path" default="$(find morpheus_moveit)/config/joint_limits.yaml"/>
     <arg name="cartesian_limits_path" default="$(find morpheus_moveit)/config/cartesian_limits.yaml"/>
-    <arg name="kinematics_path" default="$(find homestri_a_bot_moveit_config)/config/kinematics.yaml"/>
+    <arg name="kinematics_path" default="$(find morpheus_moveit)/config/kinematics.yaml"/>
 
     <!-- Control motion and compliance controller with one handle -->
     <remap from="motion_control_handle/target_frame" to="target_frame" />
@@ -26,7 +26,7 @@
     <remap from="cartesian_force_controller/ft_sensor_wrench" to="wrench_filtered" />
     <remap from="cartesian_compliance_controller/ft_sensor_wrench" to="wrench_filtered" />
     <!-- ur5e driver -->
-    <include file="$(find homestri_gazebo)/launch/common_gazebo.launch">
+    <include file="$(find morpheus_moveit)/launch/common_gazebo.launch">
         <arg name="initial_joint_positions" value="$(arg initial_joint_positions)"/>
         <arg name="controllers" value="$(arg controllers)"/>
         <arg name="stopped_controllers" value="$(arg stopped_controllers)"/>

@@ -20,7 +20,7 @@ def generate_launch_description():
         launch.actions.IncludeLaunchDescription(
             launch.launch_description_sources.PythonLaunchDescriptionSource(
                 os.path.join(get_package_share_directory(
-                    'homestri_gazebo'), 'launch/a_bot_gazebo.launch.py')
+                    'morpheus_moveit'), 'launch/a_bot_gazebo.launch.py')
             ),
             launch_arguments={
                 'urdf_path': launch.substitutions.LaunchConfiguration('urdf_path'),
