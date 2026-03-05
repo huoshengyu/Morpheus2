@@ -1,10 +1,12 @@
 <?xml version="1.0"?>
-<robot name="ur5e_control" xmlns:xacro="http://ros.org/wiki/xacro">
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="$(arg name)">
+  <!-- robot name parameter -->
+  <xacro:arg name="name" default="ur"/>
 
-  <!--The driver already provides a control tag for the UR arm, we can directly include-->
+  <!-- The driver already provides a control tag for the UR arm, we can directly include -->
   <xacro:include filename="$(find ur_robot_driver)/urdf/ur.ros2_control.xacro"/>
 
-  <!--We need to specify the arguments used for parametrizing our description-->
+  <!-- Arguments -->
   <xacro:arg name="ur_type" default="ur5e"/>
   <xacro:arg name="joint_limit_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
   <xacro:arg name="kinematics_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
@@ -20,10 +22,12 @@
   <xacro:arg name="use_mock_hardware" default="false" />
   <xacro:arg name="mock_sensor_commands" default="false" />
 
-  <!--Create the scene containing the UR robot-->
-  <xacro:include filename="$(find morpheus_description)/urdf/scenes/ur5e_scene.xacro"/>
+  <xacro:arg name="description_file" default="$(find morpheus_description)/urdf/scenes/ur5e_scene.xacro" />
 
-  <!--Create the control tag for the UR robot-->
+  <!-- Create the scene containing the UR robot -->
+  <xacro:include filename="$(arg description_file)"/>
+
+  <!-- Create the control tag for the UR robot -->
   <xacro:ur_ros2_control
     name="$(arg ur_type)"
     tf_prefix=""
@@ -38,6 +42,6 @@
     input_recipe_filename="$(arg ur_input_recipe_filename)"
   />
 
-  <!--If you had more controlled devices in your description, e.g. a gripper, you can add another ros2_control tag here-->
+  <!-- If you had more controlled devices in your description, e.g. a gripper, you can add another ros2_control tag here -->
 
 </robot>

@@ -17,7 +17,7 @@
                 <origin xyz="0 0 0" rpy="0 0 0" />
                 <geometry>
                     <mesh
-                        filename="package://homestri_description/meshes/visual/d415_mount.stl"
+                        filename="file://$(find morpheus_description)/meshes/visual/d415_mount.stl"
                         scale="0.001 0.001 0.001" />
                 </geometry>
                 <material name="">
@@ -28,7 +28,7 @@
                 <origin xyz="0 0 0" rpy="0 0 0" />
                 <geometry>
                     <mesh
-                        filename="package://homestri_description/meshes/collision/d415_mount.stl"
+                        filename="file://$(find morpheus_description)/meshes/collision/d415_mount.stl"
                         scale="0.001 0.001 0.001" />
                 </geometry>
             </collision>

@@ -14,7 +14,7 @@ include_directories(include)
 # ------------------------------------------------------------------------------
 # Shared Resources
 # ------------------------------------------------------------------------------
-install(DIRECTORY config launch
+install(DIRECTORY config launch urdf
   DESTINATION share/${PROJECT_NAME}
 )
 

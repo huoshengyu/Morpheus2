@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://wiki.ros.org/xacro" name="${name}">
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
 
   <xacro:macro name="ur5e" params="
     *origin
@@ -45,24 +45,62 @@
     rw_rate:=0
     ">
 
+    <!-- Set up xacro args from macro params -->
+    <xacro:arg name="name" default="${name}" />
+    <xacro:arg name="ur_type" default="${ur_type}" />
+    <xacro:arg name="tf_prefix" default="${tf_prefix}" />
+    <xacro:arg name="parent" default="${parent}" />
+    <xacro:arg name="joint_limits_parameters_file" default="${joint_limits_parameters_file}" />
+    <xacro:arg name="kinematics_parameters_file" default="${kinematics_parameters_file}" />
+    <xacro:arg name="physical_parameters_file" default="${physical_parameters_file}" />
+    <xacro:arg name="visual_parameters_file" default="${visual_parameters_file}" />
+    <xacro:arg name="safety_limits" default="${safety_limits}" />
+    <xacro:arg name="safety_pos_margin" default="${safety_pos_margin}" />
+    <xacro:arg name="safety_k_position" default="${safety_k_position}" />
+    <xacro:arg name="force_abs_paths" default="${force_abs_paths}" />
+    <xacro:arg name="control" default="${control}" />
+    <xacro:arg name="gazebo" default="${gazebo}" />
+    <xacro:arg name="end_effector" default="${end_effector}" />
+    <xacro:arg name="simulation_controllers" default="${simulation_controllers}" />
+    <xacro:arg name="ros_namespace" default="${ros_namespace}" />
+    <xacro:arg name="initial_positions_file" default="${initial_positions_file}" />
+    <xacro:arg name="robot_ip" default="${robot_ip}" />
+    <xacro:arg name="script_filename" default="${script_filename}" />
+    <xacro:arg name="input_recipe_filename" default="${input_recipe_filename}" />
+    <xacro:arg name="output_recipe_filename" default="${output_recipe_filename}" />
+    <xacro:arg name="transmission_hw_interface" default="${transmission_hw_interface}" />
+    <xacro:arg name="use_mock_hardware" default="${use_mock_hardware}" />
+    <xacro:arg name="mock_sensor_commands" default="${mock_sensor_commands}" />
+    <xacro:arg name="headless_mode" default="${headless_mode}" />
+    <xacro:arg name="initial_positions" default="${initial_positions}" />
+    <xacro:arg name="use_tool_communication" default="${use_tool_communication}" />
+    <xacro:arg name="tool_voltage" default="${tool_voltage}" />
+    <xacro:arg name="tool_parity" default="${tool_parity}" />
+    <xacro:arg name="tool_baud_rate" default="${tool_baud_rate}" />
+    <xacro:arg name="tool_stop_bits" default="${tool_stop_bits}" />
+    <xacro:arg name="tool_rx_idle_chars" default="${tool_rx_idle_chars}" />
+    <xacro:arg name="tool_tx_idle_chars" default="${tool_tx_idle_chars}" />
+    <xacro:arg name="tool_device_name" default="${tool_device_name}" />
+    <xacro:arg name="tool_tcp_port" default="${tool_tcp_port}" />
+    <xacro:arg name="reverse_port" default="${reverse_port}" />
+    <xacro:arg name="script_sender_port" default="${script_sender_port}" />
+    <xacro:arg name="reverse_ip" default="${reverse_ip}" />
+    <xacro:arg name="script_command_port" default="${script_command_port}" />
+    <xacro:arg name="trajectory_port" default="${trajectory_port}" />
+    <xacro:arg name="non_blocking_read" default="${non_blocking_read}" />
+    <xacro:arg name="robot_receive_timeout" default="${robot_receive_timeout}" />
+    <xacro:arg name="rw_rate" default="${rw_rate}" />
+
     <xacro:if value="${control}">
       <xacro:if value="${gazebo}">
-        <xacro:include filename="$(find ur_simulation_gz)/urdf/ur_gz.urdf.xacro" />
+        <xacro:include filename="$(find ur_simulation_gz)/urdf/ur_gz.urdf.xacro" ns="include"/>
       </xacro:if>
       <xacro:unless value="${gazebo}">
-        <xacro:include filename="$(find ur_robot_driver)/urdf/ur.urdf.xacro" />
+        <xacro:include filename="$(find ur_robot_driver)/urdf/ur.urdf.xacro" ns="include"/>
       </xacro:unless>
     </xacro:if>
     <xacro:unless value="${control}">
-      <xacro:include filename="$(find ur_description)/urdf/ur.urdf.xacro" />
+      <xacro:include filename="$(find ur_description)/urdf/ur.urdf.xacro" ns="include"/>
     </xacro:unless>
-
-    <!-- Add an additional link to plan with. Oriented like the Trossen ee_gripper_link frame. -->
-    <link name="${tf_prefix}tcp_link" />
-    <joint name="${tf_prefix}tcp_joint" type="fixed">
-      <parent link="${tf_prefix}wrist_3_link" />
-      <child link="${tf_prefix}tcp_link" />
-      <origin rpy="0 ${-pi/2} ${-pi/2}" xyz="0 0 ${tcp_offset}" />
-    </joint>
   </xacro:macro>
 </robot>

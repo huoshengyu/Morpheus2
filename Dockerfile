@@ -1,38 +1,50 @@
 FROM nvidia/cuda:13.1.0-base-ubuntu24.04 AS base
-# RUN rm /etc/apt/sources.list.d/nvidia-ml.list && apt-get clean && apt-get update
+# RUN rm /etc/apt/sources.list.d/nvidia-ml.list && apt clean && apt update
 
 # Use bash as shell for RUN commands, and use --login to ensure conda loads once installed
-SHELL ["/bin/bash", "--login", "-c"]
+SHELL ["/bin/bash", "-c"]
 
-# Ensure apt-get is up to date
-RUN apt-get update && apt-get upgrade --no-install-recommends -y
+# Ensure apt is up to date
+RUN apt update && apt upgrade --no-install-recommends -y
 
 # Install basic dependencies
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt update && apt install --no-install-recommends -y \
+    apt-utils \
     git \
     wget \
     udev \
     ca-certificates \
     bzip2 \
     curl \
+    x11-apps \
+    pipx \
     && rm -rf /var/lib/apt/lists/*
 
 # Minimal ROS setup
 ENV ROS_DISTRO=jazzy
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt update && apt install --no-install-recommends -y \
     locales \
     lsb-release \
     software-properties-common \
     && rm -rf /var/lib/apt/lists/*
+# Set locale
+RUN locale-gen en_US en_US.UTF-8
+RUN update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+RUN export LANG=en_US.UTF-8
 RUN dpkg-reconfigure locales
+# Enable ROS 2 apt repositories
 RUN add-apt-repository universe
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 RUN sh -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null'
-RUN apt-get update && apt-get install ros-dev-tools -y
+# RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
+# RUN curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+# RUN dpkg -i /tmp/ros2-apt-source.deb
+RUN apt update && apt install ros-dev-tools -y
 
 # Install ROS ${ROS_DISTRO} Desktop
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt update && apt upgrade
+RUN apt update && apt install -y --no-install-recommends \
     ros-${ROS_DISTRO}-desktop \
     && rm -rf /var/lib/apt/lists/*
 
@@ -40,40 +52,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc
 
 # Install rosdep and related tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt update && apt install -y --no-install-recommends \
     python3-rosdep \
-    python3-vcstools \
-    build-essential \
+    python3-vcstool \
     && rm -rf /var/lib/apt/lists/*
 # Initialize rosdep
 RUN rosdep init \
- && rosdep fix-permissions \
- && rosdep update --rosdistro $ROS_DISTRO
+ && rosdep fix-permissions
 
 # Install rosserial for network communications
-# RUN apt-get update && apt-get install -y --no-install-recommends \
+# RUN apt update && apt install -y --no-install-recommends \
 #     ros-${ROS_DISTRO}-rosserial \
 #     ros-${ROS_DISTRO}-rosserial-python \
 #     ros-${ROS_DISTRO}-rosserial-arduino \
 #     && rm -rf /var/lib/apt/lists/*
-
-FROM base AS dev
-
-# Set the working directory in the container
-WORKDIR /root/ros2_ws/
-
-# Copy the morpheus repo
-COPY ./ ./src/
-
-# General rosdep install
-RUN source /opt/ros/$ROS_DISTRO/setup.bash \
-    && apt-get update \
-    && rosdep update --rosdistro $ROS_DISTRO \
-    && rosdep install -q -y \
-      --from-paths ./src/ \
-      --ignore-src \
-      --rosdistro $ROS_DISTRO \
-    && rm -rf /var/lib/apt/lists/*
 
 # # Install Miniconda
 # RUN wget --progress=dot:giga \
@@ -98,25 +90,45 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
 # #RUN conda env create -f environment.yml
 
 # # Install ROS dependencies
-# RUN apt-get update && apt-get install --no-install-recommends -y \
-#     ros-${ROS_DISTRO}-moveit \
+RUN apt update && apt install --no-install-recommends -y \
+    ros-${ROS_DISTRO}-moveit \
+    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
 #     ros-${ROS_DISTRO}-teleop-twist-keyboard \
 #     python3-tk \
-#     && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # # Install general dependencies
-# RUN apt-get update && apt-get install --no-install-recommends -y \
-#     python3-pip \
-#     python3-venv \
-#     python3-zipp \
-#     python-is-python3 \
+RUN apt update && apt install --no-install-recommends -y \
+    python3-full \
+    python-is-python3 \
+    python3-pip \
+    python3-venv \
+    python3-zipp \
+    libnet1-dev \
 #     libspnav-dev \
 #     spacenavd \
-#     && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # # Install python dependencies 
+RUN apt update && apt install --no-install-recommends -y \
+    python3-pymodbus \
+    python3-numpy \
+    python3-scipy \
+    python3-pynput \
+    python3-pygame \
+    python3-importlib-metadata \
+    python3-six \
+    python3-setuptools \
+    python3-pyqt6 \
+    && rm -rf /var/lib/apt/lists/*
+
+# # Install python dependencies 
+# # (Force pip to permit package installation)
+RUN echo "[global]" >> etc/pip.conf
+RUN echo "break-system-packages = true" >> etc/pip.conf
 # # (Relatively error-prone dependencies installed individually for readability of error messages)
-# RUN pip install --upgrade pip
+RUN python3 -m pip install readchar
+RUN python3 -m pip install PyQt6
 # RUN pip install --upgrade \ 
 #     pyserial \
 #     pymodbus===2.1.0 \
@@ -139,7 +151,7 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
 # RUN pip install pylsl
 
 # # Build liblsl from source (for pylsl)
-# RUN apt-get update && apt-get install -y \
+# RUN apt update && apt install -y \
 #       git cmake g++ libpugixml-dev && \
 #     rm -rf /var/lib/apt/lists/*
 
@@ -164,19 +176,38 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
 #RUN echo 'export ROS_IP=$(echo `hostname -I | cut -d" " -f1`)' >> ~/.bashrc && \
 #    echo -e 'if [ -z "$ROS_IP" ]; then\n\texport ROS_IP=127.0.0.1\nfi' >> ~/.bashrc
 
+# Clean & upgrade
+RUN apt update && apt dist-upgrade
+
+# FROM base AS dev
+
+# Set the working directory in the container
+WORKDIR /root/ros2_ws/
+
+# Copy the morpheus repo
+COPY ./ ./src/
+
+# General rosdep install
+RUN source /opt/ros/$ROS_DISTRO/setup.bash \
+    && apt update \
+    && rosdep update --rosdistro $ROS_DISTRO \
+    && rosdep install -q -y \
+      --from-paths ./src/ \
+      --ignore-src \
+      --rosdistro $ROS_DISTRO \
+    && rm -rf /var/lib/apt/lists/*
+
 # # Build the ROS workspace
-# RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
-#     && colcon build
+RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
+    && colcon build
 
 # Source the workspace setup files on container startup
 RUN echo "source /root/ros2_ws/install/setup.bash" >> ~/.bashrc
 
 # Configure display access (Unsets variable. Setting it may cause Rviz to fail.)
-RUN echo "export LIBGL_ALWAYS_INDIRECT=" >> ~/.bashrc
+# RUN echo "unset LIBGL_ALWAYS_INDIRECT" >> ~/.bashrc
 # Disable hardware acceleration to reduce Rviz graphical issues
-RUN echo "export LIBGL_ALWAYS_SOFTWARE=1" >> ~/.bashrc
-# Disable ROS1 EOL warnings
-RUN echo "export DISABLE_ROS1_EOL_WARNINGS=1" >> ~/.bashrc
+# RUN echo "export LIBGL_ALWAYS_SOFTWARE=1" >> ~/.bashrc
 
 # Install Trossen Interbotix software
 # WORKDIR /root/ros2_ws/src/trossen
@@ -184,9 +215,8 @@ RUN echo "export DISABLE_ROS1_EOL_WARNINGS=1" >> ~/.bashrc
 # RUN curl 'https://raw.githubusercontent.com/Interbotix/interbotix_ros_manipulators/main/interbotix_ros_xsarms/install/amd64/xsarm_amd64_install.sh' > xsarm_amd64_install.sh
 # RUN chmod +x xsarm_amd64_install.sh
 # RUN ./xsarm_amd64_install.sh -d $ROS_DISTRO -n
-
 # Restore workdir
-WORKDIR /root/ros2_ws/
+# WORKDIR /root/ros2_ws/
 
 # Set udev rules
 # COPY ./trossen/99-interbotix-udev.rules /etc/udev/rules.d/99-interbotix-udev.rules

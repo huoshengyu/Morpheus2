@@ -15,7 +15,7 @@ set(LIBS ${ament_cmake_LIBRARIES})
 # ------------------------------------------------------------------------------
 # Shared Resources
 # ------------------------------------------------------------------------------
-install(DIRECTORY config srdf urdf rviz
+install(DIRECTORY config srdf urdf rviz meshes
   DESTINATION share/${PROJECT_NAME}
 )
 

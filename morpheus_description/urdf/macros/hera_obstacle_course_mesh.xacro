@@ -9,7 +9,7 @@
                 <origin xyz="0 0 0" rpy="0 0 ${pi}" />
                 <geometry>
                     <mesh
-                        filename="package://morpheus_description/meshes/components/visual/HERAObstacleCourse.obj"
+                        filename="file://$(find morpheus_description)/meshes/components/visual/HERAObstacleCourse.obj"
                         scale="0.01 0.01 0.01" />
                 </geometry>
                 <material name="">
@@ -20,7 +20,7 @@
                 <origin xyz="0 0 0" rpy="0 0 ${pi}" />
                 <geometry>
                     <mesh
-                        filename="package://morpheus_description/meshes/components/collision/HERAObstacleCourse.obj"
+                        filename="file://$(find morpheus_description)/meshes/components/collision/HERAObstacleCourse.obj"
                         scale="0.01 0.01 0.01" />
                 </geometry>
             </collision>

@@ -9,16 +9,12 @@
         params="
         prefix 
         parent 
-        transmission_hw_interface:=hardware_interface/PositionJointInterface
-        joint_limits_parameters_file:='$(find ur_description)/config/ur5e/joint_limits.yaml'
         *origin">
 
         <xacro:ur5e
-            prefix="${prefix}"
+            tf_prefix="${prefix}"
             parent="${parent}"
             tcp_offset="0.163"
-            joint_limits_parameters_file="${joint_limits_parameters_file}"
-            transmission_hw_interface="${transmission_hw_interface}"
         >
             <xacro:insert_block name="origin" />
         </xacro:ur5e>
@@ -33,7 +29,7 @@
         <xacro:robotiq_arg2f_85
             prefix="${prefix}"
             parent="${prefix}d415_mount_attach_link"
-            transmission_hw_interface="${transmission_hw_interface}"
+            transmission_hw_interface="hardware_interface/PositionJointInterface"
             add_cable_protector="true"
         >
             <origin xyz="0 0 0.003" rpy="0 0 ${pi}" />

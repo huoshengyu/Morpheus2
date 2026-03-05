@@ -1,8 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="b_bot_scene">
-    <xacro:arg name="joint_limits_parameters_file"
-        default="$(find ur_description)/config/ur5e/joint_limits.yaml" />
-    <xacro:arg name="transmission_hw_interface" default="hardware_interface/PositionJointInterface" />
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ur">
 
     <link name="world" />
 
@@ -19,8 +16,6 @@
     <xacro:b_bot
         prefix=""
         parent="world"
-        transmission_hw_interface="$(arg transmission_hw_interface)"
-        joint_limits_parameters_file="$(arg joint_limits_parameters_file)"
     >
         <origin xyz="0 0 ${0.0254 * 34.75}" rpy="0 0 0" />
     </xacro:b_bot>
