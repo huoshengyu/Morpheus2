@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="$(arg name)">
+    <!-- Robot Name Arguments -->
+    <xacro:arg name="name" default="ur"/>
+    <xacro:arg name="tf_prefix" default="" />
+    <!-- UR Robot Selection -->
+    <xacro:arg name="ur_type" default="ur5e"/>
+    <!-- UR Robot Arguments -->
+    <xacro:arg name="joint_limit_params" default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
+    <xacro:arg name="kinematics_params" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
+    <xacro:arg name="physical_params" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
+    <xacro:arg name="visual_params" default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
+    <xacro:arg name="safety_limits" default="false"/>
+    <xacro:arg name="safety_pos_margin" default="0.15"/>
+    <xacro:arg name="safety_k_position" default="20"/>
+    <xacro:arg name="force_abs_paths" default="false"/>
+    <!-- Wrist Mount Selection -->
+    <xacro:arg name="mount_type" default="d415_mount"/>
+    <!-- End Effector Selection -->
+    <xacro:arg name="ee_type" default="robotiq"/>
+    <!-- Common End Effector Arguments -->
+    <xacro:arg name="use_fake_hardware" default="false"/>
+    <xacro:arg name="sim_gazebo" default="false"/>
+    <xacro:arg name="device" default="/dev/ttyUSB0"/>
+    <!-- Robotiq Gripper Arguments -->
+    <xacro:arg name="sim_isaac" default="false"/>
+    <xacro:arg name="isaac_joint_commands" default="/isaac_joint_commands"/>
+    <xacro:arg name="isaac_joint_states" default="/isaac_joint_states"/>
+    <xacro:arg name="mock_sensor_commands" default="false"/>
+    <xacro:arg name="include_ros2_control" default="true"/>
+    <xacro:arg name="gripper_speed_multiplier" default="1.0"/>
+    <xacro:arg name="gripper_speed_multiplier" default="0.5"/>
+    <xacro:arg name="gripper_speed_multiplier" default="0.150"/>
+    <xacro:arg name="gripper_speed_multiplier" default="235.0"/>
+    <xacro:arg name="gripper_speed_multiplier" default="0.7929"/>
+    <!-- OnRobot Gripper Arguments -->
+    <xacro:arg name="connection_type" default="serial"/>
+    <xacro:arg name="ip_address" default="192.168.1.1"/>
+    <xacro:arg name="port" default="502"/>
+    <!-- Additional URDF Files -->
+    <xacro:arg name="environment_file" default="$(find morpheus_description)/urdf/scenes/node2.urdf.xacro"/>
+    
+    <link name="world"/>
+
+    <!-- Includes -->
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/ur_endeffector_macro.xacro" />
+    <xacro:if value="$(arg environment_file) != ''">
+        <xacro:include filename="$(arg environment_file)"/>
+    </xacro:if>
+
+    <!-- Robot -->
+    <xacro:ur_endeffector
+        name="$(arg name)"
+        tf_prefix="$(arg tf_prefix)"
+        parent="world"
+
+        ur_type="$(arg ur_type)"
+
+        joint_limits_parameters_file="$(arg joint_limit_params)"
+        kinematics_parameters_file="$(arg kinematics_params)"
+        physical_parameters_file="$(arg physical_params)"
+        visual_parameters_file="$(arg visual_params)"
+        safety_limits="$(arg safety_limits)"
+        safety_pos_margin="$(arg safety_pos_margin)"
+        safety_k_position="$(arg safety_k_position)"
+        force_abs_paths="$(arg force_abs_paths)"
+
+        mount_type="$(arg mount_type)"
+
+        ee_type="$(arg ee_type)"
+
+        use_fake_hardware="$(arg use_fake_hardware)"
+        sim_gazebo="$(arg sim_gazebo)"
+        device="$(arg /dev/device)"
+        
+        sim_isaac="$(arg sim_isaac)"
+        isaac_joint_commands="$(arg isaac_joint_commands)"
+        isaac_joint_states="$(arg isaac_joint_states)"
+        mock_sensor_commands="$(arg mock_sensor_commands)"
+        include_ros2_control="$(arg include_ros2_control)"
+        com_port="$(arg device)"
+        gripper_speed_multiplier="$(arg gripper_speed_multiplier)"
+        gripper_force_multiplier="$(arg gripper_force_multiplier)"
+        gripper_max_speed="$(arg gripper_max_speed)"
+        gripper_max_force="$(arg gripper_max_force)"
+        gripper_closed_position="$(arg gripper_closed_position)"
+        
+        connection_type="$(arg connection_type)"
+        ip_address="$(arg ip_address)"
+        port="$(arg port)"
+        >
+        <origin xyz="0 0 0" rpy="0 0 0" />          <!-- position robot in the world -->
+    </xacro:ur_endeffector>
+
+    <!-- Environment -->
+    <xacro:node2_table
+        prefix="$(arg tf_prefix)"
+        parent="world"
+        x="${0.0254 * (-48)}"
+        y="${0.0254 * 8.5}"
+        z="${0.0254 * 34.75}"
+        scale="1"
+    />
+    <!-- scale=0.0254 meters/inch -->
+
+</robot>

@@ -6,14 +6,14 @@
     <arg name="controllers" default="joint_state_controller twist_controller speed_scaling_state_controller force_torque_sensor_controller"/>
     <arg name="stopped_controllers" default="joint_group_vel_controller scaled_pos_joint_traj_controller motion_control_handle cartesian_motion_controller cartesian_force_controller cartesian_compliance_controller"/>
     <arg name="controller_config_file" default="$(find homestri_bringup)/config/a_bot_controllers.yaml" />
-    <arg name="moveit_controller_config_file" default="$(find homestri_bringup)/config/a_bot_moveit_controllers.yaml" />
+    <arg name="moveit_controller_config_file" default="$(find homestri_bringup)/config/ur/ur5e/moveit_controllers.yaml.yaml" />
     <arg name="use_rviz" default="true" />
 
     <arg name="xacro_path" default="$(find morpheus_description)/urdf/scenes/a_bot_scene.xacro"/>
     <arg name="srdf_path" default="$(find morpheus_description)/srdf/scenes/a_bot_scene.srdf"/>
-    <arg name="joint_limits_path" default="$(find homestri_a_bot_moveit_config)/config/joint_limits.yaml"/>
+    <arg name="joint_limits_path" default="$(find morpheus_moveit)/config/ur/ur5e/joint_limits.yaml"/>
     <arg name="cartesian_limits_path" default="$(find morpheus_moveit)/config/cartesian_limits.yaml"/>
-    <arg name="kinematics_path" default="$(find homestri_a_bot_moveit_config)/config/kinematics.yaml"/>
+    <arg name="kinematics_path" default="$(find morpheus_moveit)/config/ur/ur5e/kinematics.yaml"/>
 
     <!-- Set the robot urdf on the parameter server -->
     <param name="robot_description" command="$(find xacro)/xacro '$(arg xacro_path)' 

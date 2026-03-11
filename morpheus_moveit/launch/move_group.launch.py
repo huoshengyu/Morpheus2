@@ -81,7 +81,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='joint_limits_path',
             default_value=get_package_share_directory(
-                'homestri_a_bot_moveit_config') + '/config/joint_limits.yaml'
+                'morpheus_moveit') + '/config/joint_limits.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='cartesian_limits_path',
@@ -91,7 +91,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='kinematics_path',
             default_value=get_package_share_directory(
-                'homestri_a_bot_moveit_config') + '/config/kinematics.yaml'
+                'morpheus_moveit') + '/config/kinematics.yaml'
         ),
         launch_ros.actions.Node(
             package='moveit_ros_move_group',
@@ -134,7 +134,7 @@ def generate_launch_description():
         launch.actions.IncludeLaunchDescription(
             launch.launch_description_sources.PythonLaunchDescriptionSource(
                 os.path.join(get_package_share_directory(
-                    'homestri_a_bot_moveit_config'), 'launch/trajectory_execution.launch.xml.py')
+                    'morpheus_moveit'), 'launch/trajectory_execution.launch.xml.py')
             ),
             launch_arguments={
                 'moveit_manage_controllers': 'true',
@@ -145,7 +145,7 @@ def generate_launch_description():
         launch.actions.IncludeLaunchDescription(
             launch.launch_description_sources.PythonLaunchDescriptionSource(
                 os.path.join(get_package_share_directory(
-                    'homestri_a_bot_moveit_config'), 'launch/sensor_manager.launch.xml.py')
+                    'morpheus_moveit'), 'launch/sensor_manager.launch.xml.py')
             ),
             launch_arguments={
                 'moveit_sensor_manager': 'a_bot_scene'

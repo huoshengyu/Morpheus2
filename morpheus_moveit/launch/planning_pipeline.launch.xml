@@ -5,6 +5,6 @@
 
   <arg name="pipeline" default="ompl" />
 
-  <include ns="$(arg pipeline)" file="$(find homestri_a_bot_moveit_config)/launch/$(arg pipeline)_planning_pipeline.launch.xml" />
+  <include ns="$(arg pipeline)" file="$(find morpheus_moveit)/launch/$(arg pipeline)_planning_pipeline.launch.xml" />
 
 </launch>

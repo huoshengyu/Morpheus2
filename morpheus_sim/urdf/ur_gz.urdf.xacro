@@ -7,7 +7,7 @@
   <xacro:include filename="$(find ur_simulation_gz)/urdf/ur_gz.ros2_control.xacro" />
 
   <!-- Arguments -->
-  <xacro:arg name="tf_prefix" default="" />
+  <xacro:arg name="tf_prefix" default=""/>
   <xacro:arg name="joint_limit_params" default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
   <xacro:arg name="kinematics_params" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
   <xacro:arg name="physical_params" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
@@ -17,10 +17,10 @@
   <xacro:arg name="safety_pos_margin" default="0.15"/>
   <xacro:arg name="safety_k_position" default="20"/>
 
-  <xacro:arg name="simulation_controllers" default="" />
-  <xacro:arg name="ros_namespace" default="" />
+  <xacro:arg name="simulation_controllers" default=""/>
+  <xacro:arg name="ros_namespace" default=""/>
 
-  <xacro:arg name="description_file" default="$(find morpheus_description)/urdf/scenes/b_bot_scene.xacro" />
+  <xacro:arg name="description_file" default="$(find morpheus_description)/urdf/scenes/a_bot_scene.xacro"/>
 
   <!-- Create the scene containing the UR robot -->
   <xacro:include filename="$(arg description_file)"/>

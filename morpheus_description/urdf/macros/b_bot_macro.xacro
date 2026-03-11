@@ -3,13 +3,15 @@
 
     <xacro:include filename="$(find morpheus_description)/urdf/macros/ur5e_macro.xacro" />
     <xacro:include filename="$(find morpheus_description)/urdf/macros/d415_mount_macro.xacro" />
-    <xacro:include filename="$(find onrobot_rg2ft_description)/urdf/onrobot_rg2ft_macro.xacro" />
+    <xacro:include filename="$(find onrobot_description)/urdf/onrobot_macro.xacro" />
 
     <xacro:macro name="b_bot"
         params="
         prefix 
         parent 
-        *origin">
+        *origin
+        use_fake_hardware:=false
+        ">
 
         <xacro:ur5e
             tf_prefix="${prefix}"
@@ -26,13 +28,20 @@
             <origin xyz="0 0 0" rpy="0 0 0" />
         </xacro:d415_mount>
 
-        <xacro:onrobot_rg2ft
+        <xacro:onrobot
+            onrobot_type="rg2"
             prefix="${prefix}"
-            parent="${prefix}d415_mount_attach_link"
-            hw_interface="hardware_interface/PositionJointInterface"
+            use_fake_hardware="${use_fake_hardware}"
         >
             <origin xyz="0 0 0.0026" rpy="0 0 ${pi}" /> 
-        </xacro:onrobot_rg2ft>
+        </xacro:onrobot>
+
+        <!-- Connect the OnRobot to the UR robot -->
+        <joint name="${prefix}onrobot_base_link_joint" type="fixed">
+            <parent link="${prefix}tool0"/>
+            <child link="${prefix}onrobot_base_link"/>
+            <origin xyz="0 0 0" rpy="0 0 ${-pi/2}"/>
+        </joint>
 
     </xacro:macro>
 

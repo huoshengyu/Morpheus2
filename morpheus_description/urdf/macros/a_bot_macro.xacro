@@ -3,13 +3,15 @@
 
     <xacro:include filename="$(find morpheus_description)/urdf/macros/ur5e_macro.xacro" />
     <xacro:include filename="$(find morpheus_description)/urdf/macros/d415_mount_macro.xacro" />
-    <xacro:include filename="$(find robotiq_2f_85_gripper_description)/urdf/robotiq_arg2f_85_macro.xacro" />
+    <xacro:include filename="$(find robotiq_description)/urdf/robotiq_2f_85_macro.urdf.xacro" />
 
     <xacro:macro name="a_bot"
         params="
         prefix 
         parent 
-        *origin">
+        *origin
+        use_fake_hardware:=false
+        ">
 
         <xacro:ur5e
             tf_prefix="${prefix}"
@@ -26,14 +28,14 @@
             <origin xyz="0 0 0" rpy="0 0 0" />
         </xacro:d415_mount>
 
-        <xacro:robotiq_arg2f_85
+        <xacro:robotiq_gripper
+            name="${prefix}robotiq_2f_85"
             prefix="${prefix}"
             parent="${prefix}d415_mount_attach_link"
-            transmission_hw_interface="hardware_interface/PositionJointInterface"
-            add_cable_protector="true"
+            use_fake_hardware="${use_fake_hardware}"
         >
             <origin xyz="0 0 0.003" rpy="0 0 ${pi}" />
-        </xacro:robotiq_arg2f_85>
+        </xacro:robotiq_gripper>
 
     </xacro:macro>
 

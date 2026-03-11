@@ -1,0 +1,71 @@
+button_mappings:
+  ps3:
+    # Buttons
+    GRIPPER_PWM_DEC: 0
+    GRIPPER_OPEN: 1
+    GRIPPER_PWM_INC: 2
+    GRIPPER_CLOSE: 3
+    EE_Y_INC: 4
+    EE_Y_DEC: 5
+    WAIST_CCW: 6
+    WAIST_CW: 7
+    SLEEP_POSE: 8
+    HOME_POSE: 9
+    TORQUE_ENABLE: 10
+    FLIP_EE_X: 11
+    FLIP_EE_ROLL: 12
+    SPEED_INC: 13
+    SPEED_DEC: 14
+    SPEED_COARSE: 15
+    SPEED_FINE: 16
+    # Axes
+    EE_X: 0
+    EE_Z: 1
+    EE_ROLL: 3
+    EE_PITCH: 4
+
+  ps4:
+    # Buttons
+    GRIPPER_PWM_DEC: 0
+    GRIPPER_OPEN: 1
+    GRIPPER_PWM_INC: 2
+    GRIPPER_CLOSE: 3
+    EE_Y_INC: 4
+    EE_Y_DEC: 5
+    WAIST_CCW: 6
+    WAIST_CW: 7
+    SLEEP_POSE: 8
+    HOME_POSE: 9
+    TORQUE_ENABLE: 10
+    FLIP_EE_X: 11
+    FLIP_EE_ROLL: 12
+    # Axes
+    EE_X: 0
+    EE_Z: 1
+    EE_ROLL: 3
+    EE_PITCH: 4
+    SPEED_TYPE: 6
+    SPEED: 7
+
+  xbox360:
+    # Buttons
+    GRIPPER_PWM_DEC: 0
+    GRIPPER_OPEN: 1
+    GRIPPER_CLOSE: 2
+    GRIPPER_PWM_INC: 3
+    WAIST_CCW: 4
+    WAIST_CW: 5
+    SLEEP_POSE: 6
+    HOME_POSE: 7
+    TORQUE_ENABLE: 8
+    FLIP_EE_X: 9
+    FLIP_EE_ROLL: 10
+    # Axes
+    EE_X: 0
+    EE_Z: 1
+    EE_Y_INC: 2
+    EE_ROLL: 3
+    EE_PITCH: 4
+    EE_Y_DEC: 5
+    SPEED_TYPE: 6
+    SPEED: 7

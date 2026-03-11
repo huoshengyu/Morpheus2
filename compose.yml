@@ -1,3 +1,5 @@
+# References:
+# https://github.com/microsoft/wslg/blob/main/samples/container/Containers.md
 services:
   morpheus2:
     build:
@@ -10,8 +12,11 @@ services:
     network_mode: host
 
     environment:
-      # Display X Server GUI.
+      # Share GUI environment variables with the container.
       - DISPLAY=${DISPLAY}
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}
+      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
       # Fix a bug with QT
       - QT_X11_NO_MITSHM=1
       # Grant display access to X Server.
@@ -26,17 +31,22 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=all,graphics,display,video,utility,compute
       - __NV_PRIME_RENDER_OFFLOAD=1
       - __GLX_VENDOR_LIBRARY_NAME=nvidia
+      - LIBVA_DRIVER_NAME=d3d12
     volumes:
-      # Grant display access to X Server.
-      - /mnt/wslg/.X11-unix:/tmp/.X11-unix
+      # Share X11, Wayland, and/or Pulse servers with the container.
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /mnt/wslg:/mnt/wslg
       # Mount the ROS workspace into the container.
       - .:/root/ros2_ws/src
-      # Connect input devices and GPU to the container.
+      # Share input devices and GPU with the container.
       - /dev/input:/dev/input
+      - /dev/dxg:/dev/dxg
       - /dev/dri:/dev/dri
       - /dev/nvidia0:/dev/nvidia0
       - /dev/nvidiactl:/dev/nvidiactl
       - /dev/nvidia-modeset:/dev/nvidia-modeset
+      # Share WSL mount locations with the container
+      - /usr/lib/wsl:/usr/lib/wsl
     runtime: nvidia
     deploy:
       resources:

@@ -13,7 +13,7 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <mesh filename="file://$(find morpheus_description)/meshes/components/visual/bar_12in.obj" scale="${scale} ${scale} ${scale}"/>
+                <mesh filename="file://$(find morpheus_description)/meshes/visual/bar_12in.obj" scale="${scale} ${scale} ${scale}"/>
             </geometry>
             <material name="grey">
                 <color rgba="0.3 0.3 0.3 1" />
@@ -22,7 +22,7 @@
         <collision>
             <origin rpy="0 0 0" xyz="0 0 0" />
             <geometry>
-                <mesh filename="file://$(find morpheus_description)/meshes/components/collision/bar_12in.obj" scale="${scale} ${scale} ${scale}"/>
+                <mesh filename="file://$(find morpheus_description)/meshes/collision/bar_12in.obj" scale="${scale} ${scale} ${scale}"/>
             </geometry>
         </collision>
     </link>

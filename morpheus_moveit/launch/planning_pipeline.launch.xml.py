@@ -15,7 +15,7 @@ def generate_launch_description():
         launch.actions.IncludeLaunchDescription(
             launch.launch_description_sources.PythonLaunchDescriptionSource(
                 os.path.join(get_package_share_directory(
-                    'homestri_a_bot_moveit_config'), 'launch/$(arg pipeline)_planning_pipeline.launch.xml.py')
+                    'morpheus_moveit'), 'launch/$(arg pipeline)_planning_pipeline.launch.xml.py')
             )
         )
     ])

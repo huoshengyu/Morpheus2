@@ -3,7 +3,7 @@
     <arg name="controllers" default="joint_state_controller pos_joint_traj_controller gripper_action_controller"/>
     <arg name="stopped_controllers" default="cartesian_motion_controller motion_control_handle cartesian_force_controller cartesian_compliance_controller"/>
     <arg name="controller_config_file" default="$(find morpheus_moveit)/config/a_bot_controllers.yaml" />
-    <arg name="moveit_controller_config_file" default="$(find morpheus_moveit)/config/a_bot_moveit_controllers.yaml" />
+    <arg name="moveit_controller_config_file" default="$(find morpheus_moveit)/config/ur/ur5e/moveit_controllers.yaml.yaml" />
     <arg name="urdf_path" default="$(find morpheus_description)/urdf/scenes/a_bot_scene.xacro"/>
     <arg name="use_rviz" default="true" />
 

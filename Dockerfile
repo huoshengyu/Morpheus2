@@ -7,20 +7,66 @@ SHELL ["/bin/bash", "-c"]
 # Ensure apt is up to date
 RUN apt update && apt upgrade --no-install-recommends -y
 
-# Install basic dependencies
+# Install setup dependencies
 RUN apt update && apt install --no-install-recommends -y \
     apt-utils \
-    git \
-    wget \
-    udev \
+    build-essential \
+    bc \
     ca-certificates \
+    gnupg2 \
     bzip2 \
+    libssl-dev \
+    wget \
+    gawk \
+    flex \
+    bison \
+    libelf-dev \
+    dwarves \
+    linux-lowlatency \
     curl \
-    x11-apps \
+    git \
     pipx \
+    x11-apps \
+    mesa-utils \
+    udev \
     && rm -rf /var/lib/apt/lists/*
 
-# Minimal ROS setup
+# # Set up realtime kernel to ensure smooth robot operation
+# https://github.com/UniversalRobots/Universal_Robots_Client_Library/blob/master/doc/real_time.rst
+# RUN mkdir -p ${HOME}/rt_kernel_build
+# WORKDIR ${HOME}/rt_kernel_build
+# # Select a realtime kernel version compatible with this Dockerfile's base image.
+# # See top of file for base image. Current base kernel is: 6.6.87.2-microsoft-standard-WSL2
+# # https://wiki.linuxfoundation.org/realtime/preempt_rt_versions
+# RUN export KERNEL_MAJOR_VERSION=6
+# RUN export KERNEL_MINOR_VERSION=6
+# RUN export KERNEL_PATCH_VERSION=129
+# RUN export RT_PATCH_VERSION=70
+# RUN export KERNEL_VERSION="$KERNEL_MAJOR_VERSION.$KERNEL_MINOR_VERSION.$KERNEL_PATCH_VERSION"
+# # Download the kernel sources, patch sources, and their signature files:
+# RUN wget https://cdn.kernel.org/pub/linux/kernel/projects/rt/$KERNEL_MAJOR_VERSION.$KERNEL_MINOR_VERSION/patch-$KERNEL_VERSION-rt$RT_PATCH_VERSION.patch.xz
+# RUN wget https://cdn.kernel.org/pub/linux/kernel/projects/rt/$KERNEL_MAJOR_VERSION.$KERNEL_MINOR_VERSION/patch-$KERNEL_VERSION-rt$RT_PATCH_VERSION.patch.sign
+# RUN wget https://www.kernel.org/pub/linux/kernel/v$KERNEL_MAJOR_VERSION.x/linux-$KERNEL_VERSION.tar.xz
+# RUN wget https://www.kernel.org/pub/linux/kernel/v$KERNEL_MAJOR_VERSION.x/linux-$KERNEL_VERSION.tar.sign
+# # Unzip the downloaded files
+# RUN xz -dk patch-$KERNEL_VERSION-rt$RT_PATCH_VERSION.patch.xz
+# RUN xz -d linux-$KERNEL_VERSION.tar.xz
+# # Verify the downloads using the signature files and the kernel.org PGP keys
+# RUN gpg2 --locate-keys torvalds@kernel.org gregkh@kernel.org
+# RUN gpg2 --verify patch-$KERNEL_VERSION-rt$RT_PATCH_VERSION.patch.sign
+# RUN gpg2 --verify linux-$KERNEL_VERSION.tar.sign
+# # Extract the kernel sources, apply the realtime patch, and build the kernel
+# RUN tar xf linux-$KERNEL_VERSION.tar
+# WORKDIR linux-$KERNEL_VERSION
+# RUN xzcat ../patch-$KERNEL_VERSION-rt$RT_PATCH_VERSION.patch.xz | patch -p1
+# RUN make oldconfig
+# RUN scripts/config --disable SYSTEM_TRUSTED_KEYS
+# RUN scripts/config --disable SYSTEM_REVOCATION_KEYS
+# RUN make -j `getconf _NPROCESSORS_ONLN` deb-pkg
+# RUN sudo apt install ../linux-headers-$KERNEL_VERSION-rt$RT_PATCH_VERSION*.deb \
+#                    ../linux-image-$KERNEL_VERSION-rt$RT_PATCH_VERSION*.deb
+
+# ROS 2 preinstall setup
 ENV ROS_DISTRO=jazzy
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install --no-install-recommends -y \
@@ -99,20 +145,23 @@ RUN apt update && apt install --no-install-recommends -y \
 
 # # Install general dependencies
 RUN apt update && apt install --no-install-recommends -y \
+    libnet1-dev \
+#     libcxx-serial-dev \
+    libspnav-dev \
+    spacenavd \
+    screen \
+    && rm -rf /var/lib/apt/lists/*
+
+# # Install debian python dependencies 
+RUN apt update && apt install --no-install-recommends -y \
     python3-full \
     python-is-python3 \
     python3-pip \
     python3-venv \
     python3-zipp \
-    libnet1-dev \
-#     libspnav-dev \
-#     spacenavd \
-    && rm -rf /var/lib/apt/lists/*
-
-# # Install python dependencies 
-RUN apt update && apt install --no-install-recommends -y \
     python3-pymodbus \
     python3-numpy \
+    python3-numpy-quaternion \
     python3-scipy \
     python3-pynput \
     python3-pygame \
@@ -122,7 +171,7 @@ RUN apt update && apt install --no-install-recommends -y \
     python3-pyqt6 \
     && rm -rf /var/lib/apt/lists/*
 
-# # Install python dependencies 
+# # Install non-debian python dependencies 
 # # (Force pip to permit package installation)
 RUN echo "[global]" >> etc/pip.conf
 RUN echo "break-system-packages = true" >> etc/pip.conf

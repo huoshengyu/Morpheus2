@@ -39,7 +39,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='controller_config_file',
             default_value=get_package_share_directory(
-                'morpheus_moveit') + '/config/a_bot_controllers.yaml'
+                'morpheus_moveit') + '/config/ur/ur5e/controllers.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='urdf_path',

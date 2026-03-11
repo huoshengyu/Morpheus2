@@ -33,12 +33,12 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='controller_config_file',
             default_value=get_package_share_directory(
-                'morpheus_moveit') + '/config/gazebo_controllers.yaml'
+                'morpheus_sim') + '/config/ur/ur5e/gazebo_controllers.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='moveit_controller_config_file',
             default_value=get_package_share_directory(
-                'homestri_gazebo') + '/config/b_bot_moveit_controllers.yaml'
+                'morpheus_moveit') + '/config/ur/ur5e/moveit_controllers.yaml.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='use_rviz',

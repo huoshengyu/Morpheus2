@@ -37,7 +37,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='moveit_controller_config_file',
             default_value=get_package_share_directory(
-                'homestri_bringup') + '/config/b_bot_moveit_controllers.yaml'
+                'homestri_bringup') + '/config/ur/ur5e/moveit_controllers.yaml.yaml'
         ),
         launch.actions.DeclareLaunchArgument(
             name='gripper_ip',
