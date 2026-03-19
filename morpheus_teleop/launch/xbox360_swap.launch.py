@@ -58,7 +58,7 @@ def generate_launch_description():
         launch.actions.IncludeLaunchDescription(
             launch.launch_description_sources.PythonLaunchDescriptionSource(
                 os.path.join(get_package_share_directory(
-                    'morpheus_teleop'), 'launch/twist_converter.launch.py')
+                    'morpheus_teleop'), 'launch/twist_to_pose.launch.py')
             ),
             launch_arguments={
                 'twist_topic': launch.substitutions.LaunchConfiguration('twist_topic'),

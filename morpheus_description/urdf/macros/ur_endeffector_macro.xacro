@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="b_bot">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
     <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro" />
     <xacro:include filename="$(find morpheus_description)/urdf/macros/d415_mount_macro.xacro" />
@@ -15,10 +15,10 @@
 
         ur_type:='ur5e'
 
-        joint_limits_parameters_file:=$(find ur_description)/config/${ur_type}/joint_limits.yaml
-        kinematics_parameters_file:=$(find ur_description)/config/${ur_type}/default_kinematics.yaml
-        physical_parameters_file:=$(find ur_description)/config/${ur_type}/physical_parameters.yaml
-        visual_parameters_file:=$(find ur_description)/config/${ur_type}/visual_parameters.yaml
+        joint_limits_parameters_file:='$(find ur_description)/config/${ur_type}/joint_limits.yaml'
+        kinematics_parameters_file:='$(find ur_description)/config/${ur_type}/default_kinematics.yaml'
+        physical_parameters_file:='$(find ur_description)/config/${ur_type}/physical_parameters.yaml'
+        visual_parameters_file:='$(find ur_description)/config/${ur_type}/visual_parameters.yaml'
         safety_limits:=false
         safety_pos_margin:=0.15
         safety_k_position:=20
@@ -28,8 +28,8 @@
 
         ee_type:=''
 
-        use_fake_hardware:=false
-        gazebo_sim:=false
+        use_mock_hardware:=false
+        sim_gazebo:=false
         device:=/dev/ttyUSB0
         
         sim_isaac:=false
@@ -64,74 +64,62 @@
             >
             <xacro:insert_block name="origin" />
         </xacro:ur_robot>
-        <xacro:property name="last_link" value="wrist_3_link"/>
+        <xacro:property name="last_link" value="tool0"/>
 
         <!-- Mount for optional Realsense d415 camera -->
-        <xacro:choose>
-            <xacro:when value="${mount_type} == 'd415'">
-                <xacro:d415_mount
-                    prefix="${tf_prefix}"
-                    parent="${tf_prefix}${last_link}"
-                    >
-                    <origin xyz="0 0 0" rpy="0 0 0" />
-                </xacro:d415_mount>
-                <xacro:property name="last_link" value="d415_mount_attach_link"/>
-            </xacro:when>
-        </xacro:choose>
+        <xacro:if value="${mount_type == 'd415_mount'}">
+            <xacro:d415_mount
+                prefix="${tf_prefix}"
+                parent="${tf_prefix}${last_link}"
+                >
+                <origin xyz="0 0 0" rpy="0 0 ${pi}" />
+            </xacro:d415_mount>
+            <xacro:property name="last_link" value="d415_mount_attach_link"/>
+        </xacro:if>
 
         <!-- End Effector -->
-        <xacro:choose>
-            <xacro:when value="${ee_type} == 'robotiq'">
-                <xacro:ur_to_robotiq
-                    prefix="${tf_prefix}"
-                    parent="${tf_prefix}${last_link}"
-                    child="${tf_prefix}robotiq_2f_85_base_link"
-                    rotation="${pi}"
-                    >
-                </xacro:ur_to_robotiq>
-                <xacro:property name="last_link" value="d415_mount_attach_link"/>
-                <xacro:robotiq_gripper
-                    name="${tf_prefix}robotiq_2f_85"
-                    prefix="${tf_prefix}"
-                    parent="${tf_prefix}${last_link}"
-                    sim_gazebo="${sim_gazebo}"
-                    sim_isaac="${sim_isaac}"
-                    isaac_joint_commands="${isaac_joint_commands}"
-                    isaac_joint_states="${isaac_joint_states}"
-                    use_fake_hardware="${use_fake_hardware}"
-                    mock_sensor_commands="${mock_sensor_commands}"
-                    include_ros2_control="${include_ros2_control}"
-                    com_port="${device}"
-                    gripper_speed_multiplier="${gripper_speed_multiplier}"
-                    gripper_force_multiplier="${gripper_force_multiplier}"
-                    gripper_max_speed="${gripper_max_speed}"
-                    gripper_max_force="${gripper_max_force}"
-                    gripper_closed_position="${gripper_closed_position}"
-                    >
-                    <origin xyz="0 0 0.003" rpy="0 0 ${pi}" />
-                </xacro:robotiq_gripper>
-            </xacro:when>
+        <xacro:if value="${ee_type == 'robotiq'}">
+            <xacro:robotiq_gripper
+                name="${tf_prefix}robotiq_2f_85"
+                prefix="${tf_prefix}"
+                parent="${tf_prefix}${last_link}"
+                sim_gazebo="${sim_gazebo}"
+                sim_isaac="${sim_isaac}"
+                isaac_joint_commands="${isaac_joint_commands}"
+                isaac_joint_states="${isaac_joint_states}"
+                use_fake_hardware="${use_mock_hardware}"
+                mock_sensor_commands="${mock_sensor_commands}"
+                include_ros2_control="${include_ros2_control}"
+                com_port="${device}"
+                gripper_speed_multiplier="${gripper_speed_multiplier}"
+                gripper_force_multiplier="${gripper_force_multiplier}"
+                gripper_max_speed="${gripper_max_speed}"
+                gripper_max_force="${gripper_max_force}"
+                gripper_closed_position="${gripper_closed_position}"
+                >
+                <origin xyz="0 0 0.003" rpy="0 0 0" />
+            </xacro:robotiq_gripper>
+        </xacro:if>
 
-            <xacro:when value="${ee_type} == 'onrobot'">
-                <xacro:onrobot
-                    onrobot_type="rg2"
-                    prefix="${tf_prefix}"
-                    sim_gazebo="${sim_gazebo}"
-                    use_fake_hardware="${use_fake_hardware}"
-                    connection_type="${connection_type}"
-                    device="${device}"
-                    ip_address="${ip_address}"
-                    port="${port}"
-                    >
-                    <origin xyz="0 0 0.0026" rpy="0 0 ${pi}" /> 
-                </xacro:onrobot>
-                <joint name="${tf_prefix}onrobot_base_link_joint" type="fixed">
-                    <parent link="${tf_prefix}${last_link}"/>
-                    <child link="${tf_prefix}onrobot_base_link"/>
-                    <origin xyz="0 0 0" rpy="0 0 ${-pi/2}"/>
-                </joint>
-            </xacro:when>
-        </xacro:choose>
+        <xacro:if value="${ee_type == 'onrobot'}">
+            <xacro:onrobot
+                onrobot_type="rg2"
+                prefix="${tf_prefix}"
+                sim_gazebo="${sim_gazebo}"
+                use_fake_hardware="${use_mock_hardware}"
+                connection_type="${connection_type}"
+                device="${device}"
+                ip_address="${ip_address}"
+                port="${port}"
+                >
+                <origin xyz="0 0 0.0026" rpy="0 0 0" /> 
+            </xacro:onrobot>
+            <joint name="${tf_prefix}onrobot_base_link_joint" type="fixed">
+                <parent link="${tf_prefix}${last_link}"/>
+                <child link="${tf_prefix}onrobot_base_link"/>
+                <origin xyz="0 0 0" rpy="0 0 ${-pi/2}"/>
+            </joint>
+        </xacro:if>
 
     </xacro:macro>
 

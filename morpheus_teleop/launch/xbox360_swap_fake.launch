@@ -12,7 +12,7 @@
     </node>
 
   <!-- Launch Twist converter-->
-  <include file="$(find morpheus_teleop)/launch/twist_converter.launch">
+  <include file="$(find morpheus_teleop)/launch/twist_to_pose.launch">
       <arg name="twist_topic" value="$(arg twist_topic)"/>
       <arg name="frame_id" value="$(arg frame_id)"/>
       <arg name="end_effector" value="$(arg end_effector)"/>

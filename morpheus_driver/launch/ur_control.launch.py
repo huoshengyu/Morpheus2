@@ -49,7 +49,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context):
-    # Initialize Arguments
+    # UR specific arguments
     ur_type = LaunchConfiguration("ur_type")
     robot_ip = LaunchConfiguration("robot_ip")
     # General arguments
@@ -78,6 +78,16 @@ def launch_setup(context):
             # argument for this launchfile
         ],
         output="screen",
+        remappings=[
+            ("~/robot_description", "/robot_description"),
+            ("motion_control_handle/target_frame", "target_frame"),
+            ("cartesian_motion_controller/target_frame", "target_frame"),
+            ("cartesian_compliance_controller/target_frame", "target_frame"),
+            ("cartesian_force_controller/target_wrench", "target_wrench"),
+            ("cartesian_compliance_controller/target_wrench", "target_wrench"),
+            ("cartesian_force_controller/ft_sensor_wrench", "ft_sensor_wrench"),
+            ("cartesian_compliance_controller/ft_sensor_wrench", "ft_sensor_wrench"),
+        ],
     )
 
     dashboard_client_node = IncludeLaunchDescription(
@@ -196,7 +206,6 @@ def launch_setup(context):
         "force_torque_sensor_broadcaster",
         "tcp_pose_broadcaster",
         "ur_configuration_controller",
-        "cartesian_compliance_controller",
     ]
     controllers_inactive = [
         "scaled_joint_trajectory_controller",
@@ -208,6 +217,9 @@ def launch_setup(context):
         "passthrough_trajectory_controller",
         "freedrive_mode_controller",
         "tool_contact_controller",
+        "cartesian_compliance_controller",
+        "cartesian_force_controller",
+        "cartesian_motion_controller",
     ]
     if activate_joint_controller.perform(context) == "true":
         controllers_active.append(initial_joint_controller.perform(context))
@@ -304,7 +316,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "controllers_file",
             default_value=PathJoinSubstitution(
-                [FindPackageShare("ur_robot_driver"), "config", "ur_controllers.yaml"]
+                [FindPackageShare("morpheus_driver"), "config", "ur", "ur5e","ur_controllers.yaml"]
             ),
             description="YAML file with the controllers configuration.",
         )
@@ -313,7 +325,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "description_launchfile",
             default_value=PathJoinSubstitution(
-                [FindPackageShare("ur_robot_driver"), "launch", "ur_rsp.launch.py"]
+                [FindPackageShare("morpheus_driver"), "launch", "ur_rsp.launch.py"]
             ),
             description="Launchfile (absolute path) providing the description. "
             "The launchfile has to start a robot_state_publisher node that "
@@ -370,7 +382,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "initial_joint_controller",
-            default_value="scaled_joint_trajectory_controller",
+            default_value="cartesian_compliance_controller",
             choices=[
                 "scaled_joint_trajectory_controller",
                 "joint_trajectory_controller",
@@ -378,6 +390,9 @@ def generate_launch_description():
                 "forward_position_controller",
                 "freedrive_mode_controller",
                 "passthrough_trajectory_controller",
+                "cartesian_compliance_controller",
+                "cartesian_force_controller",
+                "cartesian_motion_controller",
             ],
             description="Initially loaded robot controller.",
         )
@@ -411,7 +426,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "use_tool_communication",
-            default_value="false",
+            default_value="true",
             description="Only available for e series!",
         )
     )

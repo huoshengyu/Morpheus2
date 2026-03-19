@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- Wrapper for Robotiq Gripper which allows loading params from YAML config files -->
+
+    <xacro:include filename="$(find robotiq_description)/urdf/robotiq_2f_85_macro.urdf.xacro" />
+    <xacro:include filename="$(find robotiq_description)/urdf/ur_to_robotiq_adapter.urdf.xacro" />
+
+    <xacro:macro name="robotiq_gripper" params="
+        name
+        tf_prefix 
+        parent 
+        *origin
+        parameters_file:='$(find morpheus_description)/config/robotiq_2f_85/robotiq_2f_85_parameters.yaml'
+        sim_gazebo:=false
+        sim_isaac:=false
+        isaac_joint_commands:=/isaac_joint_commands
+        isaac_joint_states:=/isaac_joint_states
+        use_fake_hardware:=false
+        mock_sensor_commands:=false
+        include_ros2_control:=true
+        com_port:=/dev/ttyUSB0
+        gripper_speed_multiplier:=1.0
+        gripper_force_multiplier:=0.5
+        gripper_max_speed:=0.150
+        gripper_max_force:=235.0
+        gripper_closed_position:=0.7929
+        ">
+        
+        <xacro:robotiq_gripper
+            name="${name}"
+            prefix="${prefix}"
+            parent="${parent}"
+            sim_gazebo="${sim_gazebo}"
+            sim_isaac="${sim_isaac}"
+            isaac_joint_commands="${isaac_joint_commands}"
+            isaac_joint_states="${isaac_joint_states}"
+            use_fake_hardware="${use_fake_hardware}"
+            mock_sensor_commands="${mock_sensor_commands}"
+            include_ros2_control="${include_ros2_control}"
+            com_port="${com_port}"
+            gripper_speed_multiplier="${gripper_speed_multiplier}"
+            gripper_force_multiplier="${gripper_force_multiplier}"
+            gripper_max_speed="${gripper_max_speed}"
+            gripper_max_force="${gripper_max_force}"
+            gripper_closed_position="${gripper_closed_position}"
+            >
+            <xacro:insert_block name="origin" />
+        </xacro:robotiq_gripper>
+
+    </xacro:macro>
+
+</robot>

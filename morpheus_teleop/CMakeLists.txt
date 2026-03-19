@@ -1,9 +1,17 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.8)
 project(morpheus_teleop)
 
-# Add support for C++14
+# Ensure the package correctly uses C++17 and C99 standards
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+
+# Enable warnings
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
 # Find required packages
@@ -16,7 +24,6 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(morpheus_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
 
 include_directories(include)
 
@@ -37,33 +44,26 @@ install(TARGETS
 # ------------------------------------------------------------------------------
 file(GLOB PYTHON_SCRIPTS
   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-  scripts/*.py
+  ${PROJECT_NAME}/*.py
 )
-
 install(PROGRAMS ${PYTHON_SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
-  
+
+ament_python_install_package(${PROJECT_NAME})
+
 # ------------------------------------------------------------------------------
 # Shared Resources
 # ------------------------------------------------------------------------------
-install(DIRECTORY launch
+install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME}
 )
-
-# ------------------------------------------------------------------------------
-# Interfaces
-# ------------------------------------------------------------------------------
-rosidl_generate_interfaces(${PROJECT_NAME} "srv/TwistConverter.srv"
-  DEPENDENCIES builtin_interfaces geometry_msgs sensor_msgs
-  std_msgs)
 
 # ------------------------------------------------------------------------------
 # Export
 # ------------------------------------------------------------------------------
 ament_export_dependencies(ament_cmake)
 ament_export_dependencies(geometry_msgs)
-ament_export_dependencies(rosidl_default_generators)
 ament_export_dependencies(rclpy)
 ament_export_dependencies(rclcpp)
 ament_export_dependencies(joy)

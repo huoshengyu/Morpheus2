@@ -262,10 +262,10 @@ def generate_launch_description():
             "kinematics_params_file",
             default_value=PathJoinSubstitution(
                 [
-                    FindPackageShare("ur_description"),
+                    FindPackageShare("morpheus_description"),
                     "config",
                     ur_type,
-                    "default_kinematics.yaml",
+                    "ur_robotiq_calibration.yaml",
                 ]
             ),
             description="The calibration configuration of the actual robot used.",

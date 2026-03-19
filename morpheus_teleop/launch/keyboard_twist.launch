@@ -7,6 +7,6 @@
     </node>
 
     <!-- Twist Converter -->
-    <include file="$(find morpheus_teleop)/launch/twist_converter.launch"/>
+    <include file="$(find morpheus_teleop)/launch/twist_to_pose.launch"/>
 
 </launch>

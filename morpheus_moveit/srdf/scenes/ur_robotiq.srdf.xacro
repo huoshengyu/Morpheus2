@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="$(arg name)">
+
+    <!-- Parameters -->
+    <xacro:arg name="name" default="ur"/>
+
+    <xacro:include filename="$(find morpheus_moveit)/srdf/macros/ur_robotiq_macro.srdf.xacro"/>
+    <xacro:ur_robotiq_srdf/>
+
+</robot>

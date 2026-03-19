@@ -33,8 +33,8 @@ def generate_launch_description():
         ),
         launch_ros.actions.Node(
             package='morpheus_teleop',
-            executable='twist_converter.py',
-            name='twist_converter',
+            executable='twist_to_pose.py',
+            name='twist_to_pose',
             output='screen',
             parameters=[
                 {

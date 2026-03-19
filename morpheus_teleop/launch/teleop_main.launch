@@ -49,7 +49,7 @@
     </node>
 
     <!-- Launch Twist converter-->
-    <include file="$(find morpheus_teleop)/launch/twist_converter.launch">
+    <include file="$(find morpheus_teleop)/launch/twist_to_pose.launch">
         <arg name="twist_topic"         value="$(arg twist_topic)"/>
         <arg name="pose_topic"          value="target_frame"/>
         <arg name="wrench_topic"        value="target_wrench"/>

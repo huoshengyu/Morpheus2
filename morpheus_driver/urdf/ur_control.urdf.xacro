@@ -47,7 +47,7 @@
     <xacro:property name="initial_positions_file" default="$(arg initial_positions_file)"/>
     
     <!-- Additional URDF Files -->
-    <xacro:arg name="environment_file" default="$(find morpheus_description)/urdf/scenes/node2.urdf.xacro"/>
+    <xacro:arg name="environment_file" default=""/>
 
     <!-- UR Robot Include -->
     <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro"/>
@@ -105,6 +105,8 @@
     />
     
     <!-- Create the environment around the robot -->
-    <xacro:include filename="$(arg environment_file)"/>
+    <xacro:if value="${arg environment_file}">
+        <xacro:include filename="$(arg environment_file)"/>
+    </xacro:if>
 
 </robot>

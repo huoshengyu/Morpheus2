@@ -17,17 +17,17 @@
     <xacro:arg name="force_abs_paths" default="false"/>
     <!-- ros2_control Parameters -->
     <xacro:arg name="headless_mode" default="false" />
-    <xacro:arg name="robot_ip" default="0.0.0.0"/>
+    <xacro:arg name="robot_ip" default="192.168.1.102"/>
     <xacro:arg name="ur_script_filename" default="$(find ur_client_library)/resources/external_control.urscript"/>
     <xacro:arg name="ur_output_recipe_filename" default="$(find ur_robot_driver)/resources/rtde_output_recipe.txt"/>
     <xacro:arg name="ur_input_recipe_filename" default="$(find ur_robot_driver)/resources/rtde_input_recipe.txt"/>
-    <xacro:arg name="reverse_ip" default="0.0.0.0"/>
+    <xacro:arg name="reverse_ip" default="192.168.1.2"/>
     <xacro:arg name="script_command_port" default="50004"/>
     <xacro:arg name="reverse_port" default="50001"/>
     <xacro:arg name="script_sender_port" default="50002"/>
     <xacro:arg name="trajectory_port" default="50003"/>
     <!-- Tool Communication Parameters-->
-    <xacro:arg name="use_tool_communication" default="false" />
+    <xacro:arg name="use_tool_communication" default="true" />
     <xacro:arg name="tool_voltage" default="0" />
     <xacro:arg name="tool_parity" default="0" />
     <xacro:arg name="tool_baud_rate" default="115200" />
@@ -38,8 +38,8 @@
     <xacro:arg name="tool_tcp_port" default="54321" />
 
     <!-- Simulation Parameters -->
-    <xacro:arg name="use_mock_hardware" default="false" />
-    <xacro:arg name="mock_sensor_commands" default="false" />
+    <xacro:arg name="use_mock_hardware" default="true" />
+    <xacro:arg name="mock_sensor_commands" default="true" />
     <xacro:arg name="simulation_controllers" default="$(find morpheus_sim)/config/ur/ur5e/ur_controllers.yaml" />
     <!-- Initial position for simulations (Mock Hardware, Gazebo, Ignition) -->
     <xacro:arg name="initial_positions_file" default="$(find ur_description)/config/initial_positions.yaml"/>
@@ -51,27 +51,25 @@
     <!-- End Effector Selection -->
     <xacro:arg name="ee_type" default="robotiq"/>
     <!-- Common End Effector Arguments -->
-    <xacro:arg name="use_fake_hardware" default="false"/>
     <xacro:arg name="sim_gazebo" default="false"/>
-    <xacro:arg name="device" default="/dev/ttyUSB0"/>
+    <xacro:arg name="device" default="/tmp/ttyUR"/>
     <!-- Robotiq Gripper Arguments -->
     <xacro:arg name="sim_isaac" default="false"/>
     <xacro:arg name="isaac_joint_commands" default="/isaac_joint_commands"/>
     <xacro:arg name="isaac_joint_states" default="/isaac_joint_states"/>
-    <xacro:arg name="mock_sensor_commands" default="false"/>
     <xacro:arg name="include_ros2_control" default="true"/>
     <xacro:arg name="gripper_speed_multiplier" default="1.0"/>
-    <xacro:arg name="gripper_speed_multiplier" default="0.5"/>
-    <xacro:arg name="gripper_speed_multiplier" default="0.150"/>
-    <xacro:arg name="gripper_speed_multiplier" default="235.0"/>
-    <xacro:arg name="gripper_speed_multiplier" default="0.7929"/>
+    <xacro:arg name="gripper_force_multiplier" default="0.5"/>
+    <xacro:arg name="gripper_max_speed" default="0.150"/>
+    <xacro:arg name="gripper_max_force" default="235.0"/>
+    <xacro:arg name="gripper_closed_position" default="0.7929"/>
     <!-- OnRobot Gripper Arguments -->
     <xacro:arg name="connection_type" default="serial"/>
     <xacro:arg name="ip_address" default="192.168.1.1"/>
     <xacro:arg name="port" default="502"/>
 
     <!-- Additional URDF Files -->
-    <xacro:arg name="environment_file" default="$(find morpheus_description)/urdf/scenes/node2.urdf.xacro" />
+    <xacro:arg name="environment_file" default="" />
 
     <!-- Robot Include -->
     <xacro:include filename="$(find morpheus_description)/urdf/macros/ur_endeffector_macro.xacro" />
@@ -102,16 +100,15 @@
 
         ee_type="$(arg ee_type)"
 
-        use_fake_hardware="$(arg use_fake_hardware)"
+        use_mock_hardware="$(arg use_mock_hardware)"
         sim_gazebo="$(arg sim_gazebo)"
-        device="$(arg /dev/device)"
+        device="$(arg device)"
         
         sim_isaac="$(arg sim_isaac)"
         isaac_joint_commands="$(arg isaac_joint_commands)"
         isaac_joint_states="$(arg isaac_joint_states)"
         mock_sensor_commands="$(arg mock_sensor_commands)"
         include_ros2_control="$(arg include_ros2_control)"
-        com_port="$(arg device)"
         gripper_speed_multiplier="$(arg gripper_speed_multiplier)"
         gripper_force_multiplier="$(arg gripper_force_multiplier)"
         gripper_max_speed="$(arg gripper_max_speed)"
@@ -156,6 +153,9 @@
     />
     
     <!-- Create the environment around the robot -->
-    <xacro:include filename="$(arg environment_file)"/>
+    <xacro:property name="environment_file" value="$(arg environment_file)"/>
+    <xacro:if value="${environment_file != ''}">
+        <xacro:include filename="$(arg environment_file)"/>
+    </xacro:if>
 
 </robot>

@@ -161,7 +161,6 @@ RUN apt update && apt install --no-install-recommends -y \
     python3-zipp \
     python3-pymodbus \
     python3-numpy \
-    python3-numpy-quaternion \
     python3-scipy \
     python3-pynput \
     python3-pygame \
@@ -176,6 +175,7 @@ RUN apt update && apt install --no-install-recommends -y \
 RUN echo "[global]" >> etc/pip.conf
 RUN echo "break-system-packages = true" >> etc/pip.conf
 # # (Relatively error-prone dependencies installed individually for readability of error messages)
+RUN python3 -m pip install numpy-quaternion
 RUN python3 -m pip install readchar
 RUN python3 -m pip install PyQt6
 # RUN pip install --upgrade \ 
