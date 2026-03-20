@@ -218,7 +218,7 @@ tool_contact_controller:
 cartesian_compliance_controller:
   ros__parameters:
     end_effector_link: "$(var tf_prefix)tool0"
-    robot_base_link: "$(var tf_prefix)base_link"
+    robot_base_link: "$(var tf_prefix)base"
     ft_sensor_ref_link: "$(var tf_prefix)tool0"
     compliance_ref_link: "$(var tf_prefix)tool0"
     joints:
@@ -259,7 +259,7 @@ cartesian_force_controller:
 
     # See the cartesian_compliance_controller
     end_effector_link: "$(var tf_prefix)tool0"
-    robot_base_link: "$(var tf_prefix)base_link"
+    robot_base_link: "$(var tf_prefix)base"
     ft_sensor_ref_link: "$(var tf_prefix)tool0"
     joints:
       - $(var tf_prefix)shoulder_pan_joint
@@ -291,7 +291,7 @@ cartesian_motion_controller:
 
     # See the cartesian_compliance_controller
     end_effector_link: "$(var tf_prefix)tool0"
-    robot_base_link: "$(var tf_prefix)base_link"
+    robot_base_link: "$(var tf_prefix)base"
     joints:
       - $(var tf_prefix)shoulder_pan_joint
       - $(var tf_prefix)shoulder_lift_joint

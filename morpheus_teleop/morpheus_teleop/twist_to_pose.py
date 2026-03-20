@@ -19,7 +19,7 @@ class TwistToPose(Node):
         super().__init__(node_name)
 
         # Get params
-        self.frame_id = self.declare_parameter('frame_id', "base_link").value
+        self.frame_id = self.declare_parameter('frame_id', "base").value
         self.end_effector = self.declare_parameter('end_effector', "tool0").value
         self.rate = self.create_rate(self.declare_parameter('publishing_rate', 125).value)
 
@@ -83,18 +83,18 @@ class TwistToPose(Node):
 
     def update_pose(self):
         # Find dt
-        dt = (self.current_time - self.last_time).nanoseconds
+        tf_stamped = self.tf_buffer.lookup_transform(target_frame=self.frame_id, source_frame=self.end_effector, time=self.current_time, timeout=Duration(seconds=1))
 
         # Update pose based on linear velocity and dt
         self.pose_stamped.header.stamp          = self.current_time.to_msg()
         self.pose_stamped.header.frame_id       = self.frame_id
-        self.pose_stamped.pose                  = add_twist_to_pose(self.twist, self.pose_stamped.pose, 1)
+        self.pose_stamped.pose                  = add_twist_to_pose(self.twist, transform_to_pose(tf_stamped.transform), dt=0.1)
 
     def update_wrench(self):
         # Update wrench based on twist
         self.wrench_stamped.header.stamp        = self.current_time.to_msg()
         self.wrench_stamped.header.frame_id     = self.frame_id
-        self.wrench_stamped.wrench              = twist_to_wrench(self.twist, scaling_factor=1000)
+        self.wrench_stamped.wrench              = twist_to_wrench(self.twist, scaling_factor=1)
 
     def twist_callback(self, msg):
         if self.initialized:

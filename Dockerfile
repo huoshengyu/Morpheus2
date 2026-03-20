@@ -138,6 +138,7 @@ RUN rosdep init \
 # # Install ROS dependencies
 RUN apt update && apt install --no-install-recommends -y \
     ros-${ROS_DISTRO}-moveit \
+    ros-${ROS_DISTRO}-rqt-controller-manager \
     ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
 #     ros-${ROS_DISTRO}-teleop-twist-keyboard \
 #     python3-tk \

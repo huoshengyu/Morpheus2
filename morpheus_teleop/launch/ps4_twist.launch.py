@@ -147,7 +147,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             name='frame_id',
-            default_value='base_link',
+            default_value='base',
         )
     )
     declared_arguments.append(

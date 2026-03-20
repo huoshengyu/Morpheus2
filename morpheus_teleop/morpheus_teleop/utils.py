@@ -44,7 +44,7 @@ def publish_joint_pos(publisher=None, joint_names=[], joint_pos=[], duration=5):
     msg.points = [point]
     publisher.publish(msg)
 
-def twist_to_wrench(twist, scaling_factor=10):
+def twist_to_wrench(twist, scaling_factor=0.1):
     msg = geometry_msgs.msg.Wrench()
 
     msg.force.x   = twist.linear.x * scaling_factor
@@ -55,7 +55,7 @@ def twist_to_wrench(twist, scaling_factor=10):
     msg.torque.z  = twist.angular.z * scaling_factor
     return msg
 
-def add_twist_to_pose(twist, pose, dt):
+def add_twist_to_pose(twist, pose, dt=0.1):
     # Separate the twist into parts for readability
     v = twist.linear
     w = twist.angular
