@@ -18,6 +18,8 @@
   <depend>moveit_msgs</depend>
   <depend>morpheus_msgs</depend>
   <depend>moveit_py</depend>
+  <depend>numpy</depend>
+  <depend>numpy-quaternion</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

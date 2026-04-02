@@ -60,6 +60,7 @@ def launch_setup(context):
     controller_spawner_timeout = LaunchConfiguration("controller_spawner_timeout")
     initial_joint_controller = LaunchConfiguration("initial_joint_controller")
     activate_joint_controller = LaunchConfiguration("activate_joint_controller")
+    trajectory_controller = LaunchConfiguration("trajectory_controller")
     launch_rviz = LaunchConfiguration("launch_rviz")
     rviz_config_file = LaunchConfiguration("rviz_config_file")
     headless_mode = LaunchConfiguration("headless_mode")
@@ -178,7 +179,7 @@ def launch_setup(context):
         output="screen",
         parameters=[
             {
-                "motion_controller": initial_joint_controller,
+                "motion_controller": trajectory_controller,
             },
         ],
     )
@@ -402,6 +403,24 @@ def generate_launch_description():
             "activate_joint_controller",
             default_value="true",
             description="Activate loaded joint controller.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "initial_joint_controller",
+            default_value="scaled_joint_trajectory_controller",
+            choices=[
+                "scaled_joint_trajectory_controller",
+                "joint_trajectory_controller",
+                "forward_velocity_controller",
+                "forward_position_controller",
+                "freedrive_mode_controller",
+                "passthrough_trajectory_controller",
+                "cartesian_compliance_controller",
+                "cartesian_force_controller",
+                "cartesian_motion_controller",
+            ],
+            description="Joint trajectory controller for trajectory_until_node.",
         )
     )
     declared_arguments.append(

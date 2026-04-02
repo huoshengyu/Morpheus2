@@ -23,7 +23,7 @@ set(LIBS ${ament_cmake_LIBRARIES})
 # ------------------------------------------------------------------------------
 # Shared Resources
 # ------------------------------------------------------------------------------
-install(DIRECTORY config launch srdf
+install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME}
 )
 

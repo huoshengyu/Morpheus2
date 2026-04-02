@@ -9,9 +9,10 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
 
-# Enable warnings
+# Disable Wredundant-decls warnings since rosidl generates redundant function declarations
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wno-redundant-decls")
 endif()
 
 ## Find libraries
@@ -42,10 +43,16 @@ set(srv_files
   "srv/TwistConverter.srv"
 )
 
+## Declare action files
+set(action_files
+  "action/MoveToNamedTarget.action"
+)
+
 ## Generate interfaces
 rosidl_generate_interfaces(${PROJECT_NAME} 
   ${msg_files}
   ${srv_files}
+  ${action_files}
   DEPENDENCIES builtin_interfaces std_msgs geometry_msgs moveit_msgs
 )
 

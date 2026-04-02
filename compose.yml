@@ -1,5 +1,6 @@
 # References:
-# https://github.com/microsoft/wslg/blob/main/samples/container/Containers.md
+# GPU Passthrough in WSL: https://github.com/microsoft/wslg/blob/main/samples/container/Containers.md
+# Realtime task priority: https://control.ros.org/rolling/doc/ros2_control/controller_manager/doc/userdoc.html
 services:
   morpheus2:
     build:
@@ -7,15 +8,21 @@ services:
       dockerfile: Dockerfile
     container_name: morpheus2
     command: tail -F /dev/null # Entrypoint. /dev/null discards print
-    
+
+    # Enable realtime task priority
     privileged: true
     network_mode: host
+    cap_add:
+      - SYS_NICE
+    ulimits:
+      rtprio: 99
+      memlock: -1
 
     environment:
       # Share GUI environment variables with the container.
-      - DISPLAY=${DISPLAY}
-      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY}
-      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}
+      - DISPLAY=$DISPLAY
+      - WAYLAND_DISPLAY=$WAYLAND_DISPLAY
+      - XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR
       - LD_LIBRARY_PATH=/usr/lib/wsl/lib
       # Fix a bug with QT
       - QT_X11_NO_MITSHM=1
@@ -42,11 +49,15 @@ services:
       - /dev/input:/dev/input
       - /dev/dxg:/dev/dxg
       - /dev/dri:/dev/dri
+      - /dev/dri/card0:/dev/dri/card0
+      - /dev/dri/renderD128:/dev/dri/renderD128
       - /dev/nvidia0:/dev/nvidia0
       - /dev/nvidiactl:/dev/nvidiactl
       - /dev/nvidia-modeset:/dev/nvidia-modeset
       # Share WSL mount locations with the container
       - /usr/lib/wsl:/usr/lib/wsl
+
+    # Reserve GPU resource
     runtime: nvidia
     deploy:
       resources:

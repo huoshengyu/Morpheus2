@@ -18,7 +18,7 @@ from collections import deque
 # Local Imports
 # from robotiq_2f_gripper_control.msg import Robotiq2FGripper_robot_output
 # from onrobot_rg2ft_msgs.msg import RG2FTCommand
-from utils import switch_controller, list_controllers, command_robotiq2F85, command_onrobotRG2FT
+from utils import command_robotiq2F85, command_onrobotRG2FT
 
 from teleop_twist import TeleopTwist
 

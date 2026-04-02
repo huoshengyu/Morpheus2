@@ -6,27 +6,25 @@
   <description>The morpheus_trajectory package</description>
   <maintainer email="bshuo@ucdavis.edu">Brian Sanyu Huo</maintainer>
   <license>GPL-3.0-only</license>
+
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <build_depend>geometry_msgs</build_depend>
-  <build_depend>joy</build_depend>
-  <build_depend>rclpy</build_depend>
-  <build_depend>rclcpp</build_depend>
-  <build_depend>moveit_core</build_depend>
-  <build_depend>moveit_ros_planning</build_depend>
-  <build_depend>moveit_ros_planning_interface</build_depend>
-  <build_depend>moveit_visual_tools</build_depend>
-  <build_depend>moveit_msgs</build_depend>
-  <build_depend>morpheus_teleop</build_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>joy</exec_depend>
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>rclcpp</exec_depend>
-  <exec_depend>moveit_core</exec_depend>
-  <exec_depend>moveit_ros_planning</exec_depend>
-  <exec_depend>moveit_ros_planning_interface</exec_depend>
-  <exec_depend>moveit_visual_tools</exec_depend>
-  <exec_depend>moveit_msgs</exec_depend>
-  <exec_depend>morpheus_teleop</exec_depend>
+
+  <depend>rclpy</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
+  <depend>rclcpp_components</depend>
+  <depend>controller_manager_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>moveit_core</depend>
+  <depend>moveit_ros_planning</depend>
+  <depend>moveit_ros_planning_interface</depend>
+  <depend>moveit_visual_tools</depend>
+  <depend>ur_msgs</depend>
+  <depend>morpheus_teleop</depend>
+  <depend>morpheus_msgs</depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>

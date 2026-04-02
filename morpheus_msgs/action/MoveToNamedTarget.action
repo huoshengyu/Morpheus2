@@ -1,0 +1,12 @@
+# The target state to move to. Must be specified in the SRDF or otherwise known to the move_group.
+string target_name
+
+---
+
+# Error code - encodes the overall reason for failure
+moveit_msgs/MoveItErrorCodes error_code
+
+---
+
+# Error code - encodes the overall reason for failure
+moveit_msgs/MoveItErrorCodes error_code

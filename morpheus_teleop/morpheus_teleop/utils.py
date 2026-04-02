@@ -7,34 +7,6 @@ from rclpy.node import Node
 import geometry_msgs.msg
 import trajectory_msgs.msg
 
-from controller_manager_msgs.srv import SwitchController, ListControllers
-
-def switch_controller(node, start_controllers=[], stop_controllers=[], strictness=2, start_asap=False, timeout=5):
-    success = False
-    try:
-        switch_controller_service = node.create_client(
-                            'controller_manager/switch_controller', SwitchController)
-        switch_controller_service.wait_for_service()
-        success = switch_controller_service(start_controllers, 
-                                            stop_controllers,
-                                            strictness,
-                                            start_asap,
-                                            timeout)
-    except Exception as e:
-        print("Service call failed: %s"%e)
-    return success
-    
-def list_controllers(node):
-    success = False
-    try:
-        list_controllers_service = node.create_service(
-                            'controller_manager/list_controllers', ListControllers)
-        list_controllers_service.wait_for_service()
-        success = list_controllers_service()
-    except Exception as e:
-        print("Service call failed: %s"%e)
-    return success
-
 def publish_joint_pos(publisher=None, joint_names=[], joint_pos=[], duration=5):
     # Publish a position command
     point = trajectory_msgs.msg.JointTrajectoryPoint()
@@ -45,6 +17,10 @@ def publish_joint_pos(publisher=None, joint_names=[], joint_pos=[], duration=5):
     publisher.publish(msg)
 
 def twist_to_wrench(twist, scaling_factor=0.1):
+    """
+    Convert from twist (linear velocity, angular velocity) to wrench (force, torque).
+    Primarily a message type conversion, but the scaling factor can be interpreted in units of kg/sec.
+    """
     msg = geometry_msgs.msg.Wrench()
 
     msg.force.x   = twist.linear.x * scaling_factor
@@ -56,6 +32,10 @@ def twist_to_wrench(twist, scaling_factor=0.1):
     return msg
 
 def add_twist_to_pose(twist, pose, dt=0.1):
+    """
+    Given twist (linear velocity, angular velocity), pose (position, orientation) and dt (seconds),
+    returns the result of moving at rate [twist] for [dt] seconds from the starting [pose].
+    """
     # Separate the twist into parts for readability
     v = twist.linear
     w = twist.angular

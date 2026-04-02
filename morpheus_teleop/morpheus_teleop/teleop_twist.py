@@ -14,6 +14,7 @@ import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.action import ActionClient
+from rclpy.task import Future
 # TF2 ROS Imports
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
@@ -32,6 +33,7 @@ from scipy.spatial.transform import Rotation as R
 from joy_utils import joy_msg_to_dict, get_joy_msg
 from frame_utils import rearrange_axes, rotate_axes, get_joint_state, get_yaw
 from trajectory_component import TrajectoryComponent
+from morpheus_msgs.action import MoveToNamedTarget
 
 # from robotiq_2f_gripper_control.msg import Robotiq2FGripper_robot_output
 # from onrobot_rg2ft_msgs.msg import RG2FTCommand
@@ -49,9 +51,11 @@ class TeleopTwist(TeleopBase):
         self.reference_frame = "base"
         self.already_swapped = False
         
-        # Initialize trajectory component
-        self.planning_group = self.declare_parameter("arm_group", "arm").value
-        # self.trajectory_component = TrajectoryComponent(planning_group=self.planning_group)
+        # Initialize trajectory control
+        self._move_to_named_target_action_client = ActionClient(self, MoveToNamedTarget, 'move_to_named_target')
+        self._move_to_named_target_response_future = Future()
+        self._move_to_named_target_result_future = Future()
+        self._waiting = False
 
         # Set robot model
         self.robot_model = self.declare_parameter("robot_model", "ur5e").value
@@ -103,11 +107,18 @@ class TeleopTwist(TeleopBase):
         # Publish pre-processed commands to the twist topic
         command = [input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"]]
 
+        # If waiting on an action call, do nothing
+        if self._waiting:
+            return
+
         # If menu button is pressed, move to home
         if input_dict["HOME_POSE"] == 1:
-            # self.trajectory_component.plan_and_execute(configuration_name="home")
-            # Empty the buffers to prevent a sudden jump in commands when teleop is resumed
-            [[buffer.append(0) for buffer in self.buffer_list] for _ in range(self.twist_filter_size)]
+            self.get_logger().info("Attempting trajectory to home position")
+            self.move_to_named_target("home")
+            return
+        if input_dict["SLEEP_POSE"] == 1:
+            self.get_logger().info("Attempting trajectory to up position")
+            self.move_to_named_target("up")
             return
 
         # Append inputs on each axis to the respective buffers
@@ -136,10 +147,10 @@ class TeleopTwist(TeleopBase):
             return None
 
     def loop_once(self):
-        if self.joy_msg is not None:
-            input_dict = self.update(self.joy_msg)
-            if input_dict is not None:
-                self.publish(input_dict)
+        if self.joy_msg:
+            self.update(self.joy_msg)
+            if self.input_dict:
+                self.publish(self.input_dict)
 
     def joy_callback(self, msg):
         # Retrieve joy_msg and store a safe copy
@@ -149,7 +160,37 @@ class TeleopTwist(TeleopBase):
         # Process and publish
         self.loop_once()
     
+    def move_to_named_target(self, name):
+        # Create goal message to move to named position
+        goal_msg = MoveToNamedTarget.Goal()
+        goal_msg.target_name = name
+        
+        # Send goal to action server
+        self._move_to_named_target_action_client.wait_for_server()
+        self._move_to_named_target_response_future = self._move_to_named_target_action_client.send_goal_async(goal_msg)
+        self._move_to_named_target_response_future.add_done_callback(self.move_to_named_target_response_callback)
+    
+    def move_to_named_target_response_callback(self, future):
+        # Set wait variable to True if the action goal is accepted
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info('Move to named target rejected')
+            return
+        self.get_logger().info('Move to named target accepted')
+        self._waiting = True
+            
+        # Empty the buffers to prevent a sudden jump in commands when teleop is resumed
+        [[buffer.append(0) for buffer in self.buffer_list] for _ in range(self.twist_filter_size)]
 
+        # Get the action result future so the result callback can process the result
+        self._move_to_named_target_result_future = goal_handle.get_result_async()
+        self._move_to_named_target_result_future.add_done_callback(self.move_to_named_target_result_callback)
+    
+    def move_to_named_target_result_callback(self, future):
+        # Stop waiting and allow controls to resume publishing, regardless of result
+        result = future.result().result
+        self.get_logger().info('Move to named target result: {0}'.format(result.error_code))
+        self._waiting = False
 
 
 def main(args=None):

@@ -4,7 +4,7 @@
     <!-- Parameters -->
     <xacro:arg name="name" default="ur"/>
 
-    <xacro:include filename="$(find morpheus_moveit)/srdf/macros/ur_onrobot_macro.srdf.xacro"/>
-    <xacro:ur_onrobot_srdf/>
+    <xacro:include filename="$(find morpheus_description)/srdf/macros/ur_robotiq_macro.srdf.xacro"/>
+    <xacro:ur_robotiq_srdf/>
 
 </robot>
