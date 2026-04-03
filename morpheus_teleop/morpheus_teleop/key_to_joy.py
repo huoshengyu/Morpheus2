@@ -54,6 +54,7 @@ ps4 = {
     # k selects input value
     # Left stick:   x = -axes[0], y = axes[1]
     # Right stick:  x = -axes[3], y = axes[4]
+    # Triggers:     LT = axes[2], RT = axes[5]
     # Dpad:         L/R = -axes[6], U/D = axes[7]
     # Buttons:      [X, O, S, T, LB, RB, LT, RT, Share, Menu, Xbox, Lstick, Rstick]
     # Keyboard Input    Gamepad Input       UR5e Output         Interbotix Output   
