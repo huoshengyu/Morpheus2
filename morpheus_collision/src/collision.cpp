@@ -8,7 +8,6 @@
 // Moveit
 #include <moveit/moveit_cpp/moveit_cpp.hpp>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.hpp>
-#include <moveit/planning_scene_interface/planning_scene_interface.hpp>
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <moveit/collision_detection_bullet/collision_env_bullet.hpp>
 #include <moveit/collision_detection_bullet/collision_detector_allocator_bullet.hpp>
@@ -20,8 +19,6 @@
 #include <moveit/collision_detection/collision_detector_allocator.hpp>
 #include <moveit/collision_detection/collision_env.hpp>
 #include <moveit/collision_detection/collision_tools.hpp>
-#include <moveit/robot_model_loader/robot_model_loader.hpp>
-#include <moveit/robot_model/robot_model.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
 // Messages
@@ -45,9 +42,11 @@ namespace morpheus_collision
 class CollisionNode : public rclcpp::Node
 {
 public:
+    // Declare timer
+    rclcpp::TimerBase::SharedPtr timer_;
+
     // Declare interfaces for interacting with the planning scene
     std::shared_ptr<planning_scene_monitor::PlanningSceneMonitor> planning_scene_monitor_;
-    std::shared_ptr<moveit::planning_interface::PlanningSceneInterface> planning_scene_interface_;
     std::string joint_states_topic_;
     std::string attached_collision_object_topic_;
     std::string collision_object_topic_;
@@ -136,34 +135,39 @@ public:
         RCLCPP_INFO(this->get_logger(), "Initializing collision node...");
 
         // Create collision publishers
-        contactmap_string_publisher_ = this->create_publisher<std_msgs::msg::String>("collision/contactmap/string", 5);
-        contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/contactmap/msg", 5);
-        nearest_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/nearest/contact", 5);
-        nearest_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/nearest/distance", 5);
-        nearest_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/direction", 5);
-        yaw_contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/yaw/contactmap/msg", 5);
-        yaw_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/yaw/contact", 5);
-        yaw_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/yaw/distance", 5);
-        yaw_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/direction", 5);
-        relative_contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/relative/contactmap/msg", 5);
-        relative_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/relative/contact", 5);
-        relative_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/relative/distance", 5);
-        relative_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/relative/direction", 5);
-        directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/directional_distance", 5); //testing before full integration with arduino
-        yaw_directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/yaw_distance", 5); //testing before full integration with arduino
+        contactmap_string_publisher_ = this->create_publisher<std_msgs::msg::String>("collision/contactmap/string", 1);
+        contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/contactmap/msg", 1);
+        nearest_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/nearest/contact", 1);
+        nearest_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/nearest/distance", 1);
+        nearest_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/direction", 1);
+        yaw_contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/yaw/contactmap/msg", 1);
+        yaw_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/yaw/contact", 1);
+        yaw_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/yaw/distance", 1);
+        yaw_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/direction", 1);
+        relative_contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/relative/contactmap/msg", 1);
+        relative_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/relative/contact", 1);
+        relative_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/relative/distance", 1);
+        relative_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/relative/direction", 1);
+        directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/directional_distance", 1); //testing before full integration with arduino
+        yaw_directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/yaw_distance", 1); //testing before full integration with arduino
 
         RCLCPP_INFO(this->get_logger(), "Initializing collision node...");
         // Create a marker array publisher for publishing shapes to Rviz
-        marker_array_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 5);
+        marker_array_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 1);
 
         // Prepare collision result and request objects
         c_res_.clear();
+        c_req_.group_name = arm_group_;
         c_req_.contacts = true;
         c_req_.distance = true;
         c_req_.cost = true;
         c_req_.max_contacts = 5;
         c_req_.max_contacts_per_pair = 1;
         c_req_.max_cost_sources = 5;
+
+        // Start timer to perform collision checking and visualization at a fixed rate
+        using namespace std::chrono_literals;
+        timer_ = this->create_wall_timer(500ms, std::bind(&CollisionNode::timerCallback, this));
     }
 
     // Initialize components which rely on shared_from_this() and thus cannot be called in the node's constructor
@@ -187,11 +191,8 @@ public:
         std::vector<std::string> gripper_link_vector = gripper_interface_->getLinkNames();
         robot_link_vector_.insert(robot_link_vector_.end(), gripper_link_vector.begin(), gripper_link_vector.end());
 
-        // Initialize PlanningSceneInterface
-        planning_scene_interface_ = std::make_shared<moveit::planning_interface::PlanningSceneInterface>(std::string(this->get_namespace()));
-
         // Initialize PlanningSceneMonitor
-        planning_scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(shared_from_this(), robot_description_topic_);
+        planning_scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(shared_from_this(), robot_description_topic_, "planning_scene_monitor");
         // Start the PlanningSceneMonitor
         planning_scene_monitor_->startStateMonitor(joint_states_topic_, attached_collision_object_topic_); // Get robot state updates from move group
         planning_scene_monitor_->startWorldGeometryMonitor(collision_object_topic_, planning_scene_world_topic_); // Get world geometry updates from move group
@@ -283,43 +284,34 @@ public:
         visualization_msgs::msg::MarkerArray arr;
         collision_detection::getProximityGradientMarkers(
             "world", 
-            this->get_namespace(),
+            "arm",
             rclcpp::Duration(1,0),
             posed_decompositions,
             posed_vector_decompositions,
             gradients,
             arr);
-        marker_array_publisher_->publish(arr);
+        publishMarkers(arr);
     }
 
-    void spin()
+    void loop_once()
     {
-        // Create asynchronous spinner to allow callbacks while looping
-        //rclcpp::AsyncSpinner spinner(2); // Use 2 threads
-        //spinner.start();
+        // Perform one cycle of collision checking and visualization
+        update();
+        publish();
+        // visualize();
+        getCollisionGradients(
+            c_req_,
+            c_res_,
+            planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState(),
+            &planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getAllowedCollisionMatrix(),
+            gsr_
+        );
+        visualizeProximityGradient(gsr_);
+        // Get all contact vectors which correspond to robot<->obstacle pairs
+        //for (int i : contact_map)
+        //{
 
-        // Loop collision requests and publish at specified rate
-        rclcpp::Rate loop_rate(10);
-        while (rclcpp::ok())
-        {
-            update();
-            publish();
-            visualize();
-            getCollisionGradients(
-                c_req_,
-                c_res_,
-                planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState(),
-                &planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getAllowedCollisionMatrix(),
-                gsr_
-            );
-            visualizeProximityGradient(gsr_);
-            // Get all contact vectors which correspond to robot<->obstacle pairs
-            //for (int i : contact_map)
-            //{
-
-            //}
-            loop_rate.sleep();
-        }
+        //}
     }
 
     void update()
@@ -870,6 +862,15 @@ private:
     static bool compareContacts (const collision_detection::Contact a, const collision_detection::Contact b)
     {
         return a.depth < b.depth;
+    }
+
+    // Callback function for timer to perform collision checking and visualization at a fixed rate
+    void timerCallback()
+    {
+        if (initialized_)
+        {
+            loop_once();
+        }
     }
 }; // class CollisionNode
 } // namespace morpheus_collision

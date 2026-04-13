@@ -69,7 +69,7 @@
     <xacro:arg name="port" default="502"/>
 
     <!-- Additional URDF Files -->
-    <xacro:arg name="environment_file" default="" />
+    <xacro:arg name="environment_file" default="$(find morpheus_description)/urdf/scenes/node2_scene.xacro" />
 
     <!-- Robot Include -->
     <xacro:include filename="$(find morpheus_description)/urdf/macros/ur_endeffector_macro.xacro" />

@@ -407,6 +407,13 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
+            "trajectory_controller",
+            default_value="scaled_joint_trajectory_controller",
+            description="Controller for trajectory execution.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
             "initial_joint_controller",
             default_value="scaled_joint_trajectory_controller",
             choices=[
