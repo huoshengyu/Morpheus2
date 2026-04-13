@@ -8,13 +8,13 @@
   <license>GPL-3.0-only</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   
-  <depend>joy</depend>
   <depend>rclpy</depend>
   <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
   <depend>moveit_core</depend>
   <depend>moveit_ros_planning</depend>
   <depend>moveit_ros_planning_interface</depend>
+  <depend>moveit_ros_move_group</depend>
   <depend>moveit_visual_tools</depend>
   <depend>moveit_msgs</depend>
   <depend>morpheus_msgs</depend>

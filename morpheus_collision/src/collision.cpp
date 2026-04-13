@@ -76,6 +76,8 @@ public:
     // Declare collision info variables
     collision_detection::CollisionRequest c_req_;
     collision_detection::CollisionResult c_res_;
+    const collision_detection::CollisionEnvHybrid* collision_env_hybrid_;
+    const collision_detection::CollisionEnvDistanceField* collision_env_distance_field_;
     collision_detection::GroupStateRepresentationPtr gsr_;
     std::vector<collision_detection::Contact> sorted_contacts_;
     std::vector<collision_detection::Contact> yaw_contacts_;
@@ -91,7 +93,7 @@ public:
     std::vector<std::string> robot_link_vector_;
     std::string arm_group_;
     std::string gripper_group_;
-    std::string robot_description_;
+    std::string robot_description_topic_;
     
     // Declare interfaces for retrieving robot link models and other info
     std::shared_ptr<moveit::planning_interface::MoveGroupInterface> arm_interface_;
@@ -101,6 +103,9 @@ public:
     rclcpp::Subscription<moveit_msgs::msg::PlanningScene>::SharedPtr planning_scene_fake_subscription_;
     std::vector<moveit_msgs::msg::AttachedCollisionObject> attached_collision_object_vector_;
 
+    // Delcare initialization bool
+    bool initialized_ = false;
+
     // Initialize ROS node
     explicit CollisionNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions()) 
         : Node("collision_node", options)
@@ -108,7 +113,7 @@ public:
         // Declare parameters
         this->declare_parameter("arm_group", "arm");
         this->declare_parameter("gripper_group", "gripper");
-        this->declare_parameter("robot_description", "robot_description");
+        this->declare_parameter("robot_description_topic", "robot_description");
         this->declare_parameter("joint_states_topic", "joint_states");
         this->declare_parameter("attached_collision_object_topic", "attached_collision_object");
         this->declare_parameter("collision_object_topic", "collision_object");
@@ -120,7 +125,7 @@ public:
         // Get parameters from ros server, if possible
         arm_group_ = this->get_parameter("arm_group").as_string();
         gripper_group_ = this->get_parameter("gripper_group").as_string();
-        robot_description_ = this->get_parameter("robot_description").as_string();
+        robot_description_topic_ = this->get_parameter("robot_description_topic").as_string();
         joint_states_topic_ = this->get_parameter("joint_states_topic").as_string();
         attached_collision_object_topic_ = this->get_parameter("attached_collision_object_topic").as_string();
         collision_object_topic_ = this->get_parameter("collision_object_topic").as_string();
@@ -128,29 +133,28 @@ public:
         planning_scene_topic_ = this->get_parameter("planning_scene_topic").as_string();
         planning_scene_service_ = this->get_parameter("planning_scene_service").as_string();
         monitored_planning_scene_topic_ = this->get_parameter("monitored_planning_scene_topic").as_string();
+        RCLCPP_INFO(this->get_logger(), "Initializing collision node...");
 
         // Create collision publishers
-        contactmap_string_publisher_ = this->create_publisher<std_msgs::msg::String>("collision/contactmap/string", 0);
-        contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/contactmap/msg", 0);
-        nearest_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/nearest/contact", 0);
-        nearest_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/nearest/distance", 0);
-        nearest_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/direction", 0);
-        yaw_contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/yaw/contactmap/msg", 0);
-        yaw_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/yaw/contact", 0);
-        yaw_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/yaw/distance", 0);
-        yaw_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/direction", 0);
-        relative_contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/relative/contactmap/msg", 0);
-        relative_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/relative/contact", 0);
-        relative_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/relative/distance", 0);
-        relative_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/relative/direction", 0);
-        directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/directional_distance", 0); //testing before full integration with arduino
-        yaw_directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/yaw_distance", 0); //testing before full integration with arduino
-        
+        contactmap_string_publisher_ = this->create_publisher<std_msgs::msg::String>("collision/contactmap/string", 5);
+        contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/contactmap/msg", 5);
+        nearest_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/nearest/contact", 5);
+        nearest_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/nearest/distance", 5);
+        nearest_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/direction", 5);
+        yaw_contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/yaw/contactmap/msg", 5);
+        yaw_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/yaw/contact", 5);
+        yaw_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/yaw/distance", 5);
+        yaw_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/direction", 5);
+        relative_contactmap_msg_publisher_ = this->create_publisher<morpheus_msgs::msg::ContactMap>("collision/relative/contactmap/msg", 5);
+        relative_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/relative/contact", 5);
+        relative_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/relative/distance", 5);
+        relative_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/relative/direction", 5);
+        directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/directional_distance", 5); //testing before full integration with arduino
+        yaw_directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/yaw_distance", 5); //testing before full integration with arduino
+
+        RCLCPP_INFO(this->get_logger(), "Initializing collision node...");
         // Create a marker array publisher for publishing shapes to Rviz
-        marker_array_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 0);
-        
-        // Subscribe to fake planning scene for recognizing "fake" attached collision objects
-        planning_scene_fake_subscription_ = this->create_subscription<moveit_msgs::msg::PlanningScene>("planning_scene_fake", 1, std::bind(&CollisionNode::planning_scene_fake_callback, this, std::placeholders::_1));
+        marker_array_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 5);
 
         // Prepare collision result and request objects
         c_res_.clear();
@@ -163,13 +167,17 @@ public:
     }
 
     // Initialize components which rely on shared_from_this() and thus cannot be called in the node's constructor
-    std::shared_ptr<CollisionNode> init()
+    std::shared_ptr<rclcpp::Node> initialize()
     {
+        RCLCPP_INFO(this->get_logger(), "Initializing collision node...");
+        RCLCPP_INFO(this->get_logger(), "Initializing visual tools...");
         // Initialize visual tools for visualizing markers in Rviz
-        visual_tools_.reset(new moveit_visual_tools::MoveItVisualTools(shared_from_this(), "world","moveit_visual_markers"));
+        visual_tools_ = std::make_shared<moveit_visual_tools::MoveItVisualTools>(shared_from_this(), "world", "moveit_visual_markers");
 
+        RCLCPP_INFO(this->get_logger(), "Initializing arm interface...");
         // Start move group interfaces for retrieving robot links
         arm_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(shared_from_this(), arm_group_);
+        RCLCPP_INFO(this->get_logger(), "Initializing gripper interface...");
         gripper_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(shared_from_this(), gripper_group_);
         // Set robot link vector to include all parts of the robot
         // Get all links in the robot arm
@@ -183,20 +191,20 @@ public:
         planning_scene_interface_ = std::make_shared<moveit::planning_interface::PlanningSceneInterface>(std::string(this->get_namespace()));
 
         // Initialize PlanningSceneMonitor
-        planning_scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(shared_from_this(), robot_description_);
+        planning_scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(shared_from_this(), robot_description_topic_);
         // Start the PlanningSceneMonitor
         planning_scene_monitor_->startStateMonitor(joint_states_topic_, attached_collision_object_topic_); // Get robot state updates from move group
         planning_scene_monitor_->startWorldGeometryMonitor(collision_object_topic_, planning_scene_world_topic_); // Get world geometry updates from move group
         planning_scene_monitor_->startSceneMonitor(planning_scene_topic_); // Get planning scene updates from move group
         // Ensure the PlanningSceneMonitor is ready
         planning_scene_monitor_->requestPlanningSceneState(planning_scene_service_);
-        /* try
+        try
         {   
-            // Change the PlanningScene's collision detector to Bullet
-            // Bullet supports distance vectors, as well as distances to multiple obstacles
-            planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->allocateCollisionDetector(collision_detection::CollisionDetectorAllocatorBullet::create());
+            // Change the PlanningScene's collision detector to hybrid
+            // Hybrid supports distance fields, which can provide proximity gradient information
+            planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->allocateCollisionDetector(collision_detection::CollisionDetectorAllocatorHybrid::create());
             
-            if (strcmp((planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName()).c_str(), "Bullet") == 0)
+            if (strcmp((planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName()).c_str(), "HYBRID") == 0)
             {
                 RCLCPP_INFO(this->get_logger(), "Planning Scene is active and ready.");
             }    
@@ -210,8 +218,8 @@ public:
         }
         catch (std::string collision_detector_name)
         {
-            RCLCPP_ERROR(this->get_logger(), "Failed to retrieve PlanningScene.");
-        } */
+            RCLCPP_ERROR(this->get_logger(), "Failed to change collision detector.");
+        }
         /*
         // Edit the allowed collision matrix to focus only on robot-obstacle collisions
         collision_detection::AllowedCollisionMatrix allowed_collision_matrix = 
@@ -219,22 +227,69 @@ public:
         allowed_collision_matrix.setEntry(true); // Allow all collisions
         allowed_collision_matrix.setEntry("teapot", false); // Register collisions involving teapot
         */
+        
+        auto planning_scene = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
+        collision_env_distance_field_ =
+            dynamic_cast<const collision_detection::CollisionEnvDistanceField*>(
+            planning_scene->getCollisionEnv(planning_scene->getCollisionDetectorName()).get());
+        collision_env_hybrid_ =
+            dynamic_cast<const collision_detection::CollisionEnvHybrid*>(
+            planning_scene->getCollisionEnv(planning_scene->getCollisionDetectorName()).get());
+        initialized_ = true;
+        return shared_from_this();
     }
 
-    void getCollisionGradients(collision_detection::GroupStateRepresentationPtr gsr)
+    // Load collision gradients into the GroupStateRepresentationPtr
+    void getCollisionGradients(
+        const collision_detection::CollisionRequest& req, 
+        collision_detection::CollisionResult& res, 
+        const moveit::core::RobotState& state,
+        const collision_detection::AllowedCollisionMatrix* acm, 
+        collision_detection::GroupStateRepresentationPtr& gsr)
     {
-        // Get the collision environment from planning scene monitor
-        auto planning_scene = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
-        const auto collision_env = planning_scene->getCollisionEnv();
-        // Check if the collision environment is a distance field, and if so, get the collision gradients
-        std::shared_ptr<collision_detection::CollisionEnvDistanceField> collision_env_distance_field =
-            std::dynamic_pointer_cast<collision_detection::CollisionEnvDistanceField>(collision_env);
-        if (collision_env_distance_field != nullptr)
+        // Check if the collision environment is a distance field or hybrid, and if so, get the collision gradients
+        if (collision_env_distance_field_ != nullptr)
         {
-            auto robot_state = planning_scene->getCurrentState();
-            auto acm = planning_scene->getAllowedCollisionMatrix();
-            collision_env_distance_field->getCollisionGradients(c_req_, c_res_, robot_state, &acm, gsr);
+            collision_env_distance_field_->getCollisionGradients(req, res, state, acm, gsr);
         }
+        else if (collision_env_hybrid_ != nullptr)
+        {
+            collision_env_hybrid_->getCollisionGradients(req, res, state, acm, gsr);
+        }
+    }
+
+    // Get gradient values from the GroupStateRepresentationPtr
+    void getGradientValues(collision_detection::GroupStateRepresentationPtr& gsr)
+    {
+        std::vector<collision_detection::GradientInfo> gradient_info_vector = gsr->gradients_;
+        for (auto gradient_info : gradient_info_vector)
+        {
+            EigenSTL::vector_Vector3d gradients = gradient_info.gradients;
+            std::vector<double> distances = gradient_info.distances;
+            std::string joint_name = gradient_info.joint_name;
+            // TODO: Do something with the gradient values
+        }
+    }
+
+    // Get and visualize the proximity gradient markers
+    void visualizeProximityGradient(collision_detection::GroupStateRepresentationPtr& gsr)
+    {
+        const std::vector<collision_detection::PosedBodySphereDecompositionPtr> posed_decompositions =
+            gsr->link_body_decompositions_;
+        const std::vector<collision_detection::PosedBodySphereDecompositionVectorPtr> posed_vector_decompositions =
+            gsr->attached_body_decompositions_;
+        const std::vector<collision_detection::GradientInfo> gradients =
+            gsr->gradients_;
+        visualization_msgs::msg::MarkerArray arr;
+        collision_detection::getProximityGradientMarkers(
+            "world", 
+            this->get_namespace(),
+            rclcpp::Duration(1,0),
+            posed_decompositions,
+            posed_vector_decompositions,
+            gradients,
+            arr);
+        marker_array_publisher_->publish(arr);
     }
 
     void spin()
@@ -249,7 +304,15 @@ public:
         {
             update();
             publish();
-            visualize(c_res_.contacts);
+            visualize();
+            getCollisionGradients(
+                c_req_,
+                c_res_,
+                planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState(),
+                &planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getAllowedCollisionMatrix(),
+                gsr_
+            );
+            visualizeProximityGradient(gsr_);
             // Get all contact vectors which correspond to robot<->obstacle pairs
             //for (int i : contact_map)
             //{
@@ -633,7 +696,7 @@ public:
         Eigen::Vector3d contact_normal_link_frame = link_tf.linear() * contact.normal;
 
         // Get the length of the link by finding the z_distance of the transform of the next link
-        float z_extent = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getRobotModel()->getLinkModel(contact.body_name_1)->getShapeExtentsAtOrigin()[2];
+        // float z_extent = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getRobotModel()->getLinkModel(contact.body_name_1)->getShapeExtentsAtOrigin()[2];
 
         // Create a new contact object to be returned
         collision_detection::Contact out;
@@ -648,7 +711,7 @@ public:
         return out;
     }
 
-    void visualize(collision_detection::CollisionResult::ContactMap contact_map)
+    void visualize()
     {
         // Instantiate marker array for holding the markers to be visualized
         visualization_msgs::msg::MarkerArray markers;
@@ -718,7 +781,7 @@ public:
         vec.push_back(p1);
         
         std::vector<geometry_msgs::msg::Point> points; // Put points in the array type accepted by Marker
-        for (int i = 0; i < vec.size(); i++)
+        for (long unsigned int i = 0; i < vec.size(); i++)
         {
             geometry_msgs::msg::Point point;
             point.x = vec[i][0];
@@ -801,112 +864,10 @@ public:
         if (!collision_points_.markers.empty())
             marker_array_publisher_->publish(collision_points_);
     }
-
-    void planning_scene_fake_callback(moveit_msgs::msg::PlanningScene msg)
-    {
-        attached_collision_object_vector_ = msg.robot_state.attached_collision_objects;
-    }
-
-    void test()
-    {
-        moveit_msgs::msg::CollisionObject mesh_object;
-        mesh_object.header.frame_id = "world";
-        mesh_object.id = "test_mesh";
-        std::string test_mesh_path = "file:///root/catkin_ws/src/morpheus_description/meshes/components/collision/block.obj";
-        const Eigen::Vector3d scale_eigen(0.1, 0.1, 0.1); // mm/inch
-        shapes::Mesh* m = shapes::createMeshFromResource(test_mesh_path, scale_eigen);
-        shape_msgs::msg::Mesh mesh_msg;
-        shapes::ShapeMsg shape_msg;
-        shapes::constructMsgFromShape(m, shape_msg);
-        mesh_msg = boost::get<shape_msgs::msg::Mesh>(shape_msg);
-        mesh_object.meshes.resize(1);
-        mesh_object.meshes[0] = mesh_msg;
-        mesh_object.pose.position.x = 0.3;
-        mesh_object.pose.position.y = 0.35;
-        mesh_object.pose.position.z = 0.8;
-        mesh_object.pose.orientation.w = 1.0;
-        mesh_object.operation = mesh_object.ADD;
-        moveit_msgs::msg::AttachedCollisionObject mesh_attach;
-        mesh_attach.object = mesh_object;
-        mesh_attach.link_name = "wrist_3_link";
-        
-        // Publish planning scene diff
-        moveit_msgs::msg::PlanningScene planning_scene;
-        planning_scene.world.collision_objects.push_back(mesh_object);
-        planning_scene.is_diff = true;
-        planning_scene.robot_state.is_diff = true;
-
-        // g_collision_object_publisher->publish(collision_object);
-
-        // Process message
-        RCLCPP_INFO_STREAM(this->get_logger(), "Spawning object");
-        try {
-            // rclcpp::ServiceClient planning_scene_diff_client = nh.serviceClient<moveit_msgs::msg::ApplyPlanningScene>("apply_planning_scene");
-            // planning_scene_diff_client.waitForExistence();
-            // moveit_msgs::msg::ApplyPlanningScene srv;
-            // srv.request.scene = planning_scene;
-            // planning_scene_diff_client.call(srv);
-
-            //planning_scene_interface_->applyPlanningScene(planning_scene);
-            //planning_scene_monitor_->newPlanningSceneMessage(planning_scene);
-            //planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->usePlanningSceneMsg(planning_scene);
-            //planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->processCollisionObjectMsg(mesh_object);
-            RCLCPP_INFO_STREAM(this->get_logger(), "Spawn succeeded");
-        } catch (...) {
-            RCLCPP_INFO_STREAM(this->get_logger(), "Spawn failed");
-        }
-
-        std::vector<moveit_msgs::msg::CollisionObject> print_object;
-        planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionObjectMsgs(print_object);
-        
-        // Publish planning scene diff
-        moveit_msgs::msg::PlanningScene planning_scene_attach;
-        planning_scene_attach.robot_state.attached_collision_objects.push_back(mesh_attach);
-        planning_scene_attach.is_diff = true;
-        planning_scene_attach.robot_state.is_diff = true;
-
-        moveit_msgs::msg::PlanningScene print_planning_scene;
-        planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getPlanningSceneMsg(print_planning_scene);
-        //RCLCPP_INFO_STREAM(this->get_logger(), print_planning_scene);
-        
-        // Process message
-        RCLCPP_INFO_STREAM(this->get_logger(), "Attaching object");
-        try {
-            //rclcpp::ServiceClient planning_scene_diff_client = nh.serviceClient<moveit_msgs::msg::ApplyPlanningScene>("apply_planning_scene");
-            //planning_scene_diff_client.waitForExistence();
-            //moveit_msgs::msg::ApplyPlanningScene srv;
-            //srv.request.scene = planning_scene_attach;
-            //planning_scene_diff_client.call(srv);
-
-            //planning_scene_interface_.applyPlanningScene(planning_scene_attach);
-            //planning_scene_monitor_->newPlanningSceneMessage(planning_scene_attach);
-            //planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->usePlanningSceneMsg(planning_scene_attach);
-            planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->processAttachedCollisionObjectMsg(mesh_attach);
-            RCLCPP_INFO_STREAM(this->get_logger(), "Attach succeeded");
-        } catch (...) {
-            RCLCPP_INFO_STREAM(this->get_logger(), "Attach failed");
-        }
-
-        std::vector<moveit_msgs::msg::AttachedCollisionObject> print_attach;
-        planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getAttachedCollisionObjectMsgs(print_attach);
-        
-        for (moveit_msgs::msg::CollisionObject obj : print_object)
-        {
-            RCLCPP_INFO_STREAM(this->get_logger(), obj.id);
-        }
-        for (moveit_msgs::msg::AttachedCollisionObject att : print_attach)
-        {
-            RCLCPP_INFO_STREAM(this->get_logger(), att.link_name);
-        }
-        
-        moveit_msgs::msg::PlanningScene print_attach_planning_scene;
-        planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getPlanningSceneMsg(print_attach_planning_scene);
-        RCLCPP_INFO_STREAM(this->get_logger(), print_attach_planning_scene.name);
-    }
     
 private:
     // Define a comparator for sorting contacts by depth
-    static const bool compareContacts (const collision_detection::Contact a, const collision_detection::Contact b)
+    static bool compareContacts (const collision_detection::Contact a, const collision_detection::Contact b)
     {
         return a.depth < b.depth;
     }
@@ -916,7 +877,8 @@ private:
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    auto collision_node = std::make_shared<morpheus_collision::CollisionNode>()->init();
+    auto collision_node = std::make_shared<morpheus_collision::CollisionNode>();
+    collision_node->initialize();
     rclcpp::spin(collision_node);
     rclcpp::shutdown();
     collision_node = nullptr;
