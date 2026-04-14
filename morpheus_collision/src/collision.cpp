@@ -166,8 +166,9 @@ public:
         c_req_.max_cost_sources = 5;
 
         // Start timer to perform collision checking and visualization at a fixed rate
+        // Note collision checking can be computationally expensive, so the rate should be chosen carefully based on the use case and robot speed
         using namespace std::chrono_literals;
-        timer_ = this->create_wall_timer(500ms, std::bind(&CollisionNode::timerCallback, this));
+        timer_ = this->create_wall_timer(50ms, std::bind(&CollisionNode::timerCallback, this));
     }
 
     // Initialize components which rely on shared_from_this() and thus cannot be called in the node's constructor
