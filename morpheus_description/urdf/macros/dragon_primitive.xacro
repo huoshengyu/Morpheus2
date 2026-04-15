@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+
+<robot name="dragon_primitive" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="dragon_primitive"
+    params="x:=0 y:=0 z:=0 R:=0 P:=0 Y:=0 scale:=1 prefix parent">
+
+    <link name="${prefix}dragon_capsule">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.20"/>
+            <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
+        <visual>
+            <origin rpy="${pi/4} ${pi*7/36} 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="${scale * 2 * 1.42 * 0.05} ${scale * 2 * 1.42 * 0.05} ${scale * 2 * 1.42 * 0.05}"/>
+            </geometry>
+            <material name="light_grey">
+                <color rgba="0.7 0.7 0.7 1" />
+            </material>
+        </visual>
+        <collision>
+            <origin rpy="${pi/4} ${pi*7/36} 0" xyz="0 0 0" />
+            <geometry>
+                <box size="${scale * 2 * 1.42 * 0.05} ${scale * 2 * 1.42 * 0.05} ${scale * 2 * 1.42 * 0.05}"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="${prefix}dragon_trunk">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.20"/>
+            <inertia ixx="1.2" ixy="0" ixz="0" iyy="1.2" iyz="0" izz="1"/>
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <cylinder length="${scale * (8.1 - 4.5) * 0.05}" radius="${scale * 2 * 0.05}"/>
+            </geometry>
+            <material name="light_grey">
+                <color rgba="0.7 0.7 0.7 1" />
+            </material>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <geometry>
+                <cylinder length="${scale * (8.1 - 4.5) * 0.05}" radius="${scale * 2 * 0.05}"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="${prefix}dragon_solar">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.05"/>
+            <inertia ixx="4" ixy="0" ixz="0" iyy="1" iyz="0" izz="3"/>
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="${scale * 1 * 0.05} ${scale * 20 * 0.05} ${scale * 3.4 * 0.05}"/>
+            </geometry>
+            <material name="grey">
+                <color rgba="0.3 0.3 0.3 1" />
+            </material>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0" />
+            <geometry>
+                <box size="${scale * 1 * 0.05} ${scale * 20 * 0.05} ${scale * 3.4 * 0.05}"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="${prefix}dragon_capsule_joint" type="fixed">
+        <parent link="${parent}" />
+        <child link="${prefix}dragon_capsule" />
+        <origin xyz="${x} ${y} ${z}" rpy="${R} ${P} ${Y}" />
+    </joint>
+
+    <joint name="${prefix}dragon_trunk_joint" type="fixed">
+        <parent link="${prefix}dragon_capsule" />
+        <child link="${prefix}dragon_trunk" />
+        <origin xyz="0 0 ${-scale * (8.1 - 4.5) * 0.05 / 2}" rpy="0 0 0" />
+    </joint>
+
+    <joint name="${prefix}dragon_solar_joint" type="fixed">
+        <parent link="${prefix}dragon_capsule" />
+        <child link="${prefix}dragon_solar" />
+        <origin xyz="0 0 ${-scale * (8.1 - 4.5) * 0.05 / 2}" rpy="0 0 0" />
+    </joint>
+
+  </xacro:macro>
+
+</robot>

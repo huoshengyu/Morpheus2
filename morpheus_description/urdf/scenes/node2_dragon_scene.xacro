@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="node2_scene">
+
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/node2.xacro" />
+    <xacro:include filename="$(find morpheus_description)/urdf/macros/dragon_primitive.xacro" />
+    <xacro:node2
+        prefix=""
+        parent="world"
+        x="${0.0254 * 0}"
+        y="${0.0254 * (14.5 + 8.5)}"
+        z="${0.0254 * 21}"
+        scale="1"
+    />
+    <xacro:dragon_primitive
+        prefix=""
+        parent="world"
+        x="${0.0254 * 12}"
+        y="${0.0254 * 4}"
+        z="${0.0254 * 12}"
+        scale="1"
+    />
+    <!-- scale=0.0254 meters/inch -->
+
+</robot>
