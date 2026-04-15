@@ -5,11 +5,21 @@
     <xacro:node2_table
         prefix=""
         parent="world"
-        x="${0.0254 * (-48)}"
-        y="${0.0254 * 8.5}"
-        z="${0.0254 * 34.75 * 0}"
         scale="1"
-    />
+    >
+        <origin 
+            xyz="
+                ${0.0254 * (-48)} 
+                ${0.0254 * 8.5} 
+                ${0.0254 * 34.75 * 0}
+            " 
+            rpy="
+                0 
+                0 
+                0
+            "
+        />
+    </xacro:node2_table>
     <!-- scale=0.0254 meters/inch -->
 
 </robot>
