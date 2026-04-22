@@ -20,6 +20,7 @@
 #include <moveit/collision_detection/collision_env.hpp>
 #include <moveit/collision_detection/collision_tools.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
+#include <morpheus_collision/collision_detector_allocator_hybrid.hpp>
 
 // Messages
 #include <std_msgs/msg/string.hpp>
@@ -132,7 +133,6 @@ public:
         planning_scene_topic_ = this->get_parameter("planning_scene_topic").as_string();
         planning_scene_service_ = this->get_parameter("planning_scene_service").as_string();
         monitored_planning_scene_topic_ = this->get_parameter("monitored_planning_scene_topic").as_string();
-        RCLCPP_INFO(this->get_logger(), "Initializing collision node...");
 
         // Create collision publishers
         contactmap_string_publisher_ = this->create_publisher<std_msgs::msg::String>("collision/contactmap/string", 1);
@@ -151,7 +151,6 @@ public:
         directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/directional_distance", 1); //testing before full integration with arduino
         yaw_directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/yaw_distance", 1); //testing before full integration with arduino
 
-        RCLCPP_INFO(this->get_logger(), "Initializing collision node...");
         // Create a marker array publisher for publishing shapes to Rviz
         marker_array_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 1);
 
@@ -161,8 +160,8 @@ public:
         c_req_.contacts = true;
         c_req_.distance = true;
         c_req_.cost = true;
-        c_req_.max_contacts = 5;
-        c_req_.max_contacts_per_pair = 1;
+        c_req_.max_contacts = 25;
+        c_req_.max_contacts_per_pair = 5;
         c_req_.max_cost_sources = 5;
 
         // Start timer to perform collision checking and visualization at a fixed rate
@@ -204,11 +203,12 @@ public:
         {   
             // Change the PlanningScene's collision detector to hybrid
             // Hybrid supports distance fields, which can provide proximity gradient information
-            planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->allocateCollisionDetector(collision_detection::CollisionDetectorAllocatorHybrid::create());
+            collision_detection::CollisionDetectorAllocatorPtr allocator = collision_detection::CollisionDetectorAllocatorHybrid::create();
+            planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->allocateCollisionDetector(allocator);
             
             if (strcmp((planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName()).c_str(), "HYBRID") == 0)
             {
-                RCLCPP_INFO(this->get_logger(), "Planning Scene is active and ready.");
+                RCLCPP_INFO(this->get_logger(), "Collision detector set to HYBRID.");
             }    
             else
             {
@@ -222,13 +222,6 @@ public:
         {
             RCLCPP_ERROR(this->get_logger(), "Failed to change collision detector.");
         }
-        /*
-        // Edit the allowed collision matrix to focus only on robot-obstacle collisions
-        collision_detection::AllowedCollisionMatrix allowed_collision_matrix = 
-            planning_scene_monitor::LockedPlanningSceneRW(planning_scene_monitor_)->getAllowedCollisionMatrix();
-        allowed_collision_matrix.setEntry(true); // Allow all collisions
-        allowed_collision_matrix.setEntry("teapot", false); // Register collisions involving teapot
-        */
         
         auto planning_scene = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
         collision_env_distance_field_ =
@@ -273,25 +266,25 @@ public:
         }
     }
 
-    // Get and visualize the proximity gradient markers
-    void visualizeProximityGradient(collision_detection::GroupStateRepresentationPtr& gsr)
+    // Get the proximity gradient markers
+    void getProximityGradientMarkers(collision_detection::GroupStateRepresentationPtr& gsr, visualization_msgs::msg::MarkerArray& arr)
     {
-        const std::vector<collision_detection::PosedBodySphereDecompositionPtr> posed_decompositions =
-            gsr->link_body_decompositions_;
-        const std::vector<collision_detection::PosedBodySphereDecompositionVectorPtr> posed_vector_decompositions =
-            gsr->attached_body_decompositions_;
-        const std::vector<collision_detection::GradientInfo> gradients =
-            gsr->gradients_;
-        visualization_msgs::msg::MarkerArray arr;
         collision_detection::getProximityGradientMarkers(
             "world", 
             "arm",
             rclcpp::Duration(1,0),
-            posed_decompositions,
-            posed_vector_decompositions,
-            gradients,
+            gsr->link_body_decompositions_,
+            gsr->attached_body_decompositions_,
+            gsr->gradients_,
             arr);
-        publishMarkers(arr);
+    }
+
+    // Get link name from the index of its body decomposition in the MoveIt distance field
+    std::string getLinkName(collision_detection::GroupStateRepresentationPtr& gsr, size_t index)
+    {
+        // Based on collision_common_distance_field.cpp (line 182)
+        // Corresponds to gsr->link_body_decompositions_[i]
+        return gsr->dfce_->link_names_[index];
     }
 
     void loop_once()
@@ -307,7 +300,9 @@ public:
             &planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getAllowedCollisionMatrix(),
             gsr_
         );
-        visualizeProximityGradient(gsr_);
+        visualization_msgs::msg::MarkerArray arr;
+        getProximityGradientMarkers(gsr_, arr);
+        publishMarkers(arr);
         // Get all contact vectors which correspond to robot<->obstacle pairs
         //for (int i : contact_map)
         //{
@@ -704,10 +699,8 @@ public:
         return out;
     }
 
-    void visualize()
+    void getCollisionMarkers(visualization_msgs::msg::MarkerArray& markers)
     {
-        // Instantiate marker array for holding the markers to be visualized
-        visualization_msgs::msg::MarkerArray markers;
         // The function below works for any contact map, but can only create sphere markers. The implementation further below is very similar.
         /* 
         collision_detection::getCollisionMarkersFromContacts(markers, "world", contact_map, color,
@@ -754,8 +747,6 @@ public:
         std::vector<std_msgs::msg::ColorRGBA> colors_rel = {color_near_rel, color_far_rel};
         contactVectorToMarkerArray(nearest_n_relative, markers, "", colors_rel, ns_counts); // Empty frame_id means use link frames
         */
-
-        publishMarkers(markers);
     }
 
     visualization_msgs::msg::Marker contactToMarker(collision_detection::Contact& contact, std::string& frame_id, std_msgs::msg::ColorRGBA& color, rclcpp::Duration& lifetime, std::map<std::string, unsigned>& ns_counts)

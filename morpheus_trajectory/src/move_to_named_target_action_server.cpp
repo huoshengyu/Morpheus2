@@ -90,6 +90,13 @@ public:
         RCLCPP_INFO(this->get_logger(), "Controller manager services found");
     }
 
+    std::shared_ptr<rclcpp::Node> initialize()
+    {
+        move_group_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(shared_from_this(), arm_group_);
+        RCLCPP_INFO(this->get_logger(), "Move group interface initialized");
+        return shared_from_this();
+    }
+
 private:
     // Declare functions needed to switch controllers
     // Get the list of controllers from the controller manager
@@ -254,11 +261,6 @@ private:
     // Execute action
     void execute(const std::shared_ptr<GoalHandle> goal_handle) {
         RCLCPP_INFO(this->get_logger(), "Move to named target initiated");
-        if (move_group_interface_ == nullptr)
-        {
-            move_group_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(shared_from_this(), arm_group_);
-            RCLCPP_INFO(this->get_logger(), "Move group interface initialized");
-        }
         const auto goal = goal_handle->get_goal();
         auto feedback = std::make_shared<Action::Feedback>();
         auto & error_code = feedback->error_code;
@@ -306,7 +308,7 @@ RCLCPP_COMPONENTS_REGISTER_NODE(morpheus_trajectory::MoveToNamedTargetActionServ
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    auto action_server = std::make_shared<morpheus_trajectory::MoveToNamedTargetActionServer>();
+    auto action_server = std::make_shared<morpheus_trajectory::MoveToNamedTargetActionServer>()->initialize();
     rclcpp::spin(action_server);
     rclcpp::shutdown();
     action_server = nullptr;
