@@ -5,16 +5,6 @@
 
 namespace collision_detection
 {
-static const double DEFAULT_SIZE_X = 3.0;
-static const double DEFAULT_SIZE_Y = 3.0;
-static const double DEFAULT_SIZE_Z = 4.0;
-static const Eigen::Vector3d DEFAULT_ORIGIN(0, 0, 0); 
-static const bool DEFAULT_USE_SIGNED_DISTANCE_FIELD = false;
-static const double DEFAULT_RESOLUTION = .02;
-static const double DEFAULT_COLLISION_TOLERANCE = 0.0;
-static const double DEFAULT_MAX_PROPOGATION_DISTANCE = 1.0;
-static const double DEFAULT_PADDING = 0.0;
-static const double DEFAULT_SCALE = 1.0;
 
 /** \brief Custom collision detector allocator for distance field-based collision detection with custom parameters */
 class MorpheusCollisionDetectorAllocatorDistanceField   
@@ -36,16 +26,16 @@ public:
   double scale_;
 
   MorpheusCollisionDetectorAllocatorDistanceField(
-    double size_x = DEFAULT_SIZE_X,
-    double size_y = DEFAULT_SIZE_Y,
-    double size_z = DEFAULT_SIZE_Z,
-    const Eigen::Vector3d& origin = DEFAULT_ORIGIN,
-    bool use_signed_distance_field = DEFAULT_USE_SIGNED_DISTANCE_FIELD,
-    double resolution = DEFAULT_RESOLUTION,
-    double collision_tolerance = DEFAULT_COLLISION_TOLERANCE,
-    double max_propogation_distance = DEFAULT_MAX_PROPOGATION_DISTANCE, 
-    double padding = DEFAULT_PADDING,
-    double scale = DEFAULT_SCALE)  
+    double size_x = 3.0,
+    double size_y = 3.0,
+    double size_z = 4.0,
+    const Eigen::Vector3d& origin = Eigen::Vector3d(0, 0, 0),
+    bool use_signed_distance_field = false,
+    double resolution = 0.02,
+    double collision_tolerance = 0.0,
+    double max_propogation_distance = 1.0, 
+    double padding = 0.0,
+    double scale = 1.0)  
   {
     size_x_ = size_x;
     size_y_ = size_y;

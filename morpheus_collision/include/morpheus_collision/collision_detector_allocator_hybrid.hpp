@@ -11,7 +11,7 @@ namespace collision_detection
 /** \brief Custom collision detector allocator for hybrid collision detection with custom parameters */
 class MOVEIT_COLLISION_DISTANCE_FIELD_EXPORT MorpheusCollisionDetectorAllocatorHybrid
   : public collision_detection::CollisionDetectorAllocatorTemplate<  
-      collision_detection::CollisionEnvDistanceField,   
+      collision_detection::CollisionEnvHybrid,   
       MorpheusCollisionDetectorAllocatorHybrid>  
 {  
 public:  
@@ -54,24 +54,24 @@ public:
   collision_detection::CollisionEnvPtr allocateEnv(  
     const moveit::core::RobotModelConstPtr& robot_model) const override  
   {  
-    return std::make_shared<collision_detection::CollisionEnvDistanceField>(  
-        robot_model,   
-        std::map<std::string, std::vector<collision_detection::CollisionSphere>>(),  
-        size_x_, size_y_, size_z_,  
-        origin_,  
-        use_signed_distance_field_,  
-        resolution_,  
-        collision_tolerance_,  
-        max_propagation_distance_,
-        padding_,
-        scale_);  
+    return std::make_shared<collision_detection::CollisionEnvHybrid>(  
+      robot_model,   
+      std::map<std::string, std::vector<collision_detection::CollisionSphere>>(),  
+      size_x_, size_y_, size_z_,  
+      origin_,  
+      use_signed_distance_field_,  
+      resolution_,  
+      collision_tolerance_,  
+      max_propagation_distance_,
+      padding_,
+      scale_);  
   } 
   
   CollisionEnvPtr allocateEnv(
     const WorldPtr& world, 
     const moveit::core::RobotModelConstPtr& robot_model) const override
   {
-    return std::make_shared<CollisionEnvDistanceField>(
+    return std::make_shared<CollisionEnvHybrid>(
       robot_model, 
       world,
       std::map<std::string, std::vector<collision_detection::CollisionSphere>>(),  
@@ -89,11 +89,11 @@ public:
     const CollisionEnvConstPtr& orig, 
     const WorldPtr& world) const override
   {
-    return std::make_shared<CollisionEnvDistanceField>(
-      dynamic_cast<const CollisionEnvDistanceField&>(*orig), 
+    return std::make_shared<CollisionEnvHybrid>(
+      dynamic_cast<const CollisionEnvHybrid&>(*orig), 
       world);
   }
 };
 
-const std::string collision_detection::MorpheusCollisionDetectorAllocatorHybrid::NAME("DISTANCE_FIELD");
+const std::string collision_detection::MorpheusCollisionDetectorAllocatorHybrid::NAME("HYBRID");
 }  // namespace collision_detection
