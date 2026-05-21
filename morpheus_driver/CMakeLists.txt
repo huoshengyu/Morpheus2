@@ -16,9 +16,29 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(control_msgs REQUIRED)
+
+# ------------------------------------------------------------------------------
+# Python Modules & Scripts
+# ------------------------------------------------------------------------------
+file(GLOB PYTHON_SCRIPTS
+  RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+  ${PROJECT_NAME}/*.py
+)
+install(PROGRAMS ${PYTHON_SCRIPTS}
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+ament_python_install_package(${PROJECT_NAME})
+
+# ------------------------------------------------------------------------------
+# Shared Resources
+# ------------------------------------------------------------------------------
+install(DIRECTORY config launch urdf
+  DESTINATION share/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -31,12 +51,5 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
-# ------------------------------------------------------------------------------
-# Shared Resources
-# ------------------------------------------------------------------------------
-install(DIRECTORY config launch urdf
-  DESTINATION share/${PROJECT_NAME}
-)
 
 ament_package()
