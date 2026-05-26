@@ -79,7 +79,7 @@ class TeleopTwist(TeleopBase):
         # self.gripper_pub_robotiq = self.create_publisher(Robotiq2FGripper_robot_output, 'robotiq_2f_85_gripper/control', 1)
         # self.gripper_pub_onrobot = self.create_publisher(RG2FTCommand, 'onrobot_rg2ft/command', 1)
         # self.gripper_pub_gazebo = ActionClient(self, GripperCommand, 'gripper_action_controller/gripper_cmd')
-        self.gripper_pub = self.create_publisher(ParallelGripperCommand.goal, self.gripper_topic, 1)
+        self.gripper_pub = self.create_publisher(ParallelGripperCommand.Goal, self.gripper_topic, 1)
         self.joy_sub = self.create_subscription(sensor_msgs.msg.Joy, "joy", self.joy_callback, 10)
 
         # Initialize variables for holding joystick inputs
@@ -142,8 +142,10 @@ class TeleopTwist(TeleopBase):
         # Create and publish gripper command based on button inputs
         if (input_dict["GRIPPER_OPEN"] or input_dict["GRIPPER_CLOSE"]):
             gripper_command = ParallelGripperCommand.Goal()
-            gripper_command.command.position = (1 + input_dict["GRIPPER_CLOSE"] - input_dict["GRIPPER_OPEN"]) / 2 # 1 = closed, 0 = open
-            gripper_command.command.max_effort = 20
+            gripper_command.command.name = ["gripper_joint"]
+            gripper_command.command.position = [(1 + input_dict["GRIPPER_CLOSE"] - input_dict["GRIPPER_OPEN"]) / 2] # 1 = closed, 0 = open
+            gripper_command.command.velocity = [0.1]
+            gripper_command.command.effort = [20]
             self.gripper_pub.publish(gripper_command)
 
     def update(self, msg):

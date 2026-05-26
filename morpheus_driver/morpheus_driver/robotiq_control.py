@@ -88,10 +88,10 @@ class RobotiqGripperController(Node):
         
         # Create the goal
         goal = ParallelGripperCommand.Goal()
-        goal.command.name = "robotiq_85_left_knuckle_joint"
-        goal.command.position = {target_pos}      # Target position in meters
-        goal.command.velocity = {velocity}            # Target velocity in meters/second
-        goal.command.effort = {effort}        # Maximum effort (force) in Newtons
+        goal.command.name = ["robotiq_85_left_knuckle_joint"]
+        goal.command.position = [target_pos]        # Target position in meters
+        goal.command.velocity = [velocity]          # Target velocity in meters/second
+        goal.command.effort = [effort]              # Maximum effort (force) in Newtons
         
         # Send the goal
         send_goal_future = self._send_goal_async(goal, wait_for_result)
@@ -131,12 +131,15 @@ class RobotiqGripperController(Node):
     def _get_result_callback(self, future):
         """Handle action result."""
         result = future.result().result
-        self.get_logger().info(
-            f'Goal completed | Position reached: {result.state.position[0]:.3f}m | '
-            f'Effort applied: {result.state.effort[0]:.1f}N | '
-            f'Stalled: {result.stalled} | '
-            f'Reached goal: {result.reached_goal}'
-        )
+        try:
+            self.get_logger().info(
+                f'Goal completed | Position reached: {result.state.position[0]:.3f}m | '
+                f'Effort applied: {result.state.effort[0]:.1f}N | '
+                f'Stalled: {result.stalled} | '
+                f'Reached goal: {result.reached_goal}'
+            )
+        except Exception as e:
+            self.get_logger().warn(f'Error processing result: {e}')
         self.waiting_for_result = False
         return result
     
@@ -216,13 +219,17 @@ class RobotiqGripperController(Node):
     
     def _gripper_command_callback(self, msg):
         """Handle incoming gripper command messages."""
-        self.get_logger().info(f'Received gripper command: position={msg.position[0]:.3f}m, velocity={msg.velocity[0]:.4f}m/s, effort={msg.effort[0]:.1f}N')
-        self.move_to_position(
-            target_pos=msg.position[0],
-            velocity_factor=msg.velocity[0] / self.max_speed if self.max_speed > 0 else 1.0,
-            effort_factor=msg.effort[0] / self.max_force if self.max_force > 0 else 1.0,
-            wait_for_result=False
-        )
+        command = msg.command
+        try:
+            self.get_logger().info(f'Received gripper command: position={command.position[0]:.3f}m, velocity={command.velocity[0]:.4f}m/s, effort={command.effort[0]:.1f}N')
+            self.move_to_position(
+                target_pos=command.position[0],
+                velocity_factor=command.velocity[0] / self.max_speed if self.max_speed > 0 else 1.0,
+                effort_factor=command.effort[0] / self.max_force if self.max_force > 0 else 1.0,
+                wait_for_result=False
+            )
+        except Exception as e:
+            self.get_logger().warn(f'Error processing gripper command: {e}')
 
 
 def main(args=None):
