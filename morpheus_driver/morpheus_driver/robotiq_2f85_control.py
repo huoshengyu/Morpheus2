@@ -25,7 +25,7 @@ class RobotiqGripperController(Node):
         self._action_client = ActionClient(self, ParallelGripperCommand, self.action_name)
         
         # Parameters for gripper control
-        self.declare_parameter('max_position', 1.0)         # proportion (fully closed)
+        self.declare_parameter('max_position', 0.9)         # proportion (fully closed)
         self.declare_parameter('min_position', 0.0)         # proportion (fully open)
         self.declare_parameter('max_speed', 0.150)          # m/s
         self.declare_parameter('max_force', 235.0)          # Newtons
