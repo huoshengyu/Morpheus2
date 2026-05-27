@@ -1,6 +1,0 @@
-<launch>
-
-    <!-- launch key to joy -->
-    <node pkg="morpheus_teleop" type="key_to_joy.py" name="key_to_joy" output="screen" />
-
-</launch>

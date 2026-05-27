@@ -23,15 +23,13 @@ def launch_setup(context):
     dev_ff = LaunchConfiguration("dev_ff")
     default_trig_val = LaunchConfiguration("default_trig_val")
     # Teleop Arguments
-    twist_topic = LaunchConfiguration("twist_topic")
     arm_group = LaunchConfiguration("arm_group")
     controller_type = LaunchConfiguration("controller_type")
-    gripper_type = LaunchConfiguration("gripper_type")
-    robot_model = LaunchConfiguration("robot_model")
     # Twist to Pose Arguments
     frame_id = LaunchConfiguration("frame_id")
     end_effector = LaunchConfiguration("end_effector")
     publishing_rate = LaunchConfiguration("publishing_rate")
+    twist_topic = LaunchConfiguration("twist_topic")
     wrench_topic = LaunchConfiguration("wrench_topic")
     pose_topic = LaunchConfiguration("pose_topic")
     
@@ -54,11 +52,13 @@ def launch_setup(context):
         output='screen',
         parameters=[
             {'use_sim_time': True,},
-            {'twist_topic': twist_topic,},
             {'arm_group': arm_group,},
             {'controller_type': controller_type,},
-            {'gripper_type': gripper_type,},
-            {'robot_model': robot_model,},
+            {'frame_id': frame_id,},
+            {'end_effector': end_effector,},
+            {'twist_topic': twist_topic,},
+            {'wrench_topic': wrench_topic,},
+            {'pose_topic': pose_topic,},
         ]
     )
     
@@ -69,10 +69,10 @@ def launch_setup(context):
         output='screen',
         parameters=[
             {'use_sim_time': True,},
-            {'twist_topic': twist_topic,},
             {'frame_id': frame_id,},
             {'end_effector': end_effector,},
             {'publishing_rate': publishing_rate,},
+            {'twist_topic': twist_topic,},
             {'wrench_topic': wrench_topic,},
             {'pose_topic': pose_topic,},
         ]
@@ -110,7 +110,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             name='twist_topic',
-            default_value='twist_controller/command',
+            default_value='target_twist',
         )
     )
     declared_arguments.append(
@@ -123,18 +123,6 @@ def generate_launch_description():
         DeclareLaunchArgument(
             name='controller_type',
             default_value='ps4',
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            name='gripper_type',
-            default_value='gazebo',
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            name='robot_model',
-            default_value='ur5e',
         )
     )
     declared_arguments.append(

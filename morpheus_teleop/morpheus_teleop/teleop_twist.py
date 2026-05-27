@@ -49,8 +49,10 @@ class TeleopTwist(TeleopBase):
         self.controller_type = self.declare_parameter("controller_type", "ps4").value
         
         # Initialize frame swap variables
-        self.reference_frame = "base"
-        self.already_swapped = False
+        self.frame_id = self.declare_parameter("frame_id", "base").value
+        self.end_effector = self.declare_parameter("end_effector", "tool0").value
+        self._already_swapped = False
+        self._use_ee_frame = False
         
         # Initialize trajectory control
         self._move_to_named_target_action_client = ActionClient(self, MoveToNamedTarget, 'move_to_named_target')
@@ -58,27 +60,18 @@ class TeleopTwist(TeleopBase):
         self._move_to_named_target_result_future = Future()
         self._waiting = False
 
-        # Set robot model
-        self.robot_model = self.declare_parameter("robot_model", "ur5e").value
-
-        # Set gripper type
-        self.gripper_type = self.declare_parameter("gripper_type", "robotiq").value
-
         # Listen for robot state
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # Get twist topic
-        self.twist_topic = self.declare_parameter("twist_topic", "twist_controller/command").value
+        self.twist_topic = self.declare_parameter("twist_topic", "target_twist").value
         self.wrench_topic = self.declare_parameter("wrench_topic", "target_wrench").value
-        self.gripper_topic = self.declare_parameter("gripper_topic", "/gripper_command").value
+        self.gripper_topic = self.declare_parameter("gripper_topic", "gripper_command").value
 
         # Initialize twist command publishers and joystick subscriber
-        self.twist_pub = self.create_publisher(geometry_msgs.msg.Twist, self.twist_topic, 1)
+        self.twist_pub = self.create_publisher(geometry_msgs.msg.TwistStamped, self.twist_topic, 1)
         self.wrench_pub = self.create_publisher(geometry_msgs.msg.WrenchStamped, self.wrench_topic, 1)
-        # self.gripper_pub_robotiq = self.create_publisher(Robotiq2FGripper_robot_output, 'robotiq_2f_85_gripper/control', 1)
-        # self.gripper_pub_onrobot = self.create_publisher(RG2FTCommand, 'onrobot_rg2ft/command', 1)
-        # self.gripper_pub_gazebo = ActionClient(self, GripperCommand, 'gripper_action_controller/gripper_cmd')
         self.gripper_pub = self.create_publisher(ParallelGripperCommand.Goal, self.gripper_topic, 1)
         self.joy_sub = self.create_subscription(sensor_msgs.msg.Joy, "joy", self.joy_callback, 10)
 
@@ -127,15 +120,19 @@ class TeleopTwist(TeleopBase):
         # Append inputs on each axis to the respective buffers
         buffer_zip = zip(self.buffer_list, command)
         [buffer.append(axis) for buffer, axis in buffer_zip]
-
-        # Obtain a moving average from each buffer and assign it to a new twist command
+        
+        # Obtain a moving average from each buffer
         mean_command = [np.mean(np.array(buffer)) for buffer in self.buffer_list]
-        twist = geometry_msgs.msg.Twist()
-        twist.linear.x, twist.linear.y, twist.linear.z, twist.angular.x, twist.angular.y, twist.angular.z = mean_command
+
+        # Assign a new twist command
+        twist = geometry_msgs.msg.TwistStamped()
+        twist.header.frame_id = self.frame_id
+        twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z, twist.twist.angular.x, twist.twist.angular.y, twist.twist.angular.z = mean_command
         self.twist_pub.publish(twist)
         
-        # Obtain a moving average from each buffer and assign it to a new wrench command
+        # Assign a new wrench command
         wrench = geometry_msgs.msg.WrenchStamped()
+        wrench.header.frame_id = self.frame_id
         wrench.wrench.force.x, wrench.wrench.force.y, wrench.wrench.force.z, wrench.wrench.torque.x, wrench.wrench.torque.y, wrench.wrench.torque.z = mean_command
         self.wrench_pub.publish(wrench)
         
@@ -144,8 +141,8 @@ class TeleopTwist(TeleopBase):
             gripper_command = ParallelGripperCommand.Goal()
             gripper_command.command.name = ["gripper_joint"]
             gripper_command.command.position = [(1 + input_dict["GRIPPER_CLOSE"] - input_dict["GRIPPER_OPEN"]) / 2] # 1 = closed, 0 = open
-            gripper_command.command.velocity = [0.1]
-            gripper_command.command.effort = [20]
+            gripper_command.command.velocity = [0.05] # m/s
+            gripper_command.command.effort = [20] # N
             self.gripper_pub.publish(gripper_command)
 
     def update(self, msg):

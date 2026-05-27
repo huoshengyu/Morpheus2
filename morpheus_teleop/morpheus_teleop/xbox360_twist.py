@@ -26,10 +26,10 @@ class TeleopTwistJoy(TeleopTwist):
         super().__init__()
 
         # Get twist topic
-        self.twist_topic = self.declare_parameter("~twist_topic", "twist_controller/command").value
+        self.twist_topic = self.declare_parameter("~twist_topic", "target_twist").value
 
         # Initialize twist command publishers and joystick subscriber
-        self.twist_pub = self.create_publisher(geometry_msgs.msg.Twist, self.twist_topic, 1)
+        self.twist_pub = self.create_publisher(geometry_msgs.msg.TwistStamped, self.twist_topic, 1)
         self.gripper_pub_robotiq = self.create_publisher(Robotiq2FGripper_robot_output, 'robotiq_2f_85_gripper/control', 1)
         self.gripper_pub_onrobot = self.create_publisher(RG2FTCommand, 'onrobot_rg2ft/command', 1)
         self.joy_sub = self.create_subscription(sensor_msgs.msg.Joy, "joy", self.callback, 10)
@@ -137,7 +137,7 @@ class TeleopTwistJoy(TeleopTwist):
         [buffer.append(axis) for buffer, axis in buffer_zip]
 
         # Obtain a moving average from each buffer and assign it to a new twist command
-        twist = geometry_msgs.msg.Twist()
+        twist = geometry_msgs.msg.TwistStamped()
         twist.linear.x, twist.linear.y, twist.linear.z, twist.angular.x, twist.angular.y, twist.angular.z = [sum(buffer) / max(1,len(buffer)) for buffer in self.buffer_list]
         self.twist_pub.publish(twist)
 

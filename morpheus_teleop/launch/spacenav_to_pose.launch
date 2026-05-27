@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="twist_topic" default="/twist_controller/command" />
+    <arg name="twist_topic" default="/target_twist" />
 
     <!-- Numerically integrate twists into a pose -->
     <node name="spacenav_to_pose" pkg="cartesian_controller_utilities" type="pose.py" output="screen">

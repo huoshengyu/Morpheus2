@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="twist_topic" default="/twist_controller/command" />
+    <arg name="twist_topic" default="/target_twist" />
 
     <!-- Republish twists as wrenches -->
     <node name="spacenav_to_wrench" pkg="cartesian_controller_utilities" type="converter.py" output="screen">

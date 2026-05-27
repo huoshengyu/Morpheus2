@@ -127,7 +127,7 @@
     <group if="$(eval arg('control_mode') == 'cartesian')"> 
         <!-- Launch xbox360_swap -->
         <include file="$(find morpheus_teleop)/launch/xbox360_swap.launch" ns="$(arg robot_name)">
-            <arg name="twist_topic"                         value="twist_controller/command"/>
+            <arg name="twist_topic"                         value="target_twist"/>
             <arg name="arm_group"                           value="interbotix_arm"/>
             <arg name="frame_id"                            value="vx300s/base_link"/>
             <arg name="end_effector"                        value="vx300s/ee_gripper_link"/>

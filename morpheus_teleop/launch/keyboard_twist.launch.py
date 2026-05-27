@@ -10,7 +10,7 @@ def generate_launch_description():
     ld = launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument(
             name='twist_topic',
-            default_value='/twist_controller/command'
+            default_value='/target_twist'
         ),
         launch_ros.actions.Node(
             package='teleop_twist_keyboard',

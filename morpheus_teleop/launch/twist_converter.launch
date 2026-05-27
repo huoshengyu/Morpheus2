@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="twist_topic"         default="twist_controller/command"/>
+    <arg name="twist_topic"         default="target_twist"/>
     <arg name="pose_topic"          default="target_frame"/>
     <arg name="wrench_topic"        default="target_wrench"/>
     <arg name="frame_id"            default="vx300s/base_link"/>

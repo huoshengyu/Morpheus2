@@ -24,12 +24,12 @@ class TwistToPose(Node):
         self.rate = self.create_rate(self.declare_parameter('publishing_rate', 125).value)
 
         # Get topics
-        self.twist_topic = self.declare_parameter("twist_topic", "twist_controller/command").value
+        self.twist_topic = self.declare_parameter("twist_topic", "target_twist").value
         self.wrench_topic = self.declare_parameter("wrench_topic", "target_wrench").value
         self.pose_topic = self.declare_parameter("pose_topic", "target_frame").value
 
         # Instantiate subscribers and publishers
-        self.twist_sub = self.create_subscription(geometry_msgs.msg.Twist, self.twist_topic, self.twist_callback, 10)
+        self.twist_sub = self.create_subscription(geometry_msgs.msg.TwistStamped, self.twist_topic, self.twist_callback, 10)
         self.wrench_pub = self.create_publisher(geometry_msgs.msg.WrenchStamped, self.wrench_topic, 1)
         self.pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, self.pose_topic, 1)
 
@@ -44,7 +44,7 @@ class TwistToPose(Node):
         self.current_time = self.get_clock().now()
 
         # Instantiate twist, wrench, and pose
-        self.twist = geometry_msgs.msg.Twist()
+        self.twist_stamped = geometry_msgs.msg.TwistStamped()
         self.wrench_stamped = geometry_msgs.msg.WrenchStamped()
         self.wrench_stamped.header.stamp        = self.current_time.to_msg()
         self.wrench_stamped.header.frame_id     = self.frame_id
@@ -88,18 +88,18 @@ class TwistToPose(Node):
         # Update pose based on linear velocity and dt
         self.pose_stamped.header.stamp          = self.current_time.to_msg()
         self.pose_stamped.header.frame_id       = self.frame_id
-        self.pose_stamped.pose                  = add_twist_to_pose(self.twist, transform_to_pose(tf_stamped.transform), dt=0.1)
+        self.pose_stamped.pose                  = add_twist_to_pose(self.twist_stamped.twist, transform_to_pose(tf_stamped.transform), dt=0.1)
 
     def update_wrench(self):
         # Update wrench based on twist
         self.wrench_stamped.header.stamp        = self.current_time.to_msg()
         self.wrench_stamped.header.frame_id     = self.frame_id
-        self.wrench_stamped.wrench              = twist_to_wrench(self.twist, scaling_factor=1)
+        self.wrench_stamped.wrench              = twist_to_wrench(self.twist_stamped.twist, scaling_factor=1)
 
     def twist_callback(self, msg):
         if self.initialized:
             try:
-                self.twist = msg
+                self.twist_stamped = msg
                 self.last_time = self.current_time
                 self.current_time = self.get_clock().now()
                 self.update_wrench()
