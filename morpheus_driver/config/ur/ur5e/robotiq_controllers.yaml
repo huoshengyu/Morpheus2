@@ -1,0 +1,15 @@
+# From PickNik Robotics Robotiq Gripper Driver
+controller_manager:
+  ros__parameters:
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    
+    # Jazzy and newer: parallel_gripper_action_controller replaces gripper_controllers package
+    robotiq_gripper_controller:
+      type: parallel_gripper_action_controller/GripperActionController
+    robotiq_activation_controller:
+      type: robotiq_controllers/RobotiqActivationController
+
+robotiq_activation_controller:
+  ros__parameters:
+    default: true

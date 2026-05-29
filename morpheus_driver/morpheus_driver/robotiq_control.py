@@ -11,10 +11,16 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from control_msgs.action import ParallelGripperCommand
+from sensor_msgs.msg import JointState
 from rclpy.executors import ExternalShutdownException
 import numpy as np
 import time
 
+GRIPPER_MIN_POS = 3                                 # Proportion out of 255 (0 = open, 255 = closed)
+GRIPPER_MAX_POS = 230                               # Proportion out of 255 (0 = open, 255 = closed)
+GRIPPER_MAX_SPEED = 0.150                           # mm/s
+GRIPPER_MAX_EFFORT = 235.0                          # N
+GRIPPER_RANGE = GRIPPER_MAX_POS - GRIPPER_MIN_POS   # Proportion out of 255 (0 = open, 255 = closed)
 
 class RobotiqGripperController(Node):
     """Controls the Robotiq 2f-85 gripper."""
@@ -22,34 +28,34 @@ class RobotiqGripperController(Node):
     def __init__(self, action_name="/robotiq_gripper_controller/gripper_cmd"):
         super().__init__('robotiq_gripper_controller')
         
+        # Action client for gripper control
         self.action_name = action_name
         self._action_client = ActionClient(self, ParallelGripperCommand, self.action_name)
         self._send_goal_future = None
         self._get_result_future = None
         self._goal_handle = None
         
-        # Parameters for gripper control
-        self.declare_parameter('max_position', 0.9)         # proportion (fully closed)
-        self.declare_parameter('min_position', 0.0)         # proportion (fully open)
-        self.declare_parameter('max_velocity', 0.150)          # m/s
-        self.declare_parameter('max_effort', 235.0)          # Newtons
-        
-        self.max_position = self.get_parameter('max_position').value
-        self.min_position = self.get_parameter('min_position').value
+        # Parameters for gripper safety limits
+        self.max_position = self.declare_parameter('max_position', 0.9).value       # proportion (1 = closed)
+        self.min_position = self.declare_parameter('min_position', 0.0).value       # proportion (0 = open)
         self.position_range = self.max_position - self.min_position
-        self.max_velocity = self.get_parameter('max_velocity').value
-        self.max_effort = self.get_parameter('max_effort').value
+        self.max_velocity = self.declare_parameter('max_velocity', 0.150).value     # mm/s, [0.0, 0.150]
+        self.max_effort = self.declare_parameter('max_effort', 40.0).value          # Newtons, [0.0, 235.0]
+        # Sanity check
+        assert self.position_range > 0, "max_position must be greater than min_position"
         
+        # State variables
         self.current_position = 0.0
         self.target_position = 0.0
         self.waiting_for_result = False
         
-        # Parameters for user commands
-        self.declare_parameter('gripper_command_topic', 'gripper_command')
-        
-        self.gripper_command_topic = self.get_parameter('gripper_command_topic').value
+        # Parameters for gripper control
+        self.gripper_command_topic = self.declare_parameter('gripper_command_topic', 'gripper_command').value
+        self.joint_state_topic = self.declare_parameter('joint_state_topic', 'joint_states').value
+        self.gripper_joint = self.declare_parameter('gripper_joint', 'gripper_joint').value
         
         self.create_subscription(ParallelGripperCommand.Goal, self.gripper_command_topic, self._gripper_command_callback, 10)
+        self.create_subscription(JointState, self.joint_state_topic, self._joint_state_callback, 10)
         
         self.get_logger().info('Robotiq Gripper Controller initialized')
         
@@ -58,40 +64,41 @@ class RobotiqGripperController(Node):
         self._action_client.wait_for_server()
         self.get_logger().info('Gripper action server is ready!')
     
-    def move_to_position(self, target_pos, velocity_factor=1.0, effort_factor=0.1, wait_for_result=False):
+    def move_to_position(self, position, velocity=None, effort=None, velocity_factor=1.0, effort_factor=1.0, wait_for_result=False):
         """
-        Move gripper to target position with dynamic velocity and effort via action.
+        Move gripper to target position with fixed or dynamic velocity and effort via action.
         
         Args:
-            target_pos: Target position (0.0 = open, max_position = closed) in meters
-            effort_factor: Effort (force/torque) multiplier (0.0 to 1.0)
-            velocity_factor: Velocity (speed) multiplier (0.0 to 1.0)
-            wait_for_result: Whether to block until goal completes
+            position:           Target position as a proportion     [0.0 = open, 1.0 = closed]
+            velocity:           Fixed velocity in meters/second     [0.0, 0.150]
+            effort:             Fixed effort in Newtons             [0.0, 235.0]
+            velocity_factor:    Dynamic velocity gain               [0.0, 1.0]
+            effort_factor:      Dynamic effort gain                 [0.0, 1.0]
+            wait_for_result:    Whether to block until goal completes
         
         Returns:
             Goal handle if wait_for_result=False, result otherwise
         """
         # Clamp target position
-        target_pos = max(self.min_position, min(self.max_position, target_pos))
-        self.target_position = target_pos
+        position = np.clip(position, self.min_position, self.max_position)
+        self.target_position = position
         
-        # Calculate dynamic velocity based on distance
-        displacement = target_pos - self.current_position
-        distance = abs(displacement)
-        distance_factor = min(1.0, distance / self.position_range)  # Ramp up velocity
+        # Calculate target displacement as a proportion of the position range
+        displacement = position - self.current_position
+        displacement_factor = np.clip(displacement / self.position_range, -1.0, 1.0)
         
         # Calculate dynamic effort based on state
-        effort = np.sign(displacement) * self._calculate_effort(distance_factor, effort_factor)
-        velocity = np.sign(displacement) * self._calculate_velocity(distance_factor, velocity_factor)
+        effort = self._calculate_effort(displacement_factor, effort_factor)
+        velocity = self._calculate_velocity(displacement_factor, velocity_factor)
         
-        # Publish commands
+        # Print commands
         self.get_logger().info(
-            f'Moving to {target_pos:.3f}m with velocity={velocity:.4f}m/s ({velocity_factor*100:.0f}%), '
+            f'Moving to {position:.3f} with velocity={velocity:.4f}mm/s ({velocity_factor*100:.0f}%), '
             f'effort={effort:.1f}N ({effort_factor*100:.0f}%)'
         )
         
         # Create the goal
-        goal = self.get_goal(name="robotiq_85_left_knuckle_joint", position=target_pos, velocity=velocity, effort=effort)
+        goal = self.get_goal(name=self.gripper_joint, position=position, velocity=velocity, effort=effort)
         
         # Send the goal
         send_goal_future = self.send_goal(goal, wait_for_result)
@@ -143,14 +150,14 @@ class RobotiqGripperController(Node):
         result = future.result().result
         try:
             self.get_logger().info(
-                f'Goal completed | Position reached: {np.array2string(np.array(result.state.position), precision=3)}m | '
-                f'Effort applied: {np.array2string(np.array(result.state.effort), precision=1)}N | '
+                f'Goal completed | Position: {np.array2string(np.array(result.state.position), precision=3)} | '
+                f'Velocity: {np.array2string(np.array(result.state.velocity), precision=3)}mm/s | '
+                f'Effort: {np.array2string(np.array(result.state.effort), precision=1)}N | '
                 f'Stalled: {result.stalled} | '
                 f'Reached goal: {result.reached_goal}'
             )
-            self.current_position = result.state.position[0]
         except Exception as e:
-            self.get_logger().warn(f'Error processing result: {e}')
+            self.get_logger().debug(f'Error processing result: {e}')
         self.waiting_for_result = False
         return result
     
@@ -159,64 +166,61 @@ class RobotiqGripperController(Node):
         feedback = feedback_msg.feedback
         try:
             self.get_logger().info(
-                f'Feedback: Position={np.array2string(np.array(feedback.state.position), precision=3)}m | '
+                f'Feedback: Position={np.array2string(np.array(feedback.state.position), precision=3)} | '
+                f'Velocity={np.array2string(np.array(feedback.state.velocity), precision=3)}mm/s | '
                 f'Effort={np.array2string(np.array(feedback.state.effort), precision=1)}N'
             )
-            self.current_position = feedback.state.position[0]
         except Exception as e:            
-            self.get_logger().warn(f'Error processing feedback: {e}')
+            self.get_logger().debug(f'Error processing feedback: {e}')
         return feedback
     
-    def _calculate_velocity(self, distance_factor, velocity_factor):
+    def _calculate_velocity(self, displacement_factor, velocity_factor):
         """
-        Dynamically calculate velocity based on distance and velocity factor.
+        Dynamically calculate velocity based on displacement factor and velocity factor.
         - Slower when close to target (precision)
         - Faster when far (efficiency)
-        """
-        # Quadratic ramp for smooth motion
-        ramp = distance_factor ** 0.5  # Square root for gentler acceleration
-        dynamic_velocity = self.max_velocity * ramp * velocity_factor
-        return np.clip(dynamic_velocity, 0.01, self.max_velocity)
-    
-    def _calculate_effort(self, distance_factor, effort_factor):
-        """
-        Dynamically calculate effort based on distance and effort factor.
-        - Lower effort when approaching (safety)
-        - Higher effort at end position (gripping)
-        """
-        # Inverse relationship: high effort when gripper closes (low distance)
-        if distance_factor > 0.5:
-            # Approaching phase: moderate effort
-            effort_factor_dynamic = 0.4
-        elif distance_factor > 0.2:
-            # Intermediate phase: ramp up effort
-            effort_factor_dynamic = 0.6 + 0.2 * (1.0 - distance_factor) / 0.3
-        else:
-            # Final phase: maximum grip effort
-            effort_factor_dynamic = 1.0
         
-        dynamic_effort = self.max_effort * effort_factor_dynamic * effort_factor
-        return np.clip(dynamic_effort, 0.0, self.max_effort)
+        Uses a piecewise linear ramp inspired by flight joysticks:
+         Van Baelen et al. (2021). Flying by Feeling: Communicating Flight Envelope Protection through Haptic Feedback. International Journal of Human-Computer Interaction, 37(7), 655-665. https://doi.org/10.1080/10447318.2021.1890489
+        """
+        ramp = self._calculate_ramp(displacement_factor)
+        velocity = np.sign(displacement_factor) * self.max_velocity * ramp * velocity_factor
+        return np.clip(velocity, -self.max_velocity, self.max_velocity)
+    
+    def _calculate_effort(self, displacement_factor, effort_factor):
+        """
+        Dynamically calculate effort based on displacement factor and effort factor.
+        - Lower effort when opening (safety)
+        - Higher effort when closing (gripping)
+        """
+        ramp = self._calculate_ramp(displacement_factor)
+        if displacement_factor < 0: ramp = ramp * 0.5  # Reduce effort when opening for safety
+        effort = np.sign(displacement_factor) * self.max_effort * ramp * effort_factor
+        return np.clip(effort, -self.max_effort, self.max_effort)
+    
+    def _calculate_ramp(self, displacement_factor):
+        """
+        Calculate a ramp factor based on displacement for smooth control.
+        Uses a piecewise linear ramp inspired by flight joysticks:
+        Van Baelen et al.(2021). Flying by Feeling: Communicating Flight Envelope Protection through Haptic Feedback. International Journal of Human-Computer Interaction, 37(7), 655-665. https://doi.org/10.1080/10447318.2021.1890489
+        """
+        ramp_shallow = abs(displacement_factor) * 0.5       # [0.00, 0.00] to [0.50, 0.25]
+        ramp_steep = abs(displacement_factor) * 1.5 - 0.5   # [0.50, 0.25] to [1.00, 1.00]
+        return max(ramp_shallow, ramp_steep)
 
-    def open_gripper(self, velocity_factor=1.0, effort_factor=0.1, wait_for_result=False):
-        """Open gripper fully."""
+    def open_gripper(self, velocity=None, effort=None, velocity_factor=1.0, effort_factor=1.0, wait_for_result=False):
+        """Open gripper with controlled velocity and effort."""
         self.get_logger().info('Opening gripper')
-        return self.move_to_position(self.min_position, velocity_factor=velocity_factor, effort_factor=effort_factor, wait_for_result=wait_for_result)
+        return self.move_to_position(self.min_position, velocity=velocity, effort=effort, velocity_factor=velocity_factor, effort_factor=effort_factor, wait_for_result=wait_for_result)
     
-    def close_gripper(self, velocity_factor=1.0, effort_factor=0.1, wait_for_result=False):
-        """Close gripper with controlled effort."""
+    def close_gripper(self, velocity=None, effort=None, velocity_factor=1.0, effort_factor=1.0, wait_for_result=False):
+        """Close gripper with controlled velocity and effort."""
         self.get_logger().info('Closing gripper')
-        return self.move_to_position(self.max_position, velocity_factor=velocity_factor, effort_factor=effort_factor, wait_for_result=wait_for_result)
+        return self.move_to_position(self.max_position, velocity=velocity, effort=effort, velocity_factor=velocity_factor, effort_factor=effort_factor, wait_for_result=wait_for_result)
     
-    def grip_object(self, grip_effort=150.0, velocity_factor=1.0,wait_for_result=False):
-        """
-        Grip object with specific effort.
-        
-        Args:
-            grip_effort: Target grip effort in Newtons
-        """
-        effort_factor = grip_effort / self.max_effort
-        return self.close_gripper(effort_factor=min(1.0, effort_factor), velocity_factor=velocity_factor,wait_for_result=wait_for_result)
+    def grip_object(self, effort=40.0, velocity_factor=1.0, wait_for_result=False):
+        """Grip object with specific effort."""
+        return self.close_gripper(effort=effort, velocity_factor=velocity_factor, wait_for_result=wait_for_result)
     
     def cancel_goal(self):
         """Cancel current goal."""
@@ -237,7 +241,7 @@ class RobotiqGripperController(Node):
         """Handle incoming gripper command messages."""
         command = msg.command
         try:
-            self.get_logger().info(f'Received gripper command: position={command.position[0]:.3f}m, velocity={command.velocity[0]:.4f}m/s, effort={command.effort[0]:.1f}N')
+            self.get_logger().info(f'Received gripper command: position={command.position[0]:.3f}m, velocity={command.velocity[0]:.3f}mm/s, effort={command.effort[0]:.1f}N')
             self.move_to_position(
                 target_pos=command.position[0],
                 velocity_factor=command.velocity[0] / self.max_velocity if self.max_velocity > 0 else 1.0,
@@ -246,6 +250,16 @@ class RobotiqGripperController(Node):
             )
         except Exception as e:
             self.get_logger().warn(f'Error processing gripper command: {e}')
+
+    def _joint_state_callback(self, msg):
+        """Update current position from joint state messages."""
+        try:
+            if self.gripper_joint in msg.name:
+                index = msg.name.index(self.gripper_joint)
+                self.current_position = msg.position[index]
+                self.get_logger().debug(f'Updated current position from joint state: {self.current_position:.3f}m')
+        except Exception as e:
+            self.get_logger().warn(f'Error processing joint state message: {e}')
 
 
 def main(args=None):
@@ -270,7 +284,7 @@ def main(args=None):
         
         # 2. Grip with specific effort
         print("\n[2] Gripping object with 25N effort...")
-        goal_future = controller.grip_object(grip_effort=25.0, velocity_factor=0.6, wait_for_result=wait_for_result)
+        goal_future = controller.grip_object(effort=25.0, velocity_factor=0.6, wait_for_result=wait_for_result)
         while controller.waiting_for_result:
             time.sleep(0.01)
             rclpy.spin_once(controller)
@@ -287,7 +301,7 @@ def main(args=None):
         # 4. Dynamic sequence: approach slowly, grip firmly
         print("\n[4] Approach slowly then grip firmly...")
         goal_future = controller.move_to_position(
-            controller.max_position * 0.7,
+            controller.max_position * 0.5,
             effort_factor=0.1,   # Light approach
             velocity_factor=0.3, # Slow approach
             wait_for_result=wait_for_result
@@ -310,7 +324,12 @@ def main(args=None):
         
         # 5. Release
         print("\n[5] Final release...")
-        goal_future = controller.open_gripper(velocity_factor=1.0, wait_for_result=wait_for_result)
+        goal_future = controller.move_to_position(
+            controller.max_position * 0.5,
+            effort_factor=0.1,   # Light approach
+            velocity_factor=0.3, # Slow approach
+            wait_for_result=wait_for_result
+        )
         while controller.waiting_for_result:
             time.sleep(0.01)
             rclpy.spin_once(controller)

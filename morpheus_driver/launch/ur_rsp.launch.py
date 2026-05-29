@@ -46,10 +46,12 @@ from launch.substitutions import (
 def generate_launch_description():
     ur_type = LaunchConfiguration("ur_type")
     robot_ip = LaunchConfiguration("robot_ip")
+    # End effector arguments
+    ee_type = LaunchConfiguration("ee_type")
+    # General arguments
     safety_limits = LaunchConfiguration("safety_limits")
     safety_pos_margin = LaunchConfiguration("safety_pos_margin")
     safety_k_position = LaunchConfiguration("safety_k_position")
-    # General arguments
     kinematics_params_file = LaunchConfiguration("kinematics_params_file")
     physical_params_file = LaunchConfiguration("physical_params_file")
     visual_params_file = LaunchConfiguration("visual_params_file")
@@ -184,6 +186,9 @@ def generate_launch_description():
             "trajectory_port:=",
             trajectory_port,
             " ",
+            "ee_type:=",
+            ee_type,
+            " ",
         ]
     )
     robot_description = {
@@ -195,7 +200,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "ur_type",
-            description="Typo/series of used UR robot.",
+            description="Type/series of used UR robot.",
             choices=[
                 "ur3",
                 "ur5",
@@ -220,6 +225,18 @@ def generate_launch_description():
             "robot_ip", 
             default_value="0.0.0.0",
             description="IP address by which the robot can be reached."
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "ee_type",
+            description="Type/series of end effector.",
+            choices=[
+                "",
+                "robotiq",
+                "onrobot",
+            ],
+            default_value="",
         )
     )
     declared_arguments.append(

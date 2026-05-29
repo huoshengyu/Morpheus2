@@ -210,6 +210,7 @@ def launch_setup(context):
         "force_torque_sensor_broadcaster",
         "tcp_pose_broadcaster",
         "ur_configuration_controller",
+        "finger_width_controller",
     ]
     controllers_inactive = [
         "scaled_joint_trajectory_controller",
@@ -304,7 +305,7 @@ def generate_launch_description():
                 "robotiq",
                 "onrobot",
             ],
-            default_value="",
+            default_value="onrobot",
         )
     )
     declared_arguments.append(
@@ -333,7 +334,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "controllers_file",
             default_value=PathJoinSubstitution(
-                [FindPackageShare("morpheus_driver"), "config", "ur", "ur5e","ur_controllers.yaml"]
+                [FindPackageShare("morpheus_driver"), "config", "ur", "ur5e","ur_onrobot_controllers.yaml"]
             ),
             description="YAML file with the controllers configuration.",
         )

@@ -63,13 +63,9 @@ controller_manager:
     # Note: On Jazzy this is the default behavior, anyway. For Rolling / Kilted this defaults to
     # true.
     enforce_command_limits: false
-    
-    # From robotiq_description package
-    # Jazzy and newer: parallel_gripper_action_controller replaces gripper_controllers package
-    robotiq_gripper_controller:
-      type: parallel_gripper_action_controller/GripperActionController
-    robotiq_activation_controller:
-      type: robotiq_controllers/RobotiqActivationController
+
+    finger_width_controller:
+      type: position_controllers/JointGroupPositionController
 
 speed_scaling_state_broadcaster:
   ros__parameters:
@@ -325,26 +321,7 @@ cartesian_motion_controller:
         rot_y: {p: 0.5}
         rot_z: {p: 0.5}
 
-# From robotiq_description package
-robotiq_gripper_controller:
+finger_width_controller:
   ros__parameters:
-    joint: robotiq_85_left_knuckle_joint
-
-    # Enable effort control (replacement for use_effort_interface)
-    # max_effort_interface: "robotiq_85_left_knuckle_joint/effort"
-    # max_effort: 50.0   # TODO tune
-
-    # Enable velocity/speed control (replacement for use_speed_interface)
-    # max_velocity_interface: "robotiq_85_left_knuckle_joint/velocity"
-    # max_velocity: 0.5    # TODO tune
-
-    # Optional (recommended)
-    state_interfaces: ["position", "velocity"]
-    allow_stalling: true
-    stall_timeout: 0.05
-    goal_tolerance: 0.02
-
-# From robotiq_description package
-robotiq_activation_controller:
-  ros__parameters:
-    default: true
+    joints:
+      - $(var tf_prefix)finger_width

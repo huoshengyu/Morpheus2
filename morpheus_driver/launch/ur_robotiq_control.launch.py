@@ -52,7 +52,10 @@ def launch_setup(context):
     # UR specific arguments
     ur_type = LaunchConfiguration("ur_type")
     robot_ip = LaunchConfiguration("robot_ip")
+    # End effector arguments
+    ee_type = LaunchConfiguration("ee_type")
     # General arguments
+    update_rate_config_file = LaunchConfiguration("update_rate_config_file")
     controllers_file = LaunchConfiguration("controllers_file")
     description_launchfile = LaunchConfiguration("description_launchfile")
     description_file = LaunchConfiguration("description_file")
@@ -73,7 +76,7 @@ def launch_setup(context):
         package="controller_manager",
         executable="ros2_control_node",
         parameters=[
-            LaunchConfiguration("update_rate_config_file"),
+            update_rate_config_file,
             ParameterFile(controllers_file, allow_substs=True),
             # We use the tf_prefix as substitution in there, so that's why we keep it as an
             # argument for this launchfile
@@ -241,6 +244,7 @@ def launch_setup(context):
         launch_arguments={
             "robot_ip": robot_ip,
             "ur_type": ur_type,
+            "ee_type": ee_type,
             "description_file": description_file,
         }.items(),
     )
@@ -291,6 +295,18 @@ def generate_launch_description():
             "robot_ip", 
             default_value="0.0.0.0",
             description="IP address by which the robot can be reached."
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "ee_type",
+            description="Type/series of end effector.",
+            choices=[
+                "",
+                "robotiq",
+                "onrobot",
+            ],
+            default_value="robotiq",
         )
     )
     declared_arguments.append(
