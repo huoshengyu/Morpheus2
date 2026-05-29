@@ -9,7 +9,7 @@
 	url = https://github.com/tonydle/OnRobot_ROS2_Description
 [submodule "submodules/ros2_robotiq_gripper"]
 	path = submodules/ros2_robotiq_gripper
-	url = https://github.com/PickNikRobotics/ros2_robotiq_gripper/
+	url = https://github.com/huoshengyu/ros2_robotiq_gripper
 [submodule "submodules/cartesian_controllers"]
 	path = submodules/cartesian_controllers
 	url = https://github.com/fzi-forschungszentrum-informatik/cartesian_controllers
