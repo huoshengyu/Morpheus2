@@ -89,7 +89,7 @@ class AnalysisNode : public rclcpp::Node
 
         // Need some variables to be global
 
-        AnalysisNode(int argc, char** argv) : Node("analysis_node")
+        AnalysisNode() : Node("analysis_node")
         {
             // Select links to track
             g_robot_links = A_BOT_LINK_VECTOR;
@@ -160,23 +160,18 @@ class AnalysisNode : public rclcpp::Node
             return result;
         }
 
-        static void emptyCallback(std_msgs::msg::String msg)
-        {
-            
-        }
-
 };
 
 int main(int argc, char** argv)
 {
-    AnalysisNode analysis_node(argc, argv);
+    AnalysisNode analysis_node;
     if (argc == 1)
     {
         RCLCPP_INFO(analysis_node.get_logger(),"No command line arguments given. Please provide data filenames");
     }
     else
     {
-        for (std::size_t i = 1; i < argc; ++i)
+        for (int i = 1; i < argc; ++i)
         {
             std::string filename = argv[i];
             analysis_node.read(filename);

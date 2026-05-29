@@ -134,10 +134,10 @@ class SpawnerNode : public rclcpp::Node
       RCLCPP_INFO_STREAM(this->get_logger(), "SpawnerNode ready");
     }
 
-    moveit_msgs::msg::CollisionObject create(std::string mesh_path, 
-          std::vector<double> scale = {1, 1, 1},
-          std::vector<double> position = {0, 0, 0},
-          std::vector<double> quaternion = {0, 0, 0, 1})
+    moveit_msgs::msg::CollisionObject create(const std::string& mesh_path, 
+          const Eigen::Vector3d& scale = {1, 1, 1},
+          const Eigen::Vector3d& position = {0, 0, 0},
+          const Eigen::Quaterniond& quaternion = {1, 0, 0, 0})
     {
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Creating object");
@@ -151,7 +151,7 @@ class SpawnerNode : public rclcpp::Node
       RCLCPP_INFO_STREAM(this->get_logger(), position_ss.str());
       std::stringstream quaternion_ss;
       quaternion_ss << "Quaternion:";
-      for (double val : quaternion)
+      for (double val : quaternion.coeffs())
       {
         quaternion_ss << " ";
         quaternion_ss << std::to_string(val);
@@ -159,48 +159,53 @@ class SpawnerNode : public rclcpp::Node
       RCLCPP_INFO_STREAM(this->get_logger(), quaternion_ss.str());
 
       // Create collision object
-      moveit_msgs::msg::CollisionObject collision_object =
-        create(mesh_path,
-              scale,
-              position,
-              quaternion);
+      moveit_msgs::msg::CollisionObject collision_object;
+      collision_object.header.frame_id = g_move_group_interface->getPlanningFrame();
+      collision_object.header.stamp = this->now();
+      collision_object.id = "collision_object_" + std::to_string(g_attached_collision_object_vector.size()); // Unique id for each object, based on number of objects already in vector
+      
+      shapes::Mesh* mesh = shapes::createMeshFromResource(mesh_path, scale);
+      shapes::ShapeMsg shape_msg;
+      shapes::constructMsgFromShape(mesh, shape_msg);
+      shape_msgs::msg::Mesh mesh_msg = boost::get<shape_msgs::msg::Mesh>(shape_msg);
+      collision_object.meshes.push_back(mesh_msg);
+
+      collision_object.pose.position = tf2::toMsg(position);
+      collision_object.pose.orientation = tf2::toMsg(quaternion);
+
+      collision_object.operation = collision_object.ADD;
 
       RCLCPP_INFO_STREAM(this->get_logger(), "Creating object complete");
 
       return collision_object;
     }
 
-    void save(moveit_msgs::msg::CollisionObject collision_object)
+    void save(const moveit_msgs::msg::CollisionObject& collision_object)
     {
       // Create attached collision object to be saved
       moveit_msgs::msg::AttachedCollisionObject attached_collision_object;
       attached_collision_object.object.header = collision_object.header;
       attached_collision_object.object = collision_object;
-      attached_collision_object.link_name = "camera_link";
+      attached_collision_object.link_name = "tool0";
       attached_collision_object.object.operation = collision_object.ADD;
 
       // Save both versions of object to vector (attached object contains collision object)
       g_attached_collision_object_vector.push_back(attached_collision_object);
     }
 
-    void spawn(moveit_msgs::msg::CollisionObject collision_object)
+    void spawn(const moveit_msgs::msg::CollisionObject& collision_object)
     {
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Spawning object");
 
-      // Create vector of objects to be added
-      std::vector<moveit_msgs::msg::CollisionObject> collision_object_vector;
-      collision_object_vector.push_back(collision_object);
-
       // Publish planning scene diff
-      g_planning_scene_interface->addCollisionObjects(collision_object_vector);
-      //publish(collision_object);
+      g_planning_scene_interface->addCollisionObjects({collision_object});
 
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Spawning object complete");
     }
 
-    void spawn(int index = 0)
+    void spawn(const int& index = 0)
     {
       // Select collision object to spawn
       moveit_msgs::msg::CollisionObject collision_object = g_attached_collision_object_vector[index].object;
@@ -209,24 +214,20 @@ class SpawnerNode : public rclcpp::Node
       spawn(collision_object);
     }
 
-    void despawn(moveit_msgs::msg::CollisionObject collision_object)
+    void despawn(const moveit_msgs::msg::CollisionObject& collision_object)
     {
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Despawning object");
 
-      // Create vector of ids to be removed
-      std::vector<std::string> object_ids;
-      object_ids.push_back(collision_object.id);
-
       // Publish planning scene diff
-      g_planning_scene_interface->removeCollisionObjects(object_ids);
+      g_planning_scene_interface->removeCollisionObjects({collision_object.id});
       //publish(collision_object);
 
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Despawning object complete");
     }
 
-    void despawn(int index = 0)
+    void despawn(const int& index = 0)
     {
       // Select collision object to despawn
       moveit_msgs::msg::CollisionObject collision_object = g_attached_collision_object_vector[index].object;
@@ -235,15 +236,14 @@ class SpawnerNode : public rclcpp::Node
       despawn(collision_object);
     }
 
-    void attach(moveit_msgs::msg::AttachedCollisionObject attached_collision_object, std::string link_name = "camera_link")
+    void attach(const moveit_msgs::msg::AttachedCollisionObject& attached_collision_object, const std::string& link_name = "tool0")
     {
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Attaching object");
       
-      // Instantiate message strictly for attaching object, to avoid resetting whole object
-      moveit_msgs::msg::AttachedCollisionObject attach_object;
-      attach_object.object.header = attached_collision_object.object.header;
-      attach_object.object.id = attached_collision_object.object.id;
+      // Initialize new message to avoid altering the original
+      moveit_msgs::msg::AttachedCollisionObject attach_object(attached_collision_object);
+      attach_object.object.header.stamp = this->now();
       attach_object.link_name = link_name;
       attach_object.object.operation = attached_collision_object.object.ADD;
       
@@ -254,7 +254,7 @@ class SpawnerNode : public rclcpp::Node
       RCLCPP_INFO_STREAM(this->get_logger(), "Attaching object complete");
     }
 
-    void attach(int index = 0, std::string link_name = "camera_link")
+    void attach(const int& index = 0, const std::string& link_name = "tool0")
     {
       // Select attached collision object
       moveit_msgs::msg::AttachedCollisionObject attached_collision_object = g_attached_collision_object_vector[index];
@@ -263,9 +263,9 @@ class SpawnerNode : public rclcpp::Node
       attach(attached_collision_object, link_name);
     }
 
-    void attach_fake(moveit_msgs::msg::AttachedCollisionObject attached_collision_object, std::string link_name = "camera_link")
+    void attach_fake(const moveit_msgs::msg::AttachedCollisionObject& attached_collision_object, const std::string& link_name = "tool0")
     {
-      // Stopgap soltution for attached collision object geometry being ignored by collision engine
+      // Stopgap solution for attached collision object geometry being ignored by collision engine
       // Marks collision object for continuous position updating
       // Publishes objects so that collision node can track whether they are in robot or not
 
@@ -285,21 +285,21 @@ class SpawnerNode : public rclcpp::Node
       relative_pose = tf2::toMsg(relative_transform);
 
       // Modify object to be in frame of attach link
-      moveit_msgs::msg::AttachedCollisionObject attached_collision_object_fake;
+      moveit_msgs::msg::AttachedCollisionObject attached_collision_object_fake(attached_collision_object);
+      attached_collision_object_fake.object.header.stamp = this->now();
       attached_collision_object_fake.link_name = link_name;
-      attached_collision_object_fake.object = attached_collision_object.object;
       attached_collision_object_fake.object.header.frame_id = link_name;
       attached_collision_object_fake.object.pose = relative_pose;
-
-      // Save attached collision object for future updating of object position
       attached_collision_object_fake.object.operation = attached_collision_object_fake.object.ADD;
+
+      // Update planning scene
       planning_scene_monitor::LockedPlanningSceneRW(g_planning_scene_fake_monitor)->processAttachedCollisionObjectMsg(attached_collision_object_fake);
 
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Attaching object complete");
     }
 
-    void attach_fake(int index = 0, std::string link_name = "camera_link")
+    void attach_fake(const int& index = 0, const std::string& link_name = "tool0")
     {
       // Select attached collision object
       moveit_msgs::msg::AttachedCollisionObject attached_collision_object = g_attached_collision_object_vector[index];
@@ -308,17 +308,16 @@ class SpawnerNode : public rclcpp::Node
       attach_fake(attached_collision_object, link_name);
     }
 
-    void detach(moveit_msgs::msg::AttachedCollisionObject attached_collision_object, std::string link_name = "camera_link")
+    void detach(const moveit_msgs::msg::AttachedCollisionObject& attached_collision_object)
     {
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Detaching object");
       
-      // Instantiate message strictly for detaching object, to avoid resetting whole object
-      moveit_msgs::msg::AttachedCollisionObject detach_object;
-      detach_object.object.id = attached_collision_object.object.id;
-      detach_object.link_name = link_name;
+      // Initialize new message to avoid altering the original
+      moveit_msgs::msg::AttachedCollisionObject detach_object(attached_collision_object);
+      detach_object.object.header.stamp = this->now();
       detach_object.object.operation = attached_collision_object.object.REMOVE;
-      
+
       // Publish planning scene diff
       publish(detach_object);
 
@@ -326,7 +325,7 @@ class SpawnerNode : public rclcpp::Node
       RCLCPP_INFO_STREAM(this->get_logger(), "Detaching object complete");
     }
 
-    void detach(int index = 0, std::string link_name = "camera_link")
+    void detach(const int& index = 0)
     {
       // Select attached collision object
       moveit_msgs::msg::AttachedCollisionObject attached_collision_object = g_attached_collision_object_vector[index];
@@ -335,35 +334,34 @@ class SpawnerNode : public rclcpp::Node
       detach(attached_collision_object);
     }
 
-    void detach_fake(moveit_msgs::msg::AttachedCollisionObject attached_collision_object, std::string link_name = "camera_link")
+    void detach_fake(const moveit_msgs::msg::AttachedCollisionObject& attached_collision_object)
     {
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Detaching object");
       
-      // Instantiate message strictly for detaching object, to avoid resetting whole object
-      moveit_msgs::msg::AttachedCollisionObject detach_object;
-      detach_object.object.id = attached_collision_object.object.id;
-      detach_object.link_name = link_name;
+      // Initialize new message to avoid altering the original
+      moveit_msgs::msg::AttachedCollisionObject detach_object(attached_collision_object);
+      detach_object.object.header.stamp = this->now();
       detach_object.object.operation = attached_collision_object.object.REMOVE;
 
-      // Save attached collision object for future updating of object position
+      // Update planning scene
       planning_scene_monitor::LockedPlanningSceneRW(g_planning_scene_fake_monitor)->processAttachedCollisionObjectMsg(detach_object);
 
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Detaching object complete");
     }
 
-    void detach_fake(int index = 0, std::string link_name = "camera_link")
+    void detach_fake(const int& index = 0)
     {
       // Select attached collision object
       moveit_msgs::msg::AttachedCollisionObject attached_collision_object = g_attached_collision_object_vector[index];
       
       // Call version of detach() that uses specific collision object
-      detach_fake(attached_collision_object, link_name);
+      detach_fake(attached_collision_object);
     }
 
     // Publish an incoming collision object message without edits
-    void publish(moveit_msgs::msg::CollisionObject collision_object)
+    void publish(const moveit_msgs::msg::CollisionObject& collision_object)
     {
       // Publish planning scene diff
       moveit_msgs::msg::PlanningScene planning_scene;
@@ -380,7 +378,7 @@ class SpawnerNode : public rclcpp::Node
       // locked_planning_scene->usePlanningSceneMsg(planning_scene);
     }
 
-    void publish(moveit_msgs::msg::CollisionObject collision_object, moveit_msgs::msg::AttachedCollisionObject attached_collision_object)
+    void publish(const moveit_msgs::msg::CollisionObject& collision_object, const moveit_msgs::msg::AttachedCollisionObject& attached_collision_object)
     {
       // Publish planning scene diff
       moveit_msgs::msg::PlanningScene planning_scene;
@@ -400,7 +398,7 @@ class SpawnerNode : public rclcpp::Node
       
     }
 
-    void publish(moveit_msgs::msg::AttachedCollisionObject attached_collision_object)
+    void publish(const moveit_msgs::msg::AttachedCollisionObject& attached_collision_object)
     { 
       // Publish planning scene diff
       moveit_msgs::msg::PlanningScene planning_scene;
@@ -460,11 +458,11 @@ class SpawnerNode : public rclcpp::Node
     }
 
     // Define function to retrieve a set of rosparams from under a preset name
-    void get_preset_params(std::string preset_name,
-                            std::string &mesh_path,
-                            std::vector<double> &scale_vec,
-                            std::vector<double> &pos_vec,
-                            std::vector<double> &quat_vec)
+    void get_params_from_preset(const std::string& preset_name,
+                            std::string& mesh_path,
+                            Eigen::Vector3d& scale,
+                            Eigen::Vector3d& position,
+                            Eigen::Quaterniond& quaternion)
     {
       // Namespace containing collision object preset params
       std::string prefix = "/collision_object_presets/";
@@ -474,44 +472,42 @@ class SpawnerNode : public rclcpp::Node
       // Get name of the param which holds the mesh path
       std::string mesh_id = preset_path + "/mesh_path";
       // Retrieve the mesh path from param
-      this->get_parameter(mesh_id, mesh_path);
+      RCLCPP_INFO(this->get_logger(), "Requesting mesh param: %s", mesh_id.c_str());
+      mesh_path = this->get_parameter(mesh_id).as_string();
+      RCLCPP_INFO(this->get_logger(), "Mesh path: %s", mesh_path.c_str());
       // Specify that the path is relative to the morpheus_description package
-      RCLCPP_INFO_STREAM(this->get_logger(), "Requesting mesh param: " + mesh_id);
       mesh_path = "file://" + ament_index_cpp::get_package_share_directory("morpheus_description") + mesh_path;
-      RCLCPP_INFO_STREAM(this->get_logger(), "Mesh path: " + mesh_path);
 
       // Get the name of the param which holds the scale
       std::string scale_id = preset_path + "/scale";
       //Retrieve the scale from param
-      RCLCPP_INFO_STREAM(this->get_logger(), "Requesting scale param: " + scale_id);
-      this->get_parameter(scale_id, scale_vec);
-      RCLCPP_INFO_STREAM(this->get_logger(), "Scale map: {{x, " + std::to_string(scale_vec[0]) + "}, {y, " + std::to_string(scale_vec[1]) + "}, {z, " + std::to_string(scale_vec[2]) + "}}");
+      RCLCPP_INFO(this->get_logger(), "Requesting scale param: %s", scale_id.c_str());
+      std::vector<double> scale_param;
+      scale = Eigen::Vector3d(this->get_parameter(scale_id).as_double_array().data());
+      RCLCPP_INFO(this->get_logger(), "Scale: [%f, %f, %f]", scale[0], scale[1], scale[2]);
 
       // Get the names of the params holding the object's coordinates
-      std::string pos_id = preset_path + "/position";
-      std::string quat_id = preset_path + "/quaternion";
+      std::string position_id = preset_path + "/position";
+      std::string quaternion_id = preset_path + "/quaternion";
       // Retrieve the coordinates from param
-      RCLCPP_INFO_STREAM(this->get_logger(), "Requesting position param: " + pos_id);
-      this->get_parameter(pos_id, pos_vec);
-      RCLCPP_INFO_STREAM(this->get_logger(), "Position map: {{x, " + std::to_string(pos_vec[0]) + "}, {y, " + std::to_string(pos_vec[1]) + "}, {z, " + std::to_string(pos_vec[2]) + "}}");
-      RCLCPP_INFO_STREAM(this->get_logger(), "Requesting quaternion param: " + quat_id);
-      this->get_parameter(quat_id, quat_vec);
-      RCLCPP_INFO_STREAM(this->get_logger(), "Quaternion map: {{x, " + std::to_string(quat_vec[0]) + "}, {y, " + std::to_string(quat_vec[1]) + "}, {z, " + std::to_string(quat_vec[2]) + "}, {w, " + std::to_string(quat_vec[3]) + "}}");
+      RCLCPP_INFO(this->get_logger(), "Requesting position param: %s", position_id.c_str());
+      position = Eigen::Vector3d(this->get_parameter(position_id).as_double_array().data());
+      RCLCPP_INFO(this->get_logger(), "Position: [%f, %f, %f]", position[0], position[1], position[2]);
+      RCLCPP_INFO(this->get_logger(), "Requesting quaternion param: %s", quaternion_id.c_str());
+      quaternion = Eigen::Map<const Eigen::Quaternion<double>, 0>(this->get_parameter(quaternion_id).as_double_array().data());
+      RCLCPP_INFO(this->get_logger(), "Quaternion: [%f, %f, %f, %f]", quaternion.coeffs()[0], quaternion.coeffs()[1], quaternion.coeffs()[2], quaternion.coeffs()[3]);
     }
 
-    void spawn_from_preset(std::string preset_name)
+    void spawn_from_preset(const std::string& preset_name)
     {
-      // Instantiate a string to hold the mesh path
+      // Initialize variables to hold the retrieved params
       std::string mesh_path = "";
-      // Instantiate a map to hold the scale
-      std::vector<double> scale_vec;
-      // Instantiate maps to hold the coordinates
-      std::vector<double> pos_vec, quat_vec;
+      Eigen::Vector3d scale, position;
+      Eigen::Quaterniond quaternion;
+      get_params_from_preset(preset_name, mesh_path, scale, position, quaternion);
 
-      get_preset_params(preset_name, mesh_path, scale_vec, pos_vec, quat_vec);
-
-      // Create the collision object (and save it to g_attached_collision_object_vector)
-      moveit_msgs::msg::CollisionObject collision_object = create(mesh_path, scale_vec, pos_vec, quat_vec);
+      // Create the collision object
+      moveit_msgs::msg::CollisionObject collision_object = create(mesh_path, scale, position, quaternion);
 
       // Save the object so the node has a persistent object to recall by index
       save(collision_object);
@@ -591,7 +587,8 @@ class SpawnerNode : public rclcpp::Node
     {
       // Just publish the message
       publish(req->data);
-      return true;
+      publish(res->data);
+      return static_cast<bool>(res);
     }
 
     // Define the service call function
@@ -608,27 +605,20 @@ class SpawnerNode : public rclcpp::Node
       {
         detach_fake(req->index);
       }
-      return true;
+      return static_cast<bool>(res);
     }
 
   private:
     
 };
 
-std::vector<double> eulerToQuaternion(std::vector<double> euler)
+Eigen::Quaterniond eulerToQuaternion(Eigen::Vector3d& euler)
 { 
-  // Convert euler angles to quaternion
-  Eigen::Quaternionf quaternion_eigen;
-  quaternion_eigen = Eigen::AngleAxisf(euler[0], Eigen::Vector3f::UnitX())
-        * Eigen::AngleAxisf(euler[1], Eigen::Vector3f::UnitY())
-        * Eigen::AngleAxisf(euler[2], Eigen::Vector3f::UnitZ());
-  std::vector<double> quaternion;
-  quaternion.resize(4);
-  for (int i = 0; i < quaternion_eigen.coeffs().size(); i++)
-  {
-    double val = quaternion_eigen.coeffs()[i];
-    quaternion[i] = val;
-  }
+  // Convert euler angles to Eigen::Quaterniond
+  Eigen::Quaterniond quaternion;
+  quaternion = Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX())
+             * Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY())
+             * Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ());
   return quaternion;
 }
 
@@ -643,15 +633,12 @@ int main(int argc, char** argv)
   // Parse arguments
   std::vector<std::string> arguments(argv, argv + argc);
   std::string mesh_path;
-  std::vector<double> position;
-  position.resize(3);
+  Eigen::Vector3d position;
   // std::fill(position.begin(), position.end(), 0);
-  std::vector<double> euler;
-  euler.resize(3);
+  Eigen::Vector3d euler;
   // std::fill(euler.begin(), euler.end(), 0);
   std::string mode = "none";
-  int index = 0;
-  for (int i = 0; i < arguments.size(); i++) {
+  for (std::size_t i = 0; i < arguments.size(); i++) {
     std::string s = arguments[i];
     //RCLCPP_INFO_STREAM(this->get_logger(), s);
     if (s == "-mesh_path") {
@@ -678,16 +665,13 @@ int main(int argc, char** argv)
     if (s == "-mode") {
       mode = arguments[i+1];
     }
-    if (s == "-index") {
-      index = std::stoi(arguments[i+1]);
-    }
   }
 
-  std::vector<double> quaternion = eulerToQuaternion(euler);
+  Eigen::Quaterniond quaternion = eulerToQuaternion(euler);
 
   SpawnerNode spawner_node = SpawnerNode();
 
-  std::vector<double> scale = {0.0254, 0.0254, 0.0254};
+  Eigen::Vector3d scale = {0.0254, 0.0254, 0.0254};
 
   if (mode == "spawn") {
     moveit_msgs::msg::CollisionObject collision_object = spawner_node.create(mesh_path, scale=scale, position=position, quaternion=quaternion);

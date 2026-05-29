@@ -243,7 +243,7 @@ class TrajectoryNode : public rclcpp::Node
                 // Get goal transform from parameter server
                 trajectory_msgs::msg::JointTrajectoryPoint joint_target;
                 std::vector<double> joint_positions(6);
-                for (int i = 0; i < joint_names.size(); i++)
+                for (std::size_t i = 0; i < joint_names.size(); i++)
                 {
                     this->get_parameter("goal/" + goal_name + "/goal_state/" + joint_names[i], joint_positions[i]);
                 }
@@ -329,7 +329,7 @@ class TrajectoryNode : public rclcpp::Node
             if (mode_ == "preset" or mode_ == "")
             {
                 RCLCPP_INFO_STREAM(this->get_logger(), "Using preset path");
-                for (int i = 0; i < preset_trajectory.points.size()-1; i++)
+                for (std::size_t i = 0; i < preset_trajectory.points.size()-1; i++)
                 {
                     // For each point in the preset trajectory, make a trajectory segment to be toggled between
                     trajectory_msgs::msg::JointTrajectory preset_segment;
@@ -350,13 +350,13 @@ class TrajectoryNode : public rclcpp::Node
                 // Treat target vector's poses as waypoint vector
                 RCLCPP_INFO_STREAM(this->get_logger(), "Starting path computation");
                 std::vector<geometry_msgs::msg::Pose> waypoints;
-                for (int i = 0; i < target_vector_.size(); i++)
+                for (std::size_t i = 0; i < target_vector_.size(); i++)
                 {
                     RCLCPP_INFO_STREAM(this->get_logger(), std::to_string(target_vector_[i].pose.position.x) + " " + std::to_string(target_vector_[i].pose.position.y) + " " + std::to_string(target_vector_[i].pose.position.z));
                     waypoints.push_back(target_vector_[i].pose);
                 }
                 double step = 0.05;
-                for (int i = 0; i < waypoints.size()-1; i++)
+                for (std::size_t i = 0; i < waypoints.size()-1; i++)
                 {
                     moveit_msgs::msg::RobotTrajectory msg;
                     std::vector<geometry_msgs::msg::Pose> segment = {waypoints[i], waypoints[i+1]};
@@ -378,7 +378,7 @@ class TrajectoryNode : public rclcpp::Node
                 // Iterate over all goal poses
                 RCLCPP_INFO_STREAM(this->get_logger(), "Starting path computation");
                 moveit::core::RobotState next_start_state = *robot_state;
-                for (int i = 0; i < target_vector_.size(); i++)
+                for (std::size_t i = 0; i < target_vector_.size(); i++)
                 {
                     RCLCPP_INFO_STREAM(this->get_logger(), "Starting loop");
                     // Set planning parameters
@@ -390,7 +390,7 @@ class TrajectoryNode : public rclcpp::Node
                     // Create plan
                     moveit::planning_interface::MoveGroupInterface::Plan plan;
                     RCLCPP_INFO_STREAM(this->get_logger(), "Starting plan()");
-                    bool success = (move_group_interface_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+                    move_group_interface_->plan(plan);
                     robot_trajectory::RobotTrajectory trajectory(robot_model, joint_model_group);
                     RCLCPP_INFO_STREAM(this->get_logger(), "Setting msg");
                     trajectory.setRobotTrajectoryMsg(*robot_state, plan.start_state, plan.trajectory);
@@ -536,7 +536,7 @@ class TrajectoryNode : public rclcpp::Node
         std::vector<moveit::core::RobotState> getWaypoints(planning_interface::MotionPlanResponse& plan) // returns a std::deque< robot_state::RobotStatePtr >
         {
             std::vector<moveit::core::RobotState> waypoints;
-            for (int i = 0; i < plan.trajectory->getWayPointCount(); i++)
+            for (std::size_t i = 0; i < plan.trajectory->getWayPointCount(); i++)
             {
                 waypoints.push_back(plan.trajectory->getWayPoint(i));
             }
@@ -547,7 +547,7 @@ class TrajectoryNode : public rclcpp::Node
         std::vector<moveit::core::RobotState> getWaypoints(robot_trajectory::RobotTrajectory trajectory) // returns a std::deque< robot_state::RobotStatePtr >
         {   
             std::vector<moveit::core::RobotState> waypoints;
-            for (int i = 0; i < trajectory.getWayPointCount(); i++)
+            for (std::size_t i = 0; i < trajectory.getWayPointCount(); i++)
             {
                 waypoints.push_back(trajectory.getWayPoint(i));
             }
@@ -604,7 +604,7 @@ class TrajectoryNode : public rclcpp::Node
             Eigen::Affine3d A_nearest;
             Eigen::Affine3d B_nearest;
             // Loop over transform_deque to find where the trajectory is nearest to P
-            for (int i = 0; i < transform_deque.size(); i++)
+            for (std::size_t i = 0; i < transform_deque.size(); i++)
             {
                 // Use loop to walk through the deque, trying every consecutive segment AB
                 Eigen::Affine3d A_loop = transform_deque[i];
@@ -645,7 +645,7 @@ class TrajectoryNode : public rclcpp::Node
             double interpolation_param_forward;
             Eigen::Affine3d A_forward;
             Eigen::Affine3d B_forward;
-            for (int i = best_index; i < transform_deque.size(); i++)
+            for (std::size_t i = best_index; i < transform_deque.size(); i++)
             {
                 // Use loop to walk through the deque, trying every consecutive segment AB starting from A_nearest
                 Eigen::Affine3d A_loop = transform_deque[i];
@@ -856,7 +856,7 @@ class TrajectoryNode : public rclcpp::Node
             std::map<std::string, unsigned> ns_counts;
 
             // Loop over transform_deque to visualize each segment on the trajectory
-            for (int i = 0; i < transform_deque.size(); i++)
+            for (std::size_t i = 0; i < transform_deque.size(); i++)
             {
                 // Use loop to walk through the deque, visualizing every consecutive segment AB
                 Eigen::Affine3d transform_A = transform_deque[i];
@@ -1057,12 +1057,6 @@ class TrajectoryNode : public rclcpp::Node
         }
         
     private:
-        // Define a callback to be called when the PlanningSceneMonitor receives an update
-        void planningSceneMonitorCallback(const moveit_msgs::msg::PlanningScene::SharedPtr planning_scene, planning_scene_monitor::PlanningSceneMonitorPtr& planning_scene_monitor)
-        {
-            RCLCPP_INFO(this->get_logger(), "Updating...");
-        }
-
         // Define a callback to use joystick inputs to control trajectory segment selection
         void joyCallback(const sensor_msgs::msg::Joy& msg)
         {
