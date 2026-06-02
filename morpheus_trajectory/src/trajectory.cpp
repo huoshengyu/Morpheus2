@@ -82,7 +82,7 @@ class TrajectoryNode : public rclcpp::Node
         Eigen::Affine3d nearest_;
         Eigen::Affine3d forward_;
         Eigen::Affine3d goal_;
-        int segment_index_;
+        std::size_t segment_index_;
         std::map<std::string, int> cntlr_;                           // Holds the controller button mappings
         bool segment_swapped_;
 
@@ -1063,10 +1063,10 @@ class TrajectoryNode : public rclcpp::Node
             // If left stick is pressed, decrement trajectory segment and lock
             if (msg.buttons.at(cntlr_["FLIP_EE_X"]) == 1 && segment_swapped_ == false)
             {
-                int new_index = (segment_index_ - 1);
+                std::size_t new_index = (segment_index_ - 1);
                 while (new_index < 0)
                 {
-                    new_index += static_cast<int>(goal_name_vector_.size() - 1);
+                    new_index += goal_name_vector_.size() - 1;
                 }
                 segment_index_ = new_index;
                 segment_swapped_ = true;
@@ -1074,7 +1074,7 @@ class TrajectoryNode : public rclcpp::Node
             // Else if right stick is pressed, increment trajectory segment and lock
             else if (msg.buttons.at(cntlr_["FLIP_EE_ROLL"]) == 1 && segment_swapped_ == false)
             {
-                int new_index = (segment_index_ + 1) % (static_cast<int>(goal_name_vector_.size() - 1));
+                std::size_t new_index = (segment_index_ + 1) % (goal_name_vector_.size() - 1);
                 segment_index_ = new_index;
                 segment_swapped_ = true;
             }
@@ -1093,13 +1093,13 @@ class TrajectoryNode : public rclcpp::Node
             // If GELLO gripper is closed, increment trajectory segment and lock
             if (msg.position.back() > 0.95 && segment_swapped_ == false)
             {
-                segment_index_ = (segment_index_ + 1) % static_cast<int>(goal_name_vector_.size());
+                segment_index_ = (segment_index_ + 1) % (goal_name_vector_.size());
                 segment_swapped_ = true;
             }
             // Else if right stick is pressed, increment trajectory segment and lock
             else if (msg.position.back() > 0.95 && segment_swapped_ == false)
             {
-                segment_index_ = (segment_index_ + 1) % static_cast<int>(goal_name_vector_.size());
+                segment_index_ = (segment_index_ + 1) % (goal_name_vector_.size());
                 segment_swapped_ = true;
             }
             // Else if neither stick is pressed, unlock
