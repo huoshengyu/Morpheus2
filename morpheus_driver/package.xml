@@ -11,6 +11,9 @@
   <buildtool_depend>ament_cmake_python</buildtool_depend>
   <depend>rclpy</depend>
   <depend>control_msgs</depend>
+  <depend>ur_robot_driver</depend>
+  <depend>robotiq_driver</depend>
+  <depend>onrobot_driver</depend>
 <!--
   <depend>cartesian_controller</depend>
   <depend>cartesian_controller_simulation</depend>

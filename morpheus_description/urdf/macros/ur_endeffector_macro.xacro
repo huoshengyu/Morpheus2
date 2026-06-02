@@ -103,7 +103,6 @@
 
         <xacro:if value="${ee_type == 'onrobot'}">
             <xacro:onrobot
-                name="${tf_prefix}onrobot_rg2"
                 onrobot_type="rg2"
                 prefix="${tf_prefix}"
                 sim_gazebo="${sim_gazebo}"

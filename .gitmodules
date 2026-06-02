@@ -6,7 +6,7 @@
 	url = https://github.com/tonydle/OnRobot_ROS2_Driver
 [submodule "submodules/OnRobot_ROS2_Description"]
 	path = submodules/onrobot_description
-	url = https://github.com/tonydle/OnRobot_ROS2_Description
+	url = https://github.com/huoshengyu/OnRobot_ROS2_Description
 [submodule "submodules/ros2_robotiq_gripper"]
 	path = submodules/ros2_robotiq_gripper
 	url = https://github.com/huoshengyu/ros2_robotiq_gripper

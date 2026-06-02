@@ -19,6 +19,9 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(control_msgs REQUIRED)
+find_package(ur_robot_driver REQUIRED)
+find_package(robotiq_driver REQUIRED)
+find_package(onrobot_driver REQUIRED)
 
 # ------------------------------------------------------------------------------
 # Python Modules & Scripts
@@ -51,5 +54,18 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+# ------------------------------------------------------------------------------
+# Export
+# ------------------------------------------------------------------------------
+ament_export_dependencies(ament_cmake)
+ament_export_dependencies(ament_cmake_python)
+ament_export_dependencies(rclpy)
+ament_export_dependencies(control_msgs)
+ament_export_dependencies(ur_robot_driver)
+ament_export_dependencies(robotiq_driver)
+ament_export_dependencies(onrobot_driver)
+ament_export_include_directories(include)
+ament_export_libraries(${LIBS})
 
 ament_package()
