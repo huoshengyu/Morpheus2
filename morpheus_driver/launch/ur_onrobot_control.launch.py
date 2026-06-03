@@ -210,7 +210,7 @@ def launch_setup(context):
         "force_torque_sensor_broadcaster",
         "tcp_pose_broadcaster",
         "ur_configuration_controller",
-        "finger_width_controller",
+        "onrobot_gripper_controller",
     ]
     controllers_inactive = [
         "scaled_joint_trajectory_controller",

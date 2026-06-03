@@ -10,6 +10,24 @@ controller_manager:
     robotiq_activation_controller:
       type: robotiq_controllers/RobotiqActivationController
 
+robotiq_gripper_controller:
+  ros__parameters:
+    joint: $(var tf_prefix)robotiq_85_left_knuckle_joint
+
+    # Enable effort control (replacement for use_effort_interface)
+    # max_effort_interface: "$(var tf_prefix)robotiq_85_left_knuckle_joint/effort"
+    # max_effort: 50.0   # TODO tune
+
+    # Enable velocity/speed control (replacement for use_speed_interface)
+    # max_velocity_interface: "$(var tf_prefix)robotiq_85_left_knuckle_joint/velocity"
+    # max_velocity: 0.5    # TODO tune
+
+    # Optional (recommended)
+    state_interfaces: ["position", "velocity"]
+    allow_stalling: true
+    stall_timeout: 0.05
+    goal_tolerance: 0.02
+
 robotiq_activation_controller:
   ros__parameters:
     default: true
