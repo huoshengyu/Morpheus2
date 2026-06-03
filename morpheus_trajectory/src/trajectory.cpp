@@ -1063,18 +1063,14 @@ class TrajectoryNode : public rclcpp::Node
             // If left stick is pressed, decrement trajectory segment and lock
             if (msg.buttons.at(cntlr_["FLIP_EE_X"]) == 1 && segment_swapped_ == false)
             {
-                std::size_t new_index = (segment_index_ - 1);
-                while (new_index < 0)
-                {
-                    new_index += goal_name_vector_.size() - 1;
-                }
+                std::size_t new_index = (segment_index_ - 1) % goal_name_vector_.size();
                 segment_index_ = new_index;
                 segment_swapped_ = true;
             }
             // Else if right stick is pressed, increment trajectory segment and lock
             else if (msg.buttons.at(cntlr_["FLIP_EE_ROLL"]) == 1 && segment_swapped_ == false)
             {
-                std::size_t new_index = (segment_index_ + 1) % (goal_name_vector_.size() - 1);
+                std::size_t new_index = (segment_index_ + 1) % goal_name_vector_.size();
                 segment_index_ = new_index;
                 segment_swapped_ = true;
             }
