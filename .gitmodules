@@ -12,7 +12,7 @@
 	url = https://github.com/huoshengyu/ros2_robotiq_gripper
 [submodule "submodules/cartesian_controllers"]
 	path = submodules/cartesian_controllers
-	url = https://github.com/fzi-forschungszentrum-informatik/cartesian_controllers
+	url = https://github.com/huoshengyu/cartesian_controllers
 [submodule "submodules/serial"]
 	path = submodules/serial
 	url = https://github.com/tylerjw/serial/
