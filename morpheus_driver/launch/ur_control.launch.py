@@ -72,15 +72,21 @@ def launch_setup(context):
     tool_device_name = LaunchConfiguration("tool_device_name")
     tool_tcp_port = LaunchConfiguration("tool_tcp_port")
 
+    control_params = [
+        update_rate_config_file,
+        ParameterFile(controllers_file, allow_substs=True),
+        # We use the tf_prefix as substitution in there, so that's why we keep it as an
+        # argument for this launchfile
+    ]
+    if ee_type.perform(context):
+        ee_controllers_file = PathJoinSubstitution(
+            [FindPackageShare("morpheus_driver"), "config", "ur", "ur5e", ee_type.perform(context) + "_controllers.yaml"]
+        )
+        control_params.append(ParameterFile(ee_controllers_file, allow_substs=True))
     control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[
-            update_rate_config_file,
-            ParameterFile(controllers_file, allow_substs=True),
-            # We use the tf_prefix as substitution in there, so that's why we keep it as an
-            # argument for this launchfile
-        ],
+        parameters=control_params,
         output="screen",
         remappings=[
             ("~/robot_description", "/robot_description"),
@@ -231,6 +237,12 @@ def launch_setup(context):
 
     if use_mock_hardware.perform(context) == "true":
         controllers_active.remove("tcp_pose_broadcaster")
+    
+    if ee_type.perform(context) == "robotiq":
+        controllers_active.append("robotiq_activation_controller")
+        controllers_active.append("robotiq_gripper_controller")
+    elif ee_type.perform(context) == "onrobot":
+        controllers_active.append("onrobot_gripper_controller")
 
     controller_spawners = [
         controller_spawner(controllers_active),

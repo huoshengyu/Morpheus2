@@ -27,6 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import launch
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import (
     Command,
     FindExecutable,
@@ -49,28 +50,28 @@ def generate_launch_description():
         description_pkg_share, "rviz", "view_urdf.rviz"
     )
 
-    args = []
-    args.append(
-        launch.actions.DeclareLaunchArgument(
-            name="model",
+    declared_arguments = []
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "model",
             default_value=default_model_path,
             description="Absolute path to gripper URDF file",
         )
     )
-    args.append(
-        launch.actions.DeclareLaunchArgument(
+    declared_arguments.append(
+        DeclareLaunchArgument(
             name="rvizconfig",
             default_value=default_rviz_config_path,
             description="Absolute path to rviz config file",
         )
     )
-    args.append(
-        launch.actions.DeclareLaunchArgument(
+    declared_arguments.append(
+        DeclareLaunchArgument(
             name="launch_rviz", default_value="true", description="Launch RViz?"
         )
     )
-    args.append(
-        launch.actions.DeclareLaunchArgument(
+    declared_arguments.append(
+        DeclareLaunchArgument(
             name="com_port",
             default_value="/dev/ttyUSB0",
             description="Port for communicating with Robotiq hardware",
@@ -167,4 +168,4 @@ def generate_launch_description():
         rviz_node,
     ]
 
-    return launch.LaunchDescription(args + nodes)
+    return launch.LaunchDescription(declared_arguments + nodes)

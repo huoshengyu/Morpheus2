@@ -49,7 +49,7 @@
     <!-- Wrist Mount Selection -->
     <xacro:arg name="mount_type" default="d415_mount"/>
     <!-- End Effector Selection -->
-    <xacro:arg name="ee_type" default="robotiq"/>
+    <xacro:arg name="ee_type" default=""/>
     <!-- Common End Effector Arguments -->
     <xacro:arg name="sim_gazebo" default="false"/>
     <xacro:arg name="device" default="/tmp/ttyUR"/>
