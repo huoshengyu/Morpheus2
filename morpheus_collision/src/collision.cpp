@@ -374,7 +374,7 @@ public:
 
     void getProximityJointTorques(const collision_detection::GroupStateRepresentationPtr& gsr,
                                   std::vector<std::string>& joint_names,
-                                  Eigen::VectorXd joint_torques)
+                                  Eigen::VectorXd& joint_torques)
     {
         if (!gsr || !collision_env_hybrid_)
         {
@@ -472,6 +472,46 @@ public:
         }
     }
 
+    void getProximityPoints(const collision_detection::GroupStateRepresentationPtr& gsr,
+                            EigenSTL::vector_Vector3d& points)
+    {
+        if (!gsr)
+        {
+            return;
+        }
+
+        // Get the joint model group from the current robot state
+        const moveit::core::RobotStatePtr robot_state = gsr->dfce_->state_;
+        
+        // Preallocate output vector
+        points.clear();
+        points.reserve(gsr->gradients_.size());
+
+        // The gsr_ (GroupStateRepresentation) contains gradients for each link and each attached object
+        for (std::size_t i = 0; i < gsr->gradients_.size(); ++i)
+        {
+            const std::string* link_name = nullptr;
+            if (i < gsr->dfce_->link_names_.size())
+            {
+                // For robot links, use the link name
+                link_name = &gsr->dfce_->link_names_[i];
+            }
+            else
+            {
+                // For attached objects, get the parent link
+                std::size_t attached_index = i - gsr->dfce_->link_names_.size();
+                link_name = &robot_state->getRigidlyConnectedParentLinkModel(gsr->dfce_->attached_body_names_[attached_index])->getName();
+            }
+            if (!link_name)
+            {
+                RCLCPP_WARN(this->get_logger(), "Skipping gradient entry %zu with no link name", i);
+                continue;
+            }
+            Eigen::Isometry3d tip_pose = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState().getGlobalLinkTransform(*link_name); // Get the global transform of the link
+            points.push_back(tip_pose.translation());
+        }
+    }
+
     void getProximityForceMarkers(const std::string& frame_id, const std::string& ns, const rclcpp::Duration& /*dur*/,
                                   const EigenSTL::vector_Vector3d& forces,
                                   const EigenSTL::vector_Vector3d& points,
@@ -481,6 +521,10 @@ public:
         // For each proximity force, create an arrow marker in Rviz
         for (std::size_t i = 0; i < forces.size(); ++i)
         {
+            if (forces[i].norm() < 1e-6)
+            {
+                continue; // Skip negligible forces
+            }
             visualization_msgs::msg::Marker marker;
             marker.type = visualization_msgs::msg::Marker::ARROW;
             marker.action = visualization_msgs::msg::Marker::ADD;
@@ -554,22 +598,7 @@ public:
         EigenSTL::vector_Vector3d moments;
         getProximityForces(gsr_, forces, moments);
         EigenSTL::vector_Vector3d points;
-        for (size_t i = 0; i < gsr_->dfce_->link_names_.size(); i++)
-        {
-            points.push_back(
-                getRootPoseTip(
-                    gsr_->dfce_->state_, 
-                    gsr_->dfce_->link_names_[i])
-                    .translation());
-        }
-        for (size_t i = 0; i < gsr_->dfce_->attached_body_names_.size(); i++)
-        {
-            points.push_back(
-                getRootPoseTip(
-                    gsr_->dfce_->state_, 
-                    gsr_->dfce_->state_->getRigidlyConnectedParentLinkModel(gsr_->dfce_->attached_body_names_[i])->getName())
-                    .translation());
-        }
+        getProximityPoints(gsr_, points);
         getProximityForceMarkers("world", "forces", rclcpp::Duration(1,0), forces, points, arr);
         publishMarkers(arr);
         // Get all contact vectors which correspond to robot<->obstacle pairs

@@ -11,15 +11,14 @@ import sensor_msgs.msg
 # Interbotix/Trossen Packages
 from interbotix_xs_modules.arm import InterbotixManipulatorXS
 
-class TrossenJoy():
+class TrossenJoy(rclpy.node.Node):
     # Passes pose commands to the Trossen robot arm 
     # as end-effector trajectory commands
     def __init__(self):
-        with rclpy.init(args=sys.argv):
-    node = rclpy.create_node('trossen_joy', anonymous=False)
+        super().__init__('trossen_joy')
 
         # Set loop rate
-        self.rate = rospy.Rate(self.declare_parameter('~publishing_rate', default=50).value)
+        self.rate = rclpy.Rate(self.declare_parameter('~publishing_rate', default=50).value)
 
         # Initialize Trossen robot with gripper
         self.robot = InterbotixManipulatorXS("vx300s", "arm", "gripper", init_node=False)
@@ -94,10 +93,10 @@ class TrossenJoy():
 if __name__ == '__main__':
     trossen_joy = TrossenJoy()
     try:
-        while not rospy.is_shutdown():
+        while not rclpy.is_shutdown():
             trossen_joy.loop_once()
             trossen_joy.rate.sleep()
-    except rospy.ROSInterruptException:
+    except rclpy.ROSInterruptException:
         pass
     except Exception as e:
-        rospy.logerr(e)
+        rclpy.logging.get_logger("trossen_joy").error(str(e))

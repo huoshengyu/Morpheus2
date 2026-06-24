@@ -89,7 +89,8 @@
     </xacro:ur_endeffector>
     
     <!-- Create the environment around the robot -->
-    <xacro:if value="${environment_file}">
+    <xacro:property name="environment_file" value="$(arg environment_file)"/>
+    <xacro:if value="${environment_file != ''}">
         <xacro:include filename="$(arg environment_file)"/>
     </xacro:if>
 

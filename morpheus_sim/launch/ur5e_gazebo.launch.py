@@ -16,7 +16,7 @@ def generate_launch_description():
     controllers_file = PathJoinSubstitution([morpheus_sim_pkg_path, 'config', 'ur_controllers.yaml'])
     
     morpheus_description_pkg_path = FindPackageShare('morpheus_description')
-    description_file = PathJoinSubstitution([morpheus_description_pkg_path, 'urdf', 'scenes', 'b_bot_scene.xacro'])
+    description_file = PathJoinSubstitution([morpheus_description_pkg_path, 'urdf', 'scenes', 'ur_endeffector.urdf.xacro'])
     rviz_config_file = PathJoinSubstitution([morpheus_description_pkg_path, 'config', 'morpheus_ur5e.rviz'])
     
     initial_joint_controller = 'cartesian_compliance_controller'

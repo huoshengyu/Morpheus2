@@ -23,6 +23,8 @@ find_package(ur_robot_driver REQUIRED)
 find_package(robotiq_driver REQUIRED)
 find_package(onrobot_driver REQUIRED)
 
+include_directories(include)
+
 # ------------------------------------------------------------------------------
 # Python Modules & Scripts
 # ------------------------------------------------------------------------------

@@ -18,8 +18,9 @@
   <depend>moveit_msgs</depend>
   <depend>morpheus_msgs</depend>
   <depend>moveit_py</depend>
-  <depend>numpy</depend>
-  <depend>numpy-quaternion</depend>
+  <depend>python3-numpy</depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
