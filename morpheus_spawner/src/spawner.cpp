@@ -733,14 +733,12 @@ int main(int argc, char** argv)
   //mesh_object.primitive_poses[0].orientation.w = 1;
 
   mesh_object.operation = mesh_object.ADD;
-  //RCLCPP_INFO_STREAM(this->get_logger(), "Spawning object");
-  moveit_msgs::msg::AttachedCollisionObject mesh_attach;
-  mesh_attach.object = mesh_object;
-  //spawner_node->save(mesh_object);
-  //spawner_node->spawn(mesh_object);
-  //spawner_node->attach(mesh_attach);
+  RCLCPP_INFO_STREAM(spawner_node->get_logger(), "Test spawning object");
+  spawner_node->save(mesh_object);
+  spawner_node->spawn(0);
+  //spawner_node->attach(0);
 
-  //RCLCPP_INFO_STREAM(this->get_logger(), "Spawner Node spinning");
+  //RCLCPP_INFO_STREAM(spawner_node->get_logger(), "Spawner Node spinning");
 
   spawner_node->spin();
 
