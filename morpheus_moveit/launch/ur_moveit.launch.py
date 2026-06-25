@@ -70,54 +70,77 @@ def load_yaml(package_name, file_path):
 
 
 def declare_arguments():
-    return LaunchDescription(
-        [
-            DeclareLaunchArgument("launch_rviz", default_value="false", description="Launch RViz?"),
-            DeclareLaunchArgument(
-                "ur_type",
-                description="Typo/series of used UR robot.",
-                choices=[
-                    "ur3",
-                    "ur5",
-                    "ur10",
-                    "ur3e",
-                    "ur5e",
-                    "ur7e",
-                    "ur10e",
-                    "ur12e",
-                    "ur16e",
-                    "ur8long",
-                    "ur15",
-                    "ur18",
-                    "ur20",
-                    "ur30",
-                ],
-                default_value="ur5e",
-            ),
-            DeclareLaunchArgument(
-                "warehouse_sqlite_path",
-                default_value=os.path.expanduser("~/.ros/warehouse_ros.sqlite"),
-                description="Path where the warehouse database should be stored",
-            ),
-            DeclareLaunchArgument(
-                "launch_servo", default_value="false", description="Launch Servo?"
-            ),
-            DeclareLaunchArgument(
-                "use_sim_time",
-                default_value="true",
-                description="Using or not time from simulation",
-            ),
-            DeclareLaunchArgument(
-                "publish_robot_description_semantic",
-                default_value="true",
-                description="MoveGroup publishes robot description semantic",
-            ),
-        ]
+    declared_arguments = []
+    declared_arguments.append(
+        DeclareLaunchArgument("launch_rviz", default_value="false", description="Launch RViz?")
     )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "ur_type",
+            description="Typo/series of used UR robot.",
+            choices=[
+                "ur3",
+                "ur5",
+                "ur10",
+                "ur3e",
+                "ur5e",
+                "ur7e",
+                "ur10e",
+                "ur12e",
+                "ur16e",
+                "ur8long",
+                "ur15",
+                "ur18",
+                "ur20",
+                "ur30",
+            ],
+            default_value="ur5e",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "ee_type",
+            description="Type/series of end effector.",
+            choices=[
+                "",
+                "robotiq",
+                "onrobot",
+            ],
+            default_value="",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "warehouse_sqlite_path",
+            default_value=os.path.expanduser("~/.ros/warehouse_ros.sqlite"),
+            description="Path where the warehouse database should be stored",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "launch_servo", default_value="false", description="Launch Servo?"
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_sim_time",
+            default_value="true",
+            description="Using or not time from simulation",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "publish_robot_description_semantic",
+            default_value="true",
+            description="MoveGroup publishes robot description semantic",
+        )
+    )
+    return declared_arguments
     
 def launch_setup(context):
     launch_rviz = LaunchConfiguration("launch_rviz")
     ur_type = LaunchConfiguration("ur_type")
+    ee_type = LaunchConfiguration("ee_type")
     warehouse_sqlite_path = LaunchConfiguration("warehouse_sqlite_path")
     launch_servo = LaunchConfiguration("launch_servo")
     use_sim_time = LaunchConfiguration("use_sim_time")
@@ -126,7 +149,10 @@ def launch_setup(context):
     moveit_config_builder = (
         MoveItConfigsBuilder(robot_name="ur", package_name="morpheus_moveit")
     )
-    moveit_config_builder.robot_description_semantic(get_package_share_directory("morpheus_description") / Path("srdf") / "scenes" / "ur_robotiq.srdf.xacro", {"name": ur_type})
+    srdf_file = get_package_share_directory("morpheus_description") / Path("srdf") / "ur.srdf.xacro"
+    if ee_type.perform(context):
+        srdf_file = get_package_share_directory("morpheus_description") / Path("srdf") / "scenes" / Path("ur_" + ee_type.perform(context) + ".srdf.xacro")
+    moveit_config_builder.robot_description_semantic(srdf_file, {"name": ur_type})
     moveit_config_builder.robot_description_kinematics(Path("config") / ur_type.perform(context) / "kinematics.yaml")
     moveit_config_builder.joint_limits(Path("config") / ur_type.perform(context) / "joint_limits.yaml")
     moveit_config_builder.pilz_cartesian_limits(Path("config") / ur_type.perform(context) / "pilz_cartesian_limits.yaml")
@@ -216,8 +242,6 @@ def launch_setup(context):
     return nodes_to_start
 
 def generate_launch_description():
-
-    ld = LaunchDescription()
-    ld.add_entity(declare_arguments())
+    ld = LaunchDescription(declare_arguments())
     ld.add_action(OpaqueFunction(function=launch_setup))
     return ld

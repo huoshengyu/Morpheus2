@@ -24,6 +24,24 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(morpheus_msgs REQUIRED)
+set(THIS_PACKAGE_INCLUDE_DEPENDS
+  ament_cmake
+  ament_cmake_python
+  rclpy
+  rclcpp
+  joy
+  std_msgs
+  sensor_msgs
+  geometry_msgs
+  morpheus_msgs
+)
+
+# ------------------------------------------------------------------------------
+# Libraries and Headers
+# ------------------------------------------------------------------------------
+install(DIRECTORY include/
+  DESTINATION include
+)
 
 # ------------------------------------------------------------------------------
 # C++ Executables
@@ -72,16 +90,7 @@ endif()
 # ------------------------------------------------------------------------------
 # Export
 # ------------------------------------------------------------------------------
-ament_export_dependencies(ament_cmake)
-ament_export_dependencies(ament_cmake_python)
-ament_export_dependencies(geometry_msgs)
-ament_export_dependencies(rclpy)
-ament_export_dependencies(rclcpp)
-ament_export_dependencies(joy)
-ament_export_dependencies(sensor_msgs)
-ament_export_dependencies(std_msgs)
-ament_export_dependencies(morpheus_msgs)
-ament_export_include_directories(include)
+ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
 ament_export_libraries(${LIBS})
 
 ament_package()
