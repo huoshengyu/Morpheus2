@@ -504,7 +504,8 @@ public:
             }
             if (!link_name)
             {
-                RCLCPP_WARN(this->get_logger(), "Skipping gradient entry %zu with no link name", i);
+                // Skip entries with no link name, as these correspond to empty gradient entries
+                // RCLCPP_WARN(this->get_logger(), "Skipping gradient entry %zu with no link name", i);
                 continue;
             }
             Eigen::Isometry3d tip_pose = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState().getGlobalLinkTransform(*link_name); // Get the global transform of the link
