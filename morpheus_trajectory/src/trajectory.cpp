@@ -64,10 +64,10 @@ class TrajectoryNode : public rclcpp::Node
         std::string gripper_group_;
 
         // Planning interfaces
-        // std::shared_ptr<moveit_cpp::PlanningComponent> g_planning_components;
-        // std::shared_ptr<moveit_cpp::PlanningComponent::PlanRequestParameters> g_plan_request_parameters;
+        // std::shared_ptr<moveit_cpp::PlanningComponent> planning_components_;
+        // std::shared_ptr<moveit_cpp::PlanningComponent::PlanRequestParameters> plan_request_parameters_;
         std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_interface_;
-        // moveit::planning_interface::MoveGroupInterface::Plan g_plan;
+        // moveit::planning_interface::MoveGroupInterface::Plan plan_;
 
         // Planning parameters
         std::vector<robot_trajectory::RobotTrajectory> trajectory_vector_;

@@ -14,7 +14,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Find required packages
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(moveit_core REQUIRED)
 find_package(moveit_ros_planning REQUIRED)
@@ -32,19 +34,58 @@ find_package(tf2_eigen REQUIRED)
 
 include_directories(include)
 
+# ------------------------------------------------------------------------------
+# C++ Executables
+# ------------------------------------------------------------------------------
 add_executable(spawner src/spawner.cpp)
-ament_target_dependencies(spawner rclcpp std_msgs tf2_eigen moveit_ros_planning_interface moveit_ros_planning morpheus_msgs)
+ament_target_dependencies(spawner
+  rclcpp 
+  std_msgs 
+  tf2_eigen 
+  moveit_ros_planning_interface 
+  moveit_ros_planning morpheus_msgs
+)
 
+install(TARGETS spawner
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# ------------------------------------------------------------------------------
+# Python Modules & Scripts
+# ------------------------------------------------------------------------------
 file(GLOB PYTHON_SCRIPTS
   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
   ${PROJECT_NAME}/*.py
 )
-
 install(PROGRAMS ${PYTHON_SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
 
-ament_export_dependencies(ament_cmake)
+ament_python_install_package(${PROJECT_NAME})
+
+# ------------------------------------------------------------------------------
+# Shared Resources
+# ------------------------------------------------------------------------------
+install(DIRECTORY config launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # comment the line when a copyright and license is added to all source files
+  set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # comment the line when this package is in a git repo and when
+  # a copyright and license is added to all source files
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+# ------------------------------------------------------------------------------
+# Export
+# ------------------------------------------------------------------------------
+ament_export_dependencies(ament_cmake_python)
 ament_export_dependencies(std_msgs)
 ament_export_dependencies(moveit_ros_planning_interface)
 ament_export_dependencies(moveit_msgs)
@@ -56,5 +97,6 @@ ament_export_dependencies(rclpy)
 ament_export_dependencies(rclcpp)
 ament_export_dependencies(tf2_eigen)
 ament_export_include_directories(${INCLUDE_DIRS})
+ament_export_libraries(${LIBS})
 
 ament_package()

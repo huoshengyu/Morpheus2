@@ -15,11 +15,11 @@ namespace visualizer
 class VisualizerNode
 {
     public:
-        rclcpp::Subscriber g_model_states_msg_subscriber;
-        inline static gazebo_msgs::ModelStates g_model_states_msg;
+        rclcpp::Subscriber model_states_msg_subscriber_;
+        inline static gazebo_msgs::ModelStates model_states_msg_;
         inline static bool received_model_states_msg;
-        rclcpp::Publisher g_marker_array_publisher;
-        visualization_msgs::MarkerArray g_model_markers;
+        rclcpp::Publisher marker_array_publisher_;
+        visualization_msgs::MarkerArray model_markers_;
 
         VisualizerNode(int argc, char** argv)
         {
@@ -30,13 +30,13 @@ class VisualizerNode
             spinner.start();
                         
             // Create a subscriber to receive model state updates
-            g_model_states_msg_subscriber = nh.subscribe<gazebo_msgs::ModelStates>("gazebo/model_states", 1, gazeboModelStateCallback);
+            model_states_msg_subscriber_ = nh.subscribe<gazebo_msgs::ModelStates>("gazebo/model_states", 1, gazeboModelStateCallback);
 
             // Create a marker array publisher for publishing shapes to Rviz
-            g_marker_array_publisher = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 0);
+            marker_array_publisher_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 0);
 
             // Create an array of markers
-            visualization_msgs::MarkerArray g_model_markers();
+            visualization_msgs::MarkerArray model_markers_();
 
             // Instantiate visual tools for visualizing markers in Rviz
             // visual_tools_ = std::make_shared<moveit_visual_tools::MoveItVisualTools>(node_, "world", "/moveit_visual_tools");
@@ -61,7 +61,7 @@ class VisualizerNode
                 // If message received, visualize
                 if (received_model_states_msg)
                 {
-                    visualize(g_model_states_msg);
+                    visualize(model_states_msg_);
                 }
             }
 
@@ -131,20 +131,20 @@ class VisualizerNode
         void publishMarkers(visualization_msgs::MarkerArray& markers)
         {
             // delete old markers
-            if (!g_model_markers.markers.empty())
+            if (!model_markers_.markers.empty())
             {
-                for (auto& marker : g_model_markers.markers)
+                for (auto& marker : model_markers_.markers)
                 marker.action = visualization_msgs::Marker::DELETE;
 
-                // g_marker_array_publisher->publish(g_model_markers);
+                // marker_array_publisher_->publish(model_markers_);
             }
 
-            // move new markers into g_model_markers
-            std::swap(g_model_markers.markers, markers.markers);
+            // move new markers into model_markers_
+            std::swap(model_markers_.markers, markers.markers);
 
             // draw new markers (if there are any)
-            if (!g_model_markers.markers.empty())
-                g_marker_array_publisher.publish(g_model_markers);
+            if (!model_markers_.markers.empty())
+                marker_array_publisher_.publish(model_markers_);
         }
         
     private:
@@ -152,7 +152,7 @@ class VisualizerNode
         static void gazeboModelStateCallback(const gazebo_msgs::ModelStates::SharedPtr msg)
         {
             RCLCPP_INFO(morpheus_spawner->get_logger(),"Updating...");
-            g_model_states_msg = *msg;
+            model_states_msg_ = *msg;
             received_model_states_msg = true;
         }
 

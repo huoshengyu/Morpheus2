@@ -9,37 +9,20 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
-  <build_depend>geometry_msgs</build_depend>
-  <build_depend>joy</build_depend>
-  <build_depend>rclpy</build_depend>
-  <build_depend>rclcpp</build_depend>
-  <build_depend>moveit_core</build_depend>
-  <build_depend>moveit_ros_planning</build_depend>
-  <build_depend>moveit_ros_planning_interface</build_depend>
-  <build_depend>moveit_visual_tools</build_depend>
-  <build_depend>moveit_msgs</build_depend>
-  <build_depend>morpheus_msgs</build_depend>
-  <build_depend>std_msgs</build_depend>
-  <build_depend>tf2</build_depend>
-  <build_depend>tf2_eigen</build_depend>
-  <build_depend>builtin_interfaces</build_depend>
-  <build_export_depend>geometry_msgs</build_export_depend>
-  <build_export_depend>joy</build_export_depend>
-  <build_export_depend>rclpy</build_export_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>joy</exec_depend>
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>rclcpp</exec_depend>
-  <exec_depend>moveit_core</exec_depend>
-  <exec_depend>moveit_ros_planning</exec_depend>
-  <exec_depend>moveit_ros_planning_interface</exec_depend>
-  <exec_depend>moveit_visual_tools</exec_depend>
-  <exec_depend>moveit_msgs</exec_depend>
-  <exec_depend>morpheus_msgs</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>tf2</exec_depend>
-  <exec_depend>tf2_eigen</exec_depend>
-  <exec_depend>builtin_interfaces</exec_depend>
+  <depend>geometry_msgs</depend>
+  <depend>joy</depend>
+  <depend>rclpy</depend>
+  <depend>rclcpp</depend>
+  <depend>moveit_core</depend>
+  <depend>moveit_ros_planning</depend>
+  <depend>moveit_ros_planning_interface</depend>
+  <depend>moveit_visual_tools</depend>
+  <depend>moveit_msgs</depend>
+  <depend>morpheus_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_eigen</depend>
+  <depend>builtin_interfaces</depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
   <member_of_group>rosidl_interface_packages</member_of_group>
   
