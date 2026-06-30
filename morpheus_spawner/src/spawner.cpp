@@ -67,9 +67,6 @@ class SpawnerNode : public rclcpp::Node
       // Declare parameters
       this->declare_parameter("arm_group", "arm");
 
-      // Get parameters from ros server, if possible
-      arm_group_ = this->get_parameter("arm_group").as_string();
-
       // Set PlanningSceneInterface in namespace
       planning_scene_interface_ = std::make_shared<moveit::planning_interface::PlanningSceneInterface>(std::string(this->get_namespace()));
 
@@ -123,6 +120,9 @@ class SpawnerNode : public rclcpp::Node
       // Start the PlanningSceneMonitor
       planning_scene_monitor_->startSceneMonitor("move_group/monitored_planning_scene"); // Get scene updates from topic
       planning_scene_monitor_->requestPlanningSceneState();
+
+      // Get parameters from ros server, if possible
+      arm_group_ = this->get_parameter("arm_group").as_string();
 
       // Initialize a move group interface so objects can be attached
       move_group_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(shared_from_this(), arm_group_);
@@ -216,7 +216,6 @@ class SpawnerNode : public rclcpp::Node
 
       // Publish planning scene diff
       planning_scene_interface_->removeCollisionObjects({collision_object.id});
-      //publish(collision_object);
 
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Despawning object complete");
@@ -243,7 +242,7 @@ class SpawnerNode : public rclcpp::Node
       attach_object.object.operation = attached_collision_object.object.ADD;
       
       // Publish planning scene diff
-      publish(attach_object);
+      planning_scene_interface_->applyAttachedCollisionObject(attach_object);
 
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Attaching object complete");
@@ -314,7 +313,7 @@ class SpawnerNode : public rclcpp::Node
       detach_object.object.operation = attached_collision_object.object.REMOVE;
 
       // Publish planning scene diff
-      publish(detach_object);
+      planning_scene_interface_->applyAttachedCollisionObject(detach_object);
 
       // Debug printouts
       RCLCPP_INFO_STREAM(this->get_logger(), "Detaching object complete");
@@ -367,10 +366,6 @@ class SpawnerNode : public rclcpp::Node
       planning_scene_interface_->applyPlanningScene(planning_scene);
 
       // collision_object_publisher_->publish(collision_object);
-
-      // Process message
-      // planning_scene_monitor::LockedPlanningSceneRW locked_planning_scene(planning_scene_monitor_);
-      // locked_planning_scene->usePlanningSceneMsg(planning_scene);
     }
 
     void publish(const moveit_msgs::msg::CollisionObject& collision_object, const moveit_msgs::msg::AttachedCollisionObject& attached_collision_object)
@@ -386,10 +381,6 @@ class SpawnerNode : public rclcpp::Node
 
       // collision_object_publisher_->publish(collision_object);
       // attached_collision_object_publisher_->publish(attached_collision_object);
-
-      // Process message
-      // planning_scene_monitor::LockedPlanningSceneRW locked_planning_scene(planning_scene_monitor_);
-      // locked_planning_scene->usePlanningSceneMsg(planning_scene);
       
     }
 
@@ -404,10 +395,6 @@ class SpawnerNode : public rclcpp::Node
       planning_scene_interface_->applyPlanningScene(planning_scene);
 
       // attached_collision_object_publisher_->publish(attached_collision_object);
-
-      // Process message
-      // planning_scene_monitor::LockedPlanningSceneRW locked_planning_scene(planning_scene_monitor_);
-      // locked_planning_scene->usePlanningSceneMsg(planning_scene);
     }
 
     void update()
@@ -427,29 +414,6 @@ class SpawnerNode : public rclcpp::Node
 
       // Send planning scene message with list of fake attached objects
       planning_scene_fake_publisher_->publish(planning_scene_fake_msg);
-    }
-
-    // Spin node to continue handling services (should usually be called from main())
-    void spin()
-    {
-      // Loop collision requests and publish at specified rate
-      rclcpp::Rate loop_rate(15);
-      while (rclcpp::ok())
-      {
-        std::exception_ptr eptr; // record exceptions in case handling is needed
-        try
-        {
-          update();
-        }
-        catch (...) 
-        {
-          eptr = std::current_exception(); // capture
-        }
-        loop_rate.sleep();
-      }
-
-      // Block node from closing before ros shutdown
-      // rclcpp::waitForShutdown(); // Equivalent to while(rclcpp::ok()), unnecessary
     }
 
     // Define function to retrieve a set of rosparams from under a preset name
@@ -623,124 +587,7 @@ int main(int argc, char** argv)
   rclcpp::init(argc, argv);
   auto spawner_node = std::make_shared<SpawnerNode>();
   spawner_node->initialize();
-  //rclcpp::spin(spawner_node);
-  //rclcpp::shutdown();
-  //return 0;
-  
-  // Parse arguments
-  std::vector<std::string> arguments(argv, argv + argc);
-  std::string mesh_path;
-  Eigen::Vector3d position;
-  // std::fill(position.begin(), position.end(), 0);
-  Eigen::Vector3d euler;
-  // std::fill(euler.begin(), euler.end(), 0);
-  std::string mode = "none";
-  for (std::size_t i = 0; i < arguments.size(); i++) {
-    std::string s = arguments[i];
-    //RCLCPP_INFO_STREAM(this->get_logger(), s);
-    if (s == "-mesh_path") {
-      mesh_path = arguments[i+1];
-    }
-    if (s == "-x") {
-      position[0] = std::stod(arguments[i+1]);
-    }
-    if (s == "-y") {
-      position[1] = std::stod(arguments[i+1]);
-    }
-    if (s == "-z") {
-      position[2] = std::stod(arguments[i+1]);
-    }
-    if (s == "-R") {
-      euler[0] = std::stod(arguments[i+1]);
-    }
-    if (s == "-P") {
-      euler[1] = std::stod(arguments[i+1]);
-    }
-    if (s == "-Y") {
-      euler[2] = std::stod(arguments[i+1]);
-    }
-    if (s == "-mode") {
-      mode = arguments[i+1];
-    }
-  }
-
-  Eigen::Quaterniond quaternion = eulerToQuaternion(euler);
-
-  Eigen::Vector3d scale = {0.0254, 0.0254, 0.0254};
-
-  if (mode == "spawn") {
-    moveit_msgs::msg::CollisionObject collision_object = spawner_node->create(mesh_path, scale=scale, position=position, quaternion=quaternion);
-    spawner_node->spawn(spawner_node->attached_collision_object_vector_.size() - 1);
-  }
-  if (mode == "despawn") {
-    spawner_node->despawn(spawner_node->attached_collision_object_vector_.size() - 1);
-  }
-  if (mode == "attach") {
-    spawner_node->attach(spawner_node->attached_collision_object_vector_.size() - 1);
-  }
-  if (mode == "detach") {
-    spawner_node->detach(spawner_node->attached_collision_object_vector_.size() - 1);
-  }
-
-  moveit_msgs::msg::CollisionObject sphere_object;
-  sphere_object.header.frame_id = spawner_node->move_group_interface_->getPlanningFrame();
-  sphere_object.id = "test_sphere";
-  shape_msgs::msg::SolidPrimitive sphere_primitive;
-  sphere_primitive.type = sphere_primitive.SPHERE;
-  sphere_primitive.dimensions.resize(1);
-  sphere_primitive.dimensions[0] = 0.2;
-  sphere_object.primitives.resize(1);
-  sphere_object.primitives[0] = sphere_primitive;
-  sphere_object.pose.position.x = 0.0;
-  sphere_object.pose.position.y = 0.85;
-  sphere_object.pose.position.z = 0.95;
-  sphere_object.pose.orientation.w = 1.0;
-  sphere_object.operation = sphere_object.ADD;
-  //spawner_node->save(sphere_object);
-  //spawner_node->spawn(sphere_object);
-
-  moveit_msgs::msg::CollisionObject mesh_object;
-  mesh_object.header.frame_id = spawner_node->move_group_interface_->getPlanningFrame();
-  mesh_object.id = "test_mesh";
-  std::string test_mesh_path = "file:///root/ros2_ws/src/morpheus_description/meshes/collision/teapot.obj";
-  const Eigen::Vector3d scale_eigen(0.05, 0.05, 0.05); // mm/inch
-  shapes::Mesh* m = shapes::createMeshFromResource(test_mesh_path, scale_eigen);
-  shape_msgs::msg::Mesh mesh_msg;
-  shapes::ShapeMsg shape_msg;
-  shapes::constructMsgFromShape(m, shape_msg);
-  mesh_msg = boost::get<shape_msgs::msg::Mesh>(shape_msg);
-
-  mesh_object.meshes.resize(2);
-  mesh_object.meshes[0] = mesh_msg;
-  mesh_object.meshes[1] = mesh_msg;
-
-  //mesh_object.primitives.resize(1);
-  //mesh_object.primitives[0] = sphere_primitive;
-
-  mesh_object.pose.position.x = 0.3;
-  mesh_object.pose.position.y = 0.35;
-  mesh_object.pose.position.z = 0.95;
-  mesh_object.pose.orientation.w = 1.0;
-  
-  mesh_object.mesh_poses.resize(2);
-  mesh_object.mesh_poses[0].position.z = 0.2;
-  mesh_object.mesh_poses[0].orientation.w = 1;
-  mesh_object.mesh_poses[1].position.z = -0.2;
-  mesh_object.mesh_poses[1].orientation.w = 1;
-
-  //mesh_object.primitive_poses.resize(1);
-  //mesh_object.primitive_poses[0].position.z = -0.2;
-  //mesh_object.primitive_poses[0].orientation.w = 1;
-
-  mesh_object.operation = mesh_object.ADD;
-  RCLCPP_INFO_STREAM(spawner_node->get_logger(), "Test spawning object");
-  spawner_node->save(mesh_object);
-  spawner_node->spawn(0);
-  //spawner_node->attach(0);
-
-  //RCLCPP_INFO_STREAM(spawner_node->get_logger(), "Spawner Node spinning");
-
-  spawner_node->spin();
-
+  rclcpp::spin(spawner_node);
+  rclcpp::shutdown();
   return 0;
 }

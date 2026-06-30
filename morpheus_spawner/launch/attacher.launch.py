@@ -11,7 +11,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='mesh_path',
             default_value=get_package_share_directory(
-                'morpheus_description') + '/meshes/components/collision/dragon_simple.obj'
+                'morpheus_description') + '/meshes/collision/dragon_simple.obj'
         ),
         launch.actions.DeclareLaunchArgument(
             name='world_pose',
