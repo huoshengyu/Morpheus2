@@ -89,7 +89,7 @@ RUN sh -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/key
 RUN apt update && apt install ros-dev-tools -y
 
 # Install ROS ${ROS_DISTRO} Desktop
-RUN apt update && apt upgrade
+RUN apt update && apt upgrade -y
 RUN apt update && apt install -y --no-install-recommends \
     ros-${ROS_DISTRO}-desktop \
     && rm -rf /var/lib/apt/lists/*
