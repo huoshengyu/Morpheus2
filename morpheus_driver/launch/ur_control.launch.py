@@ -238,11 +238,26 @@ def launch_setup(context):
     if use_mock_hardware.perform(context) == "true":
         controllers_active.remove("tcp_pose_broadcaster")
     
+    ee_nodes = []
     if ee_type.perform(context) == "robotiq":
         controllers_active.append("robotiq_activation_controller")
         controllers_active.append("robotiq_gripper_controller")
+        robotiq_control = Node(
+            package="morpheus_driver",
+            executable="robotiq_control.py",
+            name="robotiq_control",
+            output="screen",
+        )
+        ee_nodes.append(robotiq_control)
     elif ee_type.perform(context) == "onrobot":
         controllers_active.append("onrobot_gripper_controller")
+        onrobot_control = Node(
+            package="morpheus_driver",
+            executable="onrobot_control.py",
+            name="onrobot_control",
+            output="screen",
+        )
+        ee_nodes.append(onrobot_control)
 
     controller_spawners = [
         controller_spawner(controllers_active),
@@ -269,7 +284,7 @@ def launch_setup(context):
         rsp,
         rviz_node,
         trajectory_until_node,
-    ] + controller_spawners
+    ] + controller_spawners + ee_nodes
 
     return nodes_to_start
 
@@ -480,7 +495,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "use_tool_communication",
-            default_value="true",
+            default_value="false",
             description="Only available for e series!",
         )
     )

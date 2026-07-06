@@ -87,8 +87,10 @@ class GripperActionController(Node):
         gripper_joint = self.get_parameter('gripper_joint').value
         
         # Clamp target position
-        position = np.clip(position, min_position, max_position)
+        position = np.clip(position, 0, 1)
         self.target_position = position
+        # Scale target position to hardware range
+        position_hardware = open_position + position * position_range
         
         # Calculate target displacement as a proportion of the position range
         displacement_factor = np.clip(self.target_position - self.current_position, -1.0, 1.0)
@@ -104,7 +106,6 @@ class GripperActionController(Node):
         )
         
         # Create the goal
-        position_hardware = open_position + position * position_range
         goal = self.get_goal(name=gripper_joint, position=position_hardware, velocity=velocity, effort=effort)
         
         # Send the goal
