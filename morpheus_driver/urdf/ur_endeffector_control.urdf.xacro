@@ -52,7 +52,6 @@
     <xacro:arg name="ee_type" default=""/>
     <!-- Common End Effector Arguments -->
     <xacro:arg name="sim_gazebo" default="false"/>
-    <xacro:arg name="device" default="/tmp/ttyUR"/>
     <!-- Robotiq Gripper Arguments -->
     <xacro:arg name="sim_isaac" default="false"/>
     <xacro:arg name="isaac_joint_commands" default="/isaac_joint_commands"/>
@@ -102,7 +101,7 @@
 
         use_mock_hardware="$(arg use_mock_hardware)"
         sim_gazebo="$(arg sim_gazebo)"
-        device="$(arg device)"
+        device="$(arg tool_device_name)"
         
         sim_isaac="$(arg sim_isaac)"
         isaac_joint_commands="$(arg isaac_joint_commands)"
