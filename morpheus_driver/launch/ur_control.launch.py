@@ -55,7 +55,6 @@ def launch_setup(context):
     # End effector arguments
     ee_type = LaunchConfiguration("ee_type")
     # General arguments
-    update_rate_config_file = LaunchConfiguration("update_rate_config_file")
     controllers_file = LaunchConfiguration("controllers_file")
     description_launchfile = LaunchConfiguration("description_launchfile")
     description_file = LaunchConfiguration("description_file")
@@ -71,6 +70,7 @@ def launch_setup(context):
     use_tool_communication = LaunchConfiguration("use_tool_communication")
     tool_device_name = LaunchConfiguration("tool_device_name")
     tool_tcp_port = LaunchConfiguration("tool_tcp_port")
+    update_rate_config_file = LaunchConfiguration("update_rate_config_file")
 
     control_params = [
         update_rate_config_file,

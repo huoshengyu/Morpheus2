@@ -28,7 +28,6 @@ def launch_setup(context):
     # Twist to Pose Arguments
     frame_id = LaunchConfiguration("frame_id")
     end_effector = LaunchConfiguration("end_effector")
-    publishing_rate = LaunchConfiguration("publishing_rate")
     twist_topic = LaunchConfiguration("twist_topic")
     wrench_topic = LaunchConfiguration("wrench_topic")
     pose_topic = LaunchConfiguration("pose_topic")
@@ -62,26 +61,9 @@ def launch_setup(context):
         ]
     )
     
-    twist_to_pose_node = Node(
-        package='morpheus_teleop',
-        executable='twist_to_pose.py',
-        name='twist_to_pose',
-        output='screen',
-        parameters=[
-            {'use_sim_time': True,},
-            {'frame_id': frame_id,},
-            {'end_effector': end_effector,},
-            {'publishing_rate': publishing_rate,},
-            {'twist_topic': twist_topic,},
-            {'wrench_topic': wrench_topic,},
-            {'pose_topic': pose_topic,},
-        ]
-    )
-    
     nodes_to_start = [
         joy_node,
         teleop_twist_node,
-        twist_to_pose_node,
     ]
     
     return nodes_to_start
@@ -135,12 +117,6 @@ def generate_launch_description():
         DeclareLaunchArgument(
             name='end_effector',
             default_value='tool0',
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            name='publishing_rate',
-            default_value='125',
         )
     )
     declared_arguments.append(

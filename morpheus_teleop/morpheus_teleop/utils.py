@@ -31,7 +31,7 @@ def twist_to_wrench(twist, scaling_factor=0.1):
     msg.torque.z  = twist.angular.z * scaling_factor
     return msg
 
-def add_twist_to_pose(twist, pose, dt=0.1):
+def apply_twist(twist, pose, dt=0.1):
     """
     Given twist (linear velocity, angular velocity), pose (position, orientation) and dt (seconds),
     returns the result of moving at rate [twist] for [dt] seconds from the starting [pose].

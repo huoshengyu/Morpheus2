@@ -27,12 +27,7 @@ def launch_setup(context):
             PathJoinSubstitution(
                 [FindPackageShare("morpheus_driver"), "launch", "ur_control.launch.py"]
             )
-        ),
-        launch_arguments={
-            "ur_type": ur_type,
-            "robot_ip": robot_ip,
-            "ee_type": ee_type,
-        }.items(),
+        )
     )
     
     control_nodes = []

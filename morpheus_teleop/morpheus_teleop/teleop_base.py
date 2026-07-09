@@ -28,9 +28,6 @@ class TeleopBase(Node):
     def callback(self, msg):
         return NotImplementedError
 
-    def moveto(self, joint_pos=None):
-        return NotImplementedError
-
 def main(args=None):
     try:
         rclpy.init(args=args)

@@ -2,17 +2,16 @@
 
 # General Packages
 import numpy as np
-import quaternion
 # ROS Packages
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import ExternalShutdownException
-from rclpy.time import Duration
+from rclpy.time import Duration, Time
 import tf2_ros
 # ROS Messages
-import geometry_msgs.msg  
+from geometry_msgs.msg import TwistStamped, WrenchStamped, PoseStamped
 # Local Imports
-from utils import twist_to_wrench, add_twist_to_pose, transform_to_pose
+from utils import twist_to_wrench, apply_twist, transform_to_pose
 
 class TwistToPose(Node):
     def __init__(self, node_name='twist_to_pose_node'):
@@ -28,87 +27,62 @@ class TwistToPose(Node):
         self.wrench_topic = self.declare_parameter("wrench_topic", "target_wrench").value
         self.pose_topic = self.declare_parameter("pose_topic", "target_frame").value
 
-        # Instantiate subscribers and publishers
-        self.twist_sub = self.create_subscription(geometry_msgs.msg.TwistStamped, self.twist_topic, self.twist_callback, 10)
-        self.wrench_pub = self.create_publisher(geometry_msgs.msg.WrenchStamped, self.wrench_topic, 1)
-        self.pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, self.pose_topic, 1)
+        # Initialize subscribers and publishers
+        self.twist_sub = self.create_subscription(TwistStamped, self.twist_topic, self.twist_callback, 10)
+        self.wrench_pub = self.create_publisher(WrenchStamped, self.wrench_topic, 1)
+        self.pose_pub = self.create_publisher(PoseStamped, self.pose_topic, 1)
 
-        # Instantiate tf_buffer and tf_listener to read robot position
+        # Initialize tf_buffer and tf_listener to read robot position
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        # Initialize time for calculating dt
-        # Note: rclpy.Time.now() returns a rospy.Time instance
-        # rclpy.get_time() returns float seconds
-        self.last_time = self.get_clock().now()
-        self.current_time = self.get_clock().now()
+        # Declare twist, tf, pose, and wrench messages
+        self.twist_stamped = TwistStamped()
+        self.wrench_stamped = WrenchStamped()
+        self.pose_stamped = PoseStamped()
+    
+    def lookup_transform(self, target_frame=None, source_frame=None, time=Time(), timeout=Duration(seconds=1)):
+        """ Convenience function to lookup a transform from the tf_buffer with error handling. """
+        target_frame = target_frame if target_frame is not None else self.frame_id
+        source_frame = source_frame if source_frame is not None else self.end_effector
+        try:
+            tf_stamped = self.tf_buffer.lookup_transform(target_frame=target_frame, source_frame=source_frame, time=time, timeout=timeout)
+            return tf_stamped
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+            self.get_logger().warn(f"Exception in lookup_transform for twist_to_pose: {e}")
+        except Exception as e:
+            self.get_logger().error(f"Failed lookup_transform for twist_to_pose: {e}")
 
-        # Instantiate twist, wrench, and pose
-        self.twist_stamped = geometry_msgs.msg.TwistStamped()
-        self.wrench_stamped = geometry_msgs.msg.WrenchStamped()
-        self.wrench_stamped.header.stamp        = self.current_time.to_msg()
-        self.wrench_stamped.header.frame_id     = self.frame_id
-        self.pose_stamped = geometry_msgs.msg.PoseStamped()
-        self.pose_stamped.header.stamp          = self.current_time.to_msg()
-        self.pose_stamped.header.frame_id       = self.frame_id
-
-        # Don't forward messages until pose is initialized
-        self.initialized = False
-
-    def initialize_pose(self):
-        # Set (or reset) the target pose to the robot's current pose
-        self.initialized = False
-        self.last_time = self.current_time
-        self.current_time = self.get_clock().now()
-        transform_result = (0, '')
-        while not transform_result[0]:
-            transform_result = self.tf_buffer.can_transform(target_frame=self.frame_id, source_frame=self.end_effector, time=self.current_time, timeout=Duration(seconds=1), return_debug_tuple=True)
-            self.get_logger().info(f"Waiting for transform {self.end_effector} -> {self.frame_id}: {transform_result[1]}")
-        while not self.initialized:
-            try:
-                self.last_time = self.current_time
-                self.current_time = self.get_clock().now()
-                tf_stamped = self.tf_buffer.lookup_transform(target_frame=self.frame_id, source_frame=self.end_effector, time=self.current_time, timeout=Duration(seconds=1))
-            
-                self.pose_stamped.header.stamp          = self.current_time.to_msg()
-                self.pose_stamped.header.frame_id       = self.frame_id
-                self.pose_stamped.pose                  = transform_to_pose(tf_stamped.transform)
-                
-                self.initialized = True
-                self.get_logger().info(f"Initialized pose for twist_to_pose")
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-                self.get_logger().info(f"Exception initializing pose for twist_to_pose: {e}")
-            except Exception as e:
-                self.get_logger().error(f"Failed to initialize pose for twist_to_pose: {e}")
-
-    def update_pose(self):
+    def update_pose(self, twist_stamped, tf_stamped):
         # Find dt
-        tf_stamped = self.tf_buffer.lookup_transform(target_frame=self.frame_id, source_frame=self.end_effector, time=self.current_time, timeout=Duration(seconds=1))
+        last_time = Time.from_msg(self.pose_stamped.header.stamp)
+        current_time = Time.from_msg(twist_stamped.header.stamp)
+        dt = (current_time - last_time).nanoseconds * 1e-9 # Convert nanoseconds to seconds
+        dt = np.clip(dt, 0.0, 0.1)  # Limit dt to avoid large jumps in pose
 
         # Update pose based on linear velocity and dt
-        self.pose_stamped.header.stamp          = self.current_time.to_msg()
+        self.pose_stamped.header.stamp          = twist_stamped.header.stamp
         self.pose_stamped.header.frame_id       = self.frame_id
-        self.pose_stamped.pose                  = add_twist_to_pose(self.twist_stamped.twist, transform_to_pose(tf_stamped.transform), dt=0.1)
+        self.pose_stamped.pose                  = apply_twist(twist_stamped.twist, transform_to_pose(tf_stamped.transform), dt=dt)
 
-    def update_wrench(self):
+    def update_wrench(self, twist_stamped):
         # Update wrench based on twist
-        self.wrench_stamped.header.stamp        = self.current_time.to_msg()
+        self.wrench_stamped.header.stamp        = twist_stamped.header.stamp
         self.wrench_stamped.header.frame_id     = self.frame_id
-        self.wrench_stamped.wrench              = twist_to_wrench(self.twist_stamped.twist, scaling_factor=1)
+        self.wrench_stamped.wrench              = twist_to_wrench(twist_stamped.twist, scaling_factor=1)
 
-    def twist_callback(self, msg):
-        if self.initialized:
-            try:
-                self.twist_stamped = msg
-                self.last_time = self.current_time
-                self.current_time = self.get_clock().now()
-                self.update_wrench()
-                self.update_pose()
-                self.publish()
-            except Exception as e:
-                self.get_logger().warn(e)
-        else:
-            self.initialize_pose()
+    def twist_callback(self, msg: TwistStamped):
+        try:
+            self.twist_stamped = msg
+            tf_stamped = self.lookup_transform(
+                target_frame = self.frame_id, 
+                source_frame = self.end_effector, 
+                time=Time.from_msg(msg.header.stamp))
+            self.update_pose(msg, tf_stamped)
+            self.update_wrench(msg)
+            self.publish()
+        except Exception as e:
+            self.get_logger().warn(f"Exception in twist_callback for twist_to_pose: {e}")
 
     def publish(self):
         self.wrench_pub.publish(self.wrench_stamped)

@@ -1,29 +1,22 @@
 #! /usr/bin/env python3
 
-### Twist class for teleoperation ###
-# Receives inputs from controller drivers (ROS2 joy package).
-# Converts buttons and axes to twist commands and other motion commands.
-# Optionally transforms control frame between world frame and end effector frame.
-# Sends outputs to robot drivers (UR, Interbotix) and gripper drivers (Robotiq, Onrobot).
-
 # General Imports
-import sys
 import numpy as np
 # ROS Imports
+from morpheus_teleop.utils import apply_twist, transform_to_pose, twist_to_wrench
+from morpheus_teleop.utils import twist_to_wrench
 import rclpy
 from rclpy.executors import ExternalShutdownException
-from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.task import Future
+from rclpy.time import Duration, Time
 # TF2 ROS Imports
-from tf2_ros import TransformException
+import tf2_ros
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 # ROS Message Imports
-import geometry_msgs.msg   
-import sensor_msgs.msg 
-import moveit_msgs.msg
-from control_msgs.msg import GripperCommand
+from geometry_msgs.msg import TwistStamped, WrenchStamped, PoseStamped
+from sensor_msgs.msg import Joy
 from control_msgs.action import ParallelGripperCommand
 # Individual Imports
 from threading import Lock
@@ -33,15 +26,18 @@ from scipy.spatial.transform import Rotation as R
 # Local Imports
 from joy_utils import joy_msg_to_dict, get_joy_msg
 from frame_utils import rearrange_axes, rotate_axes, get_joint_state, get_yaw
-from trajectory_component import TrajectoryComponent
 from morpheus_msgs.action import MoveToNamedTarget
-
-# from robotiq_2f_gripper_control.msg import Robotiq2FGripper_robot_output
-# from onrobot_rg2ft_msgs.msg import RG2FTCommand
 
 from teleop_base import TeleopBase
 
 class TeleopTwist(TeleopBase):
+    """ 
+    Teleoperation class for interpreting joystick inputs as twist (translational and rotational velocity) commands.
+    Receives inputs from controller drivers (ROS2 joy package).
+    Converts buttons and axes to twist commands and other motion commands.
+    Optionally transforms control frame between world frame and end effector frame.
+    Sends outputs to robot drivers (UR, Interbotix) and gripper drivers (Robotiq, Onrobot).
+    """
     def __init__(self, node_name="teleop_node"):
         super().__init__(node_name)
 
@@ -64,30 +60,37 @@ class TeleopTwist(TeleopBase):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
+        # Declare twist, tf, pose, and wrench messages
+        self.twist_stamped = TwistStamped()
+        self.wrench_stamped = WrenchStamped()
+        self.pose_stamped = PoseStamped()
+
         # Get twist topic
         self.twist_topic = self.declare_parameter("twist_topic", "target_twist").value
         self.wrench_topic = self.declare_parameter("wrench_topic", "target_wrench").value
+        self.pose_topic = self.declare_parameter("pose_topic", "target_frame").value
         self.gripper_topic = self.declare_parameter("gripper_topic", "gripper_command").value
 
-        # Initialize twist command publishers and joystick subscriber
-        self.twist_pub = self.create_publisher(geometry_msgs.msg.TwistStamped, self.twist_topic, 1)
-        self.wrench_pub = self.create_publisher(geometry_msgs.msg.WrenchStamped, self.wrench_topic, 1)
+        # Initialize joystick subscriber and twist command publishers 
+        self.joy_sub = self.create_subscription(Joy, "joy", self.joy_callback, 10)
+        self.twist_pub = self.create_publisher(TwistStamped, self.twist_topic, 1)
+        self.wrench_pub = self.create_publisher(WrenchStamped, self.wrench_topic, 1)
+        self.pose_pub = self.create_publisher(PoseStamped, self.pose_topic, 1)
         self.gripper_pub = self.create_publisher(ParallelGripperCommand.Goal, self.gripper_topic, 1)
-        self.joy_sub = self.create_subscription(sensor_msgs.msg.Joy, "joy", self.joy_callback, 10)
 
         # Initialize variables for holding joystick inputs
         self.joy_msg = None
         self.joy_msg_mutex = Lock()
         self.input_dict = {}
 
+        # Set scaling factor on inputs
+        self.linear_scale = 1.0
+        self.angular_scale = 0.1
+
         # Set limits on raw inputs and outputs
-        self.input_min = 0.05
+        self.input_min = 0.05 # Deadzone for joystick inputs
         self.input_max = 1.0
         self.output_max = 1.0
-
-        # Set scaling factor on inputs
-        self.linear_scale = 1
-        self.angular_scale = 1
 
         # Initialize buffer arrays to enable moving average filtering of outputs
         self.twist_filter_size = 5  # Adjust this value for the moving average window size
@@ -100,13 +103,6 @@ class TeleopTwist(TeleopBase):
         self.buffer_list = [self.linear_x_buffer, self.linear_y_buffer, self.linear_z_buffer, self.angular_x_buffer, self.angular_y_buffer, self.angular_z_buffer]
 
     def publish(self, input_dict):
-        # Publish pre-processed commands to the twist topic
-        command = [input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"]]
-
-        # If waiting on an action call, do nothing
-        if self._waiting:
-            return
-
         # If menu button is pressed, move to home
         if input_dict["HOME_POSE"] == 1:
             self.get_logger().info("Attempting trajectory to home position")
@@ -117,25 +113,10 @@ class TeleopTwist(TeleopBase):
             self.move_to_named_target("up")
             return
 
-        # Append inputs on each axis to the respective buffers
-        buffer_zip = zip(self.buffer_list, command)
-        [buffer.append(axis) for buffer, axis in buffer_zip]
-        
-        # Obtain a moving average from each buffer
-        mean_command = [np.mean(np.array(buffer)) for buffer in self.buffer_list]
+        self.twist_pub.publish(self.twist_stamped)
+        self.wrench_pub.publish(self.wrench_stamped)
+        self.pose_pub.publish(self.pose_stamped)
 
-        # Assign a new twist command
-        twist = geometry_msgs.msg.TwistStamped()
-        twist.header.frame_id = self.frame_id
-        twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z, twist.twist.angular.x, twist.twist.angular.y, twist.twist.angular.z = mean_command
-        self.twist_pub.publish(twist)
-        
-        # Assign a new wrench command
-        wrench = geometry_msgs.msg.WrenchStamped()
-        wrench.header.frame_id = self.frame_id
-        wrench.wrench.force.x, wrench.wrench.force.y, wrench.wrench.force.z, wrench.wrench.torque.x, wrench.wrench.torque.y, wrench.wrench.torque.z = mean_command
-        self.wrench_pub.publish(wrench)
-        
         # Create and publish gripper command based on button inputs
         if (input_dict["GRIPPER_OPEN"] or input_dict["GRIPPER_CLOSE"]):
             gripper_command = ParallelGripperCommand.Goal()
@@ -144,22 +125,89 @@ class TeleopTwist(TeleopBase):
             gripper_command.command.velocity = [0.05] # m/s
             gripper_command.command.effort = [20] # N
             self.gripper_pub.publish(gripper_command)
+    
+    def lookup_transform(self, target_frame=None, source_frame=None, time=Time(), timeout=Duration(seconds=1)):
+        """ Convenience function to lookup a transform from the tf_buffer with error handling. """
+        target_frame = target_frame if target_frame is not None else self.frame_id
+        source_frame = source_frame if source_frame is not None else self.end_effector
+        try:
+            tf_stamped = self.tf_buffer.lookup_transform(target_frame=target_frame, source_frame=source_frame, time=time, timeout=timeout)
+            return tf_stamped
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+            self.get_logger().warn(f"Exception in lookup_transform for twist_to_pose: {e}")
+        except Exception as e:
+            self.get_logger().error(f"Failed lookup_transform for twist_to_pose: {e}")
+    
+    def get_mean_command(self):
+        # Obtain a moving average from each buffer
+        return [np.mean(np.array(buffer)) for buffer in self.buffer_list]
+            
+    def update_buffer(self, input_dict):
+        # Get command based on the input dictionary
+        command = [input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"]]
+        # Append inputs on each axis to the respective buffers
+        buffer_zip = zip(self.buffer_list, command)
+        [buffer.append(axis) for buffer, axis in buffer_zip]
+    
+    def update_twist(self, command, stamp=Time().to_msg()):
+        # Assign a new twist command
+        twist = TwistStamped()
+        twist.header.stamp                      = stamp
+        twist.header.frame_id                   = self.frame_id
+        twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z, twist.twist.angular.x, twist.twist.angular.y, twist.twist.angular.z = command
+        self.twist_stamped = twist
+        return twist
 
-    def update(self, msg):
-        if msg is not None:
-            input_dict = joy_msg_to_dict(msg, controller_type=self.controller_type, logger=self.get_logger())
-            input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"] = \
-                rearrange_axes([input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"]])
-            self.input_dict = input_dict
-            return input_dict
-        else:
-            return None
+    def update_wrench(self, twist_stamped):
+        # Update wrench based on twist
+        self.wrench_stamped.header.stamp        = twist_stamped.header.stamp
+        self.wrench_stamped.header.frame_id     = self.frame_id
+        self.wrench_stamped.wrench              = twist_to_wrench(twist_stamped.twist, scaling_factor=1)
 
-    def loop_once(self):
-        if self.joy_msg:
-            self.update(self.joy_msg)
-            if self.input_dict:
-                self.publish(self.input_dict)
+    def update_pose(self, twist_stamped, tf_stamped):
+        # Find dt
+        last_time = Time.from_msg(self.pose_stamped.header.stamp)
+        current_time = Time.from_msg(twist_stamped.header.stamp)
+        dt = (current_time - last_time).nanoseconds * 1e-9 # Convert nanoseconds to seconds
+        dt = np.clip(dt, 0.0, 0.1)  # Limit dt to avoid large jumps in pose
+
+        # Update pose based on linear velocity and dt
+        self.pose_stamped.header.stamp          = twist_stamped.header.stamp
+        self.pose_stamped.header.frame_id       = self.frame_id
+        self.pose_stamped.pose                  = apply_twist(twist_stamped.twist, transform_to_pose(tf_stamped.transform), dt=dt)
+
+    def update_input_dict(self, joy_msg):
+        input_dict = joy_msg_to_dict(
+            joy_msg, 
+            controller_type=self.controller_type, 
+            linear_scale=self.linear_scale, 
+            angular_scale=self.angular_scale, 
+            input_min=self.input_min, 
+            input_max=self.input_max, 
+            output_max=self.output_max,
+            logger=self.get_logger())
+        input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"] = \
+            rearrange_axes([input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"]])
+        self.input_dict = input_dict
+        return input_dict
+
+    def update(self, joy_msg):
+        try:
+            # If waiting on an action call, do nothing
+            if self._waiting:
+                return
+            self.update_input_dict(joy_msg)
+            tf_stamped = self.lookup_transform(
+                target_frame = self.frame_id, 
+                source_frame = self.end_effector, 
+                time=Time.from_msg(joy_msg.header.stamp))
+            self.update_buffer(self.input_dict)
+            self.update_twist(self.get_mean_command(), stamp=joy_msg.header.stamp)
+            self.update_wrench(self.twist_stamped)
+            self.update_pose(self.twist_stamped, tf_stamped)
+            self.publish(self.input_dict)
+        except Exception as e:
+            self.get_logger().warn(f"Exception in update for teleop_twist: {e}")
 
     def joy_callback(self, msg):
         # Retrieve joy_msg and store a safe copy
@@ -167,7 +215,7 @@ class TeleopTwist(TeleopBase):
         self.joy_msg = deepcopy(msg)
         self.joy_msg_mutex.release()
         # Process and publish
-        self.loop_once()
+        self.update(self.joy_msg)
     
     def move_to_named_target(self, name):
         # Create goal message to move to named position

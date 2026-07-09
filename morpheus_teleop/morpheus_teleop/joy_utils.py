@@ -104,7 +104,7 @@ def get_joy_msg(joy_msg, joy_msg_mutex):
     joy_msg_mutex.release()
     return msg
 
-def joy_msg_to_dict(msg, controller_type="ps4", linear_scale=0.05, angular_scale=0.05, input_min=0.05, input_max=1, output_max=1.0, logger=get_logger("joy_utils")):
+def joy_msg_to_dict(msg, controller_type="ps4", linear_scale=1.0, angular_scale=0.1, input_min=0.05, input_max=1.0, output_max=1.0, logger=get_logger("joy_utils")):
     # Get button mapping based on controller type
     if (controller_type == "xbox360"):
         button_mapping = xbox360
@@ -126,10 +126,10 @@ def joy_msg_to_dict(msg, controller_type="ps4", linear_scale=0.05, angular_scale
 
     # Retrieve movement controls by name
     joy_dict = {"EE_X": axes[button_mapping["EE_X"]] * linear_scale,
-                    "EE_Z": axes[button_mapping["EE_Z"]] * linear_scale,  
-                    "EE_PITCH": axes[button_mapping["EE_PITCH"]] * angular_scale, 
-                    "EE_ROLL": axes[button_mapping["EE_ROLL"]] * angular_scale, 
-                    "WAIST": (buttons[button_mapping["WAIST_CCW"]] - buttons[button_mapping["WAIST_CW"]]) * angular_scale,}
+                "EE_Z": axes[button_mapping["EE_Z"]] * linear_scale,  
+                "EE_PITCH": axes[button_mapping["EE_PITCH"]] * angular_scale, 
+                "EE_ROLL": axes[button_mapping["EE_ROLL"]] * angular_scale, 
+                "WAIST": (buttons[button_mapping["WAIST_CCW"]] - buttons[button_mapping["WAIST_CW"]]) * angular_scale,}
     if controller_type == "xbox360":
         joy_dict["EE_Y"] = (axes[button_mapping["EE_Y_INC"]] - axes[button_mapping["EE_Y_DEC"]]) * linear_scale
     else:
@@ -158,6 +158,6 @@ def joy_msg_to_dict(msg, controller_type="ps4", linear_scale=0.05, angular_scale
             joy_dict["SPEED"] = axes[button_mapping["SPEED"]]
     except IndexError as e:
         logger.error(f"IndexError: {e}")
-        logger.error("Check that controller type is set correctly where teleop_main.launch is called.")
+        logger.error("Check that controller type is set correctly where teleop is launched.")
     
     return joy_dict
