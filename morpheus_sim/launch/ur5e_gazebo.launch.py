@@ -9,8 +9,8 @@ def generate_launch_description():
     ur_sim_gz_pkg_path = FindPackageShare('ur_simulation_gz')
     ur_sim_control_launch_file = PathJoinSubstitution([ur_sim_gz_pkg_path, 'launch', 'ur_sim_control.launch.py'])
     
-    ur_moveit_config_pkg_path = FindPackageShare('ur_moveit_config')
-    ur_moveit_launch_file = PathJoinSubstitution([ur_moveit_config_pkg_path, 'launch', 'ur_moveit.launch.py'])
+    moveit_config_pkg_path = FindPackageShare('morpheus_moveit')
+    moveit_launch_file = PathJoinSubstitution([moveit_config_pkg_path, 'launch', 'ur_moveit.launch.py'])
     
     morpheus_sim_pkg_path = FindPackageShare('morpheus_sim')
     controllers_file = PathJoinSubstitution([morpheus_sim_pkg_path, 'config', 'ur_controllers.yaml'])
@@ -35,9 +35,9 @@ def generate_launch_description():
                           ('launch_rviz', 'false')],
     )
     
-    ur_moveit_description = IncludeLaunchDescription(
+    moveit_description = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [ur_moveit_launch_file]),
+            [moveit_launch_file]),
         launch_arguments=[('ur_type', ur_type),
                           ('launch_servo', 'true'),
                           ('use_sim_time', 'true'),
@@ -49,7 +49,7 @@ def generate_launch_description():
     
     # Add the actions to launch all of the bridge + spawn_model nodes
     ld.add_action(ur_sim_control_description)
-    ld.add_action(ur_moveit_description)
+    ld.add_action(moveit_description)
 
     return ld
 

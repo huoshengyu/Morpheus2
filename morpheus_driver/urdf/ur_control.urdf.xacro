@@ -14,7 +14,7 @@
     <xacro:arg name="safety_limits" default="false"/>
     <xacro:arg name="safety_pos_margin" default="0.15"/>
     <xacro:arg name="safety_k_position" default="20"/>
-    <xacro:arg name="force_abs_paths" default="false"/>
+    <xacro:arg name="force_abs_paths" default="true"/>
     <!-- ros2_control Parameters -->
     <xacro:arg name="headless_mode" default="false" />
     <xacro:arg name="robot_ip" default="0.0.0.0"/>

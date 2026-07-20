@@ -149,9 +149,9 @@ def launch_setup(context):
     moveit_config_builder = (
         MoveItConfigsBuilder(robot_name="ur", package_name="morpheus_moveit")
     )
-    srdf_file = get_package_share_directory("morpheus_description") / Path("srdf") / "ur.srdf.xacro"
+    srdf_file = get_package_share_directory("morpheus_description") / Path("srdf") / Path("scenes") / "ur.srdf.xacro"
     if ee_type.perform(context):
-        srdf_file = get_package_share_directory("morpheus_description") / Path("srdf") / "scenes" / Path("ur_" + ee_type.perform(context) + ".srdf.xacro")
+        srdf_file = get_package_share_directory("morpheus_description") / Path("srdf") / Path("scenes") / Path("ur_" + ee_type.perform(context) + ".srdf.xacro")
     moveit_config_builder.robot_description_semantic(srdf_file, {"name": ur_type})
     moveit_config_builder.robot_description_kinematics(Path("config") / ur_type.perform(context) / "kinematics.yaml")
     moveit_config_builder.joint_limits(Path("config") / ur_type.perform(context) / "joint_limits.yaml")
