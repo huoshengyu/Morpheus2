@@ -179,6 +179,8 @@ RUN echo "break-system-packages = true" >> etc/pip.conf
 RUN python3 -m pip install numpy-quaternion
 RUN python3 -m pip install readchar
 RUN python3 -m pip install PyQt6
+RUN python3 -m pip install transforms3d
+RUN python3 -m pip install modern_robotics
 # RUN pip install --upgrade \ 
 #     pyserial \
 #     pymodbus===2.1.0 \
@@ -192,7 +194,6 @@ RUN python3 -m pip install PyQt6
 # RUN pip install --upgrade six
 # RUN pip install --upgrade setuptools
 # RUN pip install --upgrade PyQt6
-# RUN pip install --upgrade modern_robotics
 
 # # Install GELLO dependencies
 # RUN pip install -r ./src/gello_software/requirements.txt
