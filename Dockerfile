@@ -140,6 +140,7 @@ RUN apt update && apt install --no-install-recommends -y \
     ros-${ROS_DISTRO}-moveit \
     ros-${ROS_DISTRO}-rqt-controller-manager \
     ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+    ros-${ROS_DISTRO}-pinocchio \
 #     ros-${ROS_DISTRO}-teleop-twist-keyboard \
 #     python3-tk \
     && rm -rf /var/lib/apt/lists/*
@@ -242,7 +243,7 @@ COPY ./ ./src/
 RUN source /opt/ros/$ROS_DISTRO/setup.bash \
     && apt update \
     && rosdep update --rosdistro $ROS_DISTRO \
-    && rosdep install -q -y \
+    && rosdep install -q -y -r \
       --from-paths ./src/ \
       --ignore-src \
       --rosdistro $ROS_DISTRO \
