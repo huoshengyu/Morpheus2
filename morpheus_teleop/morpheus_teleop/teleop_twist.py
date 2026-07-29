@@ -59,6 +59,7 @@ class TeleopTwist(TeleopBase):
         # Listen for robot state
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.tf_stamped = None
 
         # Declare twist, tf, pose, and wrench messages
         self.twist_stamped = TwistStamped()
@@ -126,7 +127,7 @@ class TeleopTwist(TeleopBase):
             gripper_command.command.effort = [20] # N
             self.gripper_pub.publish(gripper_command)
     
-    def lookup_transform(self, target_frame=None, source_frame=None, time=Time(), timeout=Duration(seconds=1)):
+    def get_transform(self, target_frame=None, source_frame=None, time=Time(), timeout=Duration(seconds=1)):
         """ Convenience function to lookup a transform from the tf_buffer with error handling. """
         target_frame = target_frame if target_frame is not None else self.frame_id
         source_frame = source_frame if source_frame is not None else self.end_effector
@@ -134,9 +135,9 @@ class TeleopTwist(TeleopBase):
             tf_stamped = self.tf_buffer.lookup_transform(target_frame=target_frame, source_frame=source_frame, time=time, timeout=timeout)
             return tf_stamped
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-            self.get_logger().warn(f"Exception in lookup_transform for twist_to_pose: {e}")
+            self.get_logger().debug(f"Exception in lookup_transform for twist_to_pose: {e}")
         except Exception as e:
-            self.get_logger().error(f"Failed lookup_transform for twist_to_pose: {e}")
+            self.get_logger().warn(f"Failed lookup_transform for twist_to_pose: {e}")
     
     def get_mean_command(self):
         # Obtain a moving average from each buffer
@@ -197,10 +198,10 @@ class TeleopTwist(TeleopBase):
             if self._waiting:
                 return
             self.update_input_dict(joy_msg)
-            tf_stamped = self.lookup_transform(
+            tf_stamped = self.get_transform(
                 target_frame = self.frame_id, 
                 source_frame = self.end_effector, 
-                time=Time.from_msg(joy_msg.header.stamp))
+                time=Time())
             self.update_buffer(self.input_dict)
             self.update_twist(self.get_mean_command(), stamp=joy_msg.header.stamp)
             self.update_wrench(self.twist_stamped)
