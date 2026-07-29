@@ -64,8 +64,8 @@
     <xacro:arg name="gripper_closed_position" default="0.7929"/>
     <!-- OnRobot Gripper Arguments -->
     <xacro:arg name="connection_type" default="serial"/>
-    <xacro:arg name="ip_address" default="192.168.1.1"/>
-    <xacro:arg name="port" default="502"/>
+    <xacro:arg name="ip_address" default="$(arg robot_ip)"/>
+    <xacro:arg name="port" default="$(arg tool_tcp_port)"/>
 
     <!-- Additional URDF Files -->
     <xacro:arg name="environment_file" default="" />
