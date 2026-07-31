@@ -34,8 +34,8 @@ ps3 = {
     "SPEED_FINE": 16,
     "EE_X": 0,              # axes start here
     "EE_Z": 1,
-    "EE_ROLL": 3,
-    "EE_PITCH": 4,
+    "EE_ROLL": 2,
+    "EE_PITCH": 3,
     }
 
 # PS4 Controller button mappings
@@ -60,10 +60,10 @@ ps4 = {
     "FLIP_EE_ROLL": 12,
     "EE_X": 0,              # axes start here
     "EE_Z": 1,
-    "EE_ROLL": 3,
-    "EE_PITCH": 4,
-    "SPEED_TYPE": 6,
-    "SPEED": 7,
+    "EE_ROLL": 2,
+    "EE_PITCH": 3,
+    "SPEED_TYPE": 4,
+    "SPEED": 5,
     }
 
 # Xbox 360 Controller button mappings
@@ -158,6 +158,6 @@ def joy_msg_to_dict(msg, controller_type="ps4", linear_scale=1.0, angular_scale=
             joy_dict["SPEED"] = axes[button_mapping["SPEED"]]
     except IndexError as e:
         logger.error(f"IndexError: {e}")
-        logger.error("Check that controller type is set correctly where teleop is launched.")
+        logger.error(f"Expected controller type was {controller_type}, but joy message had {len(axes)} axes and {len(buttons)} buttons.")
     
     return joy_dict

@@ -38,7 +38,7 @@ class GripperActionController(Node):
         self._declare_parameters()
         
         # Create subscriptions for gripper commands and joint states
-        self.create_subscription(ParallelGripperCommand.Goal, self.get_parameter('gripper_command_topic').value, self._gripper_command_callback, 10)
+        self.create_subscription(JointState, self.get_parameter('gripper_command_topic').value, self._gripper_command_callback, 10)
         self.create_subscription(JointState, self.get_parameter('joint_state_topic').value, self._joint_state_callback, 10)
         
         # Wait for action server to be available
@@ -193,7 +193,7 @@ class GripperActionController(Node):
         """
         max_velocity = self.get_parameter('max_velocity').value
         ramp = self._calculate_ramp(displacement_factor)
-        velocity = np.sign(displacement_factor) * max_velocity * ramp * velocity_factor
+        velocity = -np.sign(displacement_factor) * max_velocity * ramp * velocity_factor
         return np.clip(velocity, -max_velocity, max_velocity)
 
     def _calculate_effort(self, displacement_factor, effort_factor):
@@ -205,7 +205,7 @@ class GripperActionController(Node):
         max_effort = self.get_parameter('max_effort').value
         ramp = self._calculate_ramp(displacement_factor)
         if displacement_factor < 0: ramp = ramp * 0.5  # Reduce effort when opening for safety
-        effort = np.sign(displacement_factor) * max_effort * ramp * effort_factor
+        effort = -np.sign(displacement_factor) * max_effort * ramp * effort_factor
         return np.clip(effort, -max_effort, max_effort)
     
     def _calculate_ramp(self, displacement_factor):
@@ -249,13 +249,12 @@ class GripperActionController(Node):
     
     def _gripper_command_callback(self, msg):
         """Handle incoming gripper command messages."""
-        command = msg.command
         try:
-            self.get_logger().info(f'Received gripper command: position={command.position[0]:.3f}m, velocity={command.velocity[0]:.3f}mm/s, effort={command.effort[0]:.1f}N')
+            self.get_logger().info(f'Received gripper command: position={msg.position[0]:.3f}m, velocity={msg.velocity[0]:.3f}mm/s, effort={msg.effort[0]:.1f}N')
             self.move_to_position(
-                position=command.position[0],
-                velocity=command.velocity[0],
-                effort=command.effort[0],
+                position=msg.position[0],
+                velocity=msg.velocity[0],
+                effort=msg.effort[0],
                 wait_for_result=False
             )
         except Exception as e:

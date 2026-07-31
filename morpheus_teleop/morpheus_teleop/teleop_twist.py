@@ -16,7 +16,7 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 # ROS Message Imports
 from geometry_msgs.msg import TwistStamped, WrenchStamped, PoseStamped
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, JointState
 from control_msgs.action import ParallelGripperCommand
 # Individual Imports
 from threading import Lock
@@ -77,7 +77,7 @@ class TeleopTwist(TeleopBase):
         self.twist_pub = self.create_publisher(TwistStamped, self.twist_topic, 1)
         self.wrench_pub = self.create_publisher(WrenchStamped, self.wrench_topic, 1)
         self.pose_pub = self.create_publisher(PoseStamped, self.pose_topic, 1)
-        self.gripper_pub = self.create_publisher(ParallelGripperCommand.Goal, self.gripper_topic, 1)
+        self.gripper_pub = self.create_publisher(JointState, self.gripper_topic, 1)
 
         # Initialize variables for holding joystick inputs
         self.joy_msg = None
@@ -85,8 +85,8 @@ class TeleopTwist(TeleopBase):
         self.input_dict = {}
 
         # Set scaling factor on inputs
-        self.linear_scale = 1.0
-        self.angular_scale = 0.1
+        self.linear_scale = 0.1
+        self.angular_scale = 0.01
 
         # Set limits on raw inputs and outputs
         self.input_min = 0.05 # Deadzone for joystick inputs
@@ -120,11 +120,11 @@ class TeleopTwist(TeleopBase):
 
         # Create and publish gripper command based on button inputs
         if (input_dict["GRIPPER_OPEN"] or input_dict["GRIPPER_CLOSE"]):
-            gripper_command = ParallelGripperCommand.Goal()
-            gripper_command.command.name = ["gripper_joint"]
-            gripper_command.command.position = [(1 + input_dict["GRIPPER_CLOSE"] - input_dict["GRIPPER_OPEN"]) / 2] # 1 = closed, 0 = open
-            gripper_command.command.velocity = [0.05] # m/s
-            gripper_command.command.effort = [20] # N
+            gripper_command = JointState()
+            gripper_command.name = ["gripper_joint"]
+            gripper_command.position = [(1 + input_dict["GRIPPER_CLOSE"] - input_dict["GRIPPER_OPEN"]) / 2] # 1 = closed, 0 = open
+            gripper_command.velocity = [0.05] # m/s
+            gripper_command.effort = [20] # N
             self.gripper_pub.publish(gripper_command)
     
     def get_transform(self, target_frame=None, source_frame=None, time=Time(), timeout=Duration(seconds=1)):

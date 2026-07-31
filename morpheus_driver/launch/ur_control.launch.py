@@ -247,6 +247,12 @@ def launch_setup(context):
             executable="robotiq_control.py",
             name="robotiq_control",
             output="screen",
+            parameters=[
+                {
+                    "gripper_command_topic": "gripper_command",
+                    "joint_states_topic": "joint_states",
+                },
+            ],
         )
         ee_nodes.append(robotiq_control)
     elif ee_type.perform(context) == "onrobot":
@@ -256,6 +262,12 @@ def launch_setup(context):
             executable="onrobot_control.py",
             name="onrobot_control",
             output="screen",
+            parameters=[
+                {
+                    "gripper_command_topic": "gripper_command",
+                    "joint_states_topic": "joint_states",
+                },
+            ],
         )
         ee_nodes.append(onrobot_control)
 
@@ -426,7 +438,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "initial_joint_controller",
-            default_value="cartesian_compliance_controller",
+            default_value="cartesian_motion_controller",
             choices=[
                 "scaled_joint_trajectory_controller",
                 "joint_trajectory_controller",
@@ -453,24 +465,6 @@ def generate_launch_description():
             "trajectory_controller",
             default_value="scaled_joint_trajectory_controller",
             description="Controller for trajectory execution.",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "initial_joint_controller",
-            default_value="scaled_joint_trajectory_controller",
-            choices=[
-                "scaled_joint_trajectory_controller",
-                "joint_trajectory_controller",
-                "forward_velocity_controller",
-                "forward_position_controller",
-                "freedrive_mode_controller",
-                "passthrough_trajectory_controller",
-                "cartesian_compliance_controller",
-                "cartesian_force_controller",
-                "cartesian_motion_controller",
-            ],
-            description="Joint trajectory controller for trajectory_until_node.",
         )
     )
     declared_arguments.append(
