@@ -239,14 +239,13 @@ WORKDIR /root/ros2_ws/
 # Copy the morpheus repo
 COPY ./ ./src/
 
-# General rosdep install
+# General rosdep install (Includes EOL distros to handle Interbotix library dependencies)
 RUN source /opt/ros/$ROS_DISTRO/setup.bash \
     && apt update \
-    && rosdep update --rosdistro $ROS_DISTRO \
+    && rosdep update --include-eol-distros \
     && rosdep install -q -y -r \
       --from-paths ./src/ \
       --ignore-src \
-      --rosdistro $ROS_DISTRO \
     && rm -rf /var/lib/apt/lists/*
 
 # # Build the ROS workspace
