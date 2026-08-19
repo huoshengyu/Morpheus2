@@ -32,3 +32,6 @@
 [submodule "submodules/FACTR_Teleop"]
 	path = submodules/FACTR_Teleop
 	url = https://github.com/JasonJZLiu/FACTR_Teleop
+[submodule "submodules/-h"]
+	path = submodules/gello_software
+	url = https://github.com/huoshengyu/gello_software
