@@ -1,0 +1,12 @@
+modern_robotics
+numpy
+numpy-quaternion
+pygame-ce
+pymodbus===2.1.0
+pynput
+PyQt6
+pyserial
+readchar
+scipy
+setuptools
+transforms3d

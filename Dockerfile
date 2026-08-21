@@ -152,6 +152,8 @@ RUN apt update && apt install --no-install-recommends -y \
     libspnav-dev \
     spacenavd \
     screen \
+    lsof \
+    psmisc \
     && rm -rf /var/lib/apt/lists/*
 
 # # Install debian python dependencies 
@@ -160,47 +162,19 @@ RUN apt update && apt install --no-install-recommends -y \
     python-is-python3 \
     python3-pip \
     python3-venv \
-    python3-zipp \
-    python3-pymodbus \
-    python3-numpy \
-    python3-scipy \
-    python3-pynput \
-    python3-pygame \
-    python3-importlib-metadata \
-    python3-six \
-    python3-setuptools \
-    python3-pyqt6 \
+#     python3-zipp \
+#     python3-pymodbus \
+#     python3-numpy \
+#     python3-scipy \
+#     python3-pynput \
+#     python3-pygame \
+#     python3-importlib-metadata \
+#     python3-six \
+#     python3-setuptools \
+#     python3-pyqt6 \
     && rm -rf /var/lib/apt/lists/*
 
-# # Install non-debian python dependencies 
-# # (Force pip to permit package installation)
-RUN echo "[global]" >> etc/pip.conf
-RUN echo "break-system-packages = true" >> etc/pip.conf
-# # (Relatively error-prone dependencies installed individually for readability of error messages)
-RUN python3 -m pip install numpy-quaternion
-RUN python3 -m pip install readchar
-RUN python3 -m pip install PyQt6
-RUN python3 -m pip install transforms3d
-RUN python3 -m pip install modern_robotics
-# RUN pip install --upgrade \ 
-#     pyserial \
-#     pymodbus===2.1.0 \
-#     numpy \
-#     numpy-quaternion \
-#     scipy \
-#     readchar \
-#     pynput \
-#     pygame-ce
-# RUN pip install --upgrade importlib_metadata
-# RUN pip install --upgrade six
-# RUN pip install --upgrade setuptools
-# RUN pip install --upgrade PyQt6
-
-# # Install GELLO dependencies
-# RUN pip install -r ./src/gello_software/requirements.txt
-# RUN pip install -e ./src/gello_software/. --use-pep517
-# RUN pip install -e ./src/gello_software/third_party/DynamixelSDK/python/.
-# RUN pip install pylsl
+# RUN python3 -m pip install pylsl
 
 # # Build liblsl from source (for pylsl)
 # RUN apt update && apt install -y \
@@ -229,7 +203,7 @@ RUN python3 -m pip install modern_robotics
 #    echo -e 'if [ -z "$ROS_IP" ]; then\n\texport ROS_IP=127.0.0.1\nfi' >> ~/.bashrc
 
 # Clean & upgrade
-RUN apt update && apt dist-upgrade
+RUN apt update && apt dist-upgrade -y && apt autoremove -y && apt clean
 
 # FROM base AS dev
 
@@ -238,6 +212,24 @@ WORKDIR /root/ros2_ws/
 
 # Copy the morpheus repo
 COPY ./ ./src/
+
+# Create and activate venv to avoid conflict with externally managed environment
+ENV VIRTUAL_ENV=.venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
+RUN echo "source ${VIRTUAL_ENV}/bin/activate" >> ~/.bashrc
+
+# # Install non-debian python dependencies 
+# # (Force pip to permit package installation)
+# RUN echo "[global]" >> etc/pip.conf
+# RUN echo "break-system-packages = true" >> etc/pip.conf
+RUN python3 -m pip install --upgrade pip
+RUN .venv/bin/python3 -m pip install --no-cache-dir -r ./src/requirements.txt
+
+# Install GELLO dependencies
+RUN .venv/bin/python3 -m pip install --no-cache-dir -r ./src/submodules/gello_software/requirements.txt
+RUN .venv/bin/python3 -m pip install --no-cache-dir -e ./src/submodules/gello_software/. --use-pep517
+RUN .venv/bin/python3 -m pip install --no-cache-dir -e ./src/submodules/gello_software/third_party/DynamixelSDK/python/.
 
 # General rosdep install (Includes EOL distros to handle Interbotix library dependencies)
 RUN source /opt/ros/$ROS_DISTRO/setup.bash \
@@ -250,7 +242,7 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
 
 # # Build the ROS workspace
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
-    && colcon build --symlink-install
+    && colcon build --symlink-install --packages-ignore gello
 
 # Source the workspace setup files on container startup
 RUN echo "source /root/ros2_ws/install/setup.bash" >> ~/.bashrc

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 # Keyboard input imports
-from pynput import keyboard
 from readchar import readkey, readchar, key
 
 def get_key():
