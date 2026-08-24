@@ -15,19 +15,15 @@ RUN apt update && apt install --no-install-recommends -y \
     ca-certificates \
     gnupg2 \
     bzip2 \
-    libssl-dev \
     wget \
     gawk \
     flex \
     bison \
-    libelf-dev \
     dwarves \
     linux-lowlatency \
     curl \
     git \
     pipx \
-    x11-apps \
-    mesa-utils \
     udev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -135,7 +131,7 @@ RUN rosdep init \
 # RUN echo "conda activate" >> ~/.bashrc
 # #RUN conda env create -f environment.yml
 
-# # Install ROS dependencies
+# Install ROS dependencies
 RUN apt update && apt install --no-install-recommends -y \
     ros-${ROS_DISTRO}-moveit \
     ros-${ROS_DISTRO}-rqt-controller-manager \
@@ -145,15 +141,31 @@ RUN apt update && apt install --no-install-recommends -y \
 #     python3-tk \
     && rm -rf /var/lib/apt/lists/*
 
-# # Install general dependencies
+# Install general dependencies
+# See Mujoco dependencies here: https://docs.pytorch.org/rl/stable/reference/generated/knowledge_base/MUJOCO_INSTALLATION.html
 RUN apt update && apt install --no-install-recommends -y \
-    libnet1-dev \
 #     libcxx-serial-dev \
+    libegl1-mesa-dev \
+    libelf-dev \
+    libglfw3 \
+    libglew2.0 \
+    libgl1-mesa-glx \
+    libnet1-dev \
+    libosmesa6 \
     libspnav-dev \
-    spacenavd \
+    libssl-dev \
+    mesa-utils \
+    mesa-va-drivers \
+    vainfo \
     screen \
+    x11-apps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install general dependencies
+RUN apt update && apt install --no-install-recommends -y \
     lsof \
     psmisc \
+    spacenavd \
     && rm -rf /var/lib/apt/lists/*
 
 # # Install debian python dependencies 
