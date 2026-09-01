@@ -141,7 +141,7 @@ def launch_setup(context, *args, **kwargs):
         arguments=[
             '-c',
             f'/{robot_name_launch_arg.perform(context)}/controller_manager',
-            'arm_controller',
+            'cartesian_motion_controller',
         ],
         output={'both': 'screen'},
     )
@@ -177,7 +177,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     return [
-        #controller_manager_node,
+        controller_manager_node,
         spawn_arm_controller_node,
         spawn_gripper_controller_node,
         spawn_joint_state_broadcaster_node,
