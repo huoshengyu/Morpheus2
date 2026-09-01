@@ -148,8 +148,9 @@ RUN apt update && apt install --no-install-recommends -y \
     libegl1-mesa-dev \
     libelf-dev \
     libglfw3 \
-    libglew2.0 \
-    libgl1-mesa-glx \
+    libglew2.2 \
+    libgl1 \
+    libglx-mesa0 \
     libnet1-dev \
     libosmesa6 \
     libspnav-dev \
@@ -166,6 +167,12 @@ RUN apt update && apt install --no-install-recommends -y \
     lsof \
     psmisc \
     spacenavd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install debug dependencies
+RUN apt update && apt install --no-install-recommends -y \
+    xterm \
+    gdb \
     && rm -rf /var/lib/apt/lists/*
 
 # # Install debian python dependencies 
