@@ -20,14 +20,14 @@ services:
 
     environment:
       # Share GUI environment variables with the container.
-      - DISPLAY=$DISPLAY
-      - WAYLAND_DISPLAY=$WAYLAND_DISPLAY
-      - XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR
+      - DISPLAY
+      - WAYLAND_DISPLAY
+      - XDG_RUNTIME_DIR
       - LD_LIBRARY_PATH=/usr/lib/wsl/lib
       # Fix a bug with QT
       - QT_X11_NO_MITSHM=1
       # Grant display access to X Server.
-      - XAUTHORITY=/tmp/.docker.xauth
+      - XAUTHORITY
        # Configure for Moveit and Gazebo
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
@@ -35,8 +35,8 @@ services:
       - GZ_VERSION=harmonic
       # Configure Nvidia Docker interface.
       - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=all,graphics,display,video,utility,compute
-      - __NV_PRIME_RENDER_OFFLOAD=1
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_DISABLE_REQUIRE=1
       - __GLX_VENDOR_LIBRARY_NAME=nvidia
       - LIBVA_DRIVER_NAME=d3d12
     volumes:

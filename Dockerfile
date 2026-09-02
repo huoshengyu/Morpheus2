@@ -1,4 +1,4 @@
-FROM nvidia/cuda:13.1.0-base-ubuntu24.04 AS base
+FROM nvidia/cuda:13.3.1-cudnn-devel-ubuntu24.04 AS base
 # RUN rm /etc/apt/sources.list.d/nvidia-ml.list && apt clean && apt update
 
 # Use bash as shell for RUN commands, and use --login to ensure conda loads once installed
