@@ -46,14 +46,7 @@ services:
       # Mount the ROS workspace into the container.
       - .:/root/ros2_ws/src
       # Share input devices and GPU with the container.
-      - /dev/input:/dev/input
-      - /dev/dxg:/dev/dxg
-      - /dev/dri:/dev/dri
-      - /dev/dri/card0:/dev/dri/card0
-      - /dev/dri/renderD128:/dev/dri/renderD128
-      - /dev/nvidia0:/dev/nvidia0
-      - /dev/nvidiactl:/dev/nvidiactl
-      - /dev/nvidia-modeset:/dev/nvidia-modeset
+      - /dev:/dev
       # Share WSL mount locations with the container
       - /usr/lib/wsl:/usr/lib/wsl
 
