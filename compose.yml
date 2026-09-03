@@ -43,6 +43,8 @@ services:
       # Share X11, Wayland, and/or Pulse servers with the container.
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /mnt/wslg:/mnt/wslg
+      # Share the Xauthority file with the container.
+      - ${XAUTHORITY}:${XAUTHORITY}
       # Mount the ROS workspace into the container.
       - .:/root/ros2_ws/src
       # Share input devices and GPU with the container.
