@@ -131,6 +131,16 @@ def launch_setup(context, *args, **kwargs):
             ros2_control_controllers_config_parameter_file,
         ],
         output={'both': 'screen'},
+        remappings=[
+            ("~/robot_description", "/robot_description"),
+            ("motion_control_handle/target_frame", "target_frame"),
+            ("cartesian_motion_controller/target_frame", "/target_frame"),
+            ("cartesian_compliance_controller/target_frame", "/target_frame"),
+            ("cartesian_force_controller/target_wrench", "target_wrench"),
+            ("cartesian_compliance_controller/target_wrench", "target_wrench"),
+            ("cartesian_force_controller/ft_sensor_wrench", "ft_sensor_wrench"),
+            ("cartesian_compliance_controller/ft_sensor_wrench", "ft_sensor_wrench"),
+        ],
     )
 
     spawn_arm_controller_node = Node(

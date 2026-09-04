@@ -147,8 +147,8 @@ class TeleopTwist(TeleopBase):
         # Get command based on the input dictionary
         command = [input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"]]
         # Append inputs on each axis to the respective buffers
-        buffer_zip = zip(self.buffer_list, command)
-        [buffer.append(axis) for buffer, axis in buffer_zip]
+        for i, buffer in enumerate(self.buffer_list):
+            buffer.append(command[i])
     
     def update_twist(self, command, stamp=Time().to_msg()):
         # Assign a new twist command
