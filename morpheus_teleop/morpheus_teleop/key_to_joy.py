@@ -62,8 +62,8 @@ ps4 = {
     's':[0, 1,-1],      # Lstick down       Translate backward  Translate down
     'a':[0, 0, 1],      # Lstick left       Translate left      Translate forward
     'd':[0, 0,-1],      # Lstick right      Translate right     Translate back
-    'i':[0, 4, 1],      # Rstick up         Pitch up            Pitch up
-    'k':[0, 4,-1],      # Rstick down       Pitch down          Pitch down
+    'i':[0, 2, 1],      # Rstick up         Pitch up            Pitch up
+    'k':[0, 2,-1],      # Rstick down       Pitch down          Pitch down
     'j':[0, 3, 1],      # Rstick left       Yaw left            Roll left
     'l':[0, 3,-1],      # Rstick right      Yaw right           Roll right
     'q':[1, 6, 1],      # LT                Translate down      Rotate left

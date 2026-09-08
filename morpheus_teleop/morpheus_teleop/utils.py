@@ -41,16 +41,18 @@ def apply_twist(twist, pose, dt=0.1):
     w = twist.angular
 
     # Update pose based on linear velocity and dt
-    pose.position.x       += v.x * dt
-    pose.position.y       += v.y * dt
-    pose.position.z       += v.z * dt
-    # Integrate quaternion based on angular velocity and dt
+    pose.position.x         += v.x * dt
+    pose.position.y         += v.y * dt
+    pose.position.z         += v.z * dt
+    # Update quaternion based on angular velocity and dt
     # https://quaternion.readthedocs.io/en/latest/time_series/#quaternion.quaternion_time_series.integrate_angular_velocity
-    # Uses time series or function to find velocities. In this case, only one velocity is given per function call.
-    R0 = orientation_to_quaternion(pose.orientation)
-    _, R_arr = quaternion.integrate_angular_velocity(lambda _: (w.x, w.y, w.z), 0, dt, R0=R0)
-    pose.orientation = quaternion_to_orientation(R_arr[-1]) # Get last
-
+    q0 = quaternion.quaternion(pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z)
+    qr = quaternion.from_rotation_vector([w.x * dt, w.y * dt, w.z * dt])
+    q1 = qr * q0
+    pose.orientation.w      = q1.w
+    pose.orientation.x      = q1.x
+    pose.orientation.y      = q1.y
+    pose.orientation.z      = q1.z
     return pose
 
 def quaternion_to_orientation(quat):

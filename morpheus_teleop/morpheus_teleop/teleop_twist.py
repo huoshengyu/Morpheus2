@@ -60,20 +60,25 @@ class TeleopTwist(TeleopBase):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.tf_stamped = None
+        
+        # Track time
+        self.last_time = None
 
-        # Declare twist, tf, pose, and wrench messages
+        # Declare command messages
         self.twist_stamped = TwistStamped()
         self.wrench_stamped = WrenchStamped()
         self.pose_stamped = PoseStamped()
+        self.gripper_command = JointState()
 
-        # Get twist topic
+        # Get topics
+        self.joy_topic = self.declare_parameter("joy_topic", "/joy").value
         self.twist_topic = self.declare_parameter("twist_topic", "target_twist").value
         self.wrench_topic = self.declare_parameter("wrench_topic", "target_wrench").value
         self.pose_topic = self.declare_parameter("pose_topic", "target_frame").value
         self.gripper_topic = self.declare_parameter("gripper_topic", "gripper_command").value
 
         # Initialize joystick subscriber and twist command publishers 
-        self.joy_sub = self.create_subscription(Joy, "joy", self.joy_callback, 10)
+        self.joy_sub = self.create_subscription(Joy, self.joy_topic, self.joy_callback, 10)
         self.twist_pub = self.create_publisher(TwistStamped, self.twist_topic, 1)
         self.wrench_pub = self.create_publisher(WrenchStamped, self.wrench_topic, 1)
         self.pose_pub = self.create_publisher(PoseStamped, self.pose_topic, 1)
@@ -85,13 +90,13 @@ class TeleopTwist(TeleopBase):
         self.input_dict = {}
 
         # Set scaling factor on inputs
-        self.linear_scale = 0.1
-        self.angular_scale = 0.01
+        self.linear_scale = 1
+        self.angular_scale = 10
 
         # Set limits on raw inputs and outputs
         self.input_min = 0.05 # Deadzone for joystick inputs
         self.input_max = 1.0
-        self.output_max = 1.0
+        self.output_max = 10.0
 
         # Initialize buffer arrays to enable moving average filtering of outputs
         self.twist_filter_size = 5  # Adjust this value for the moving average window size
@@ -117,15 +122,7 @@ class TeleopTwist(TeleopBase):
         self.twist_pub.publish(self.twist_stamped)
         self.wrench_pub.publish(self.wrench_stamped)
         self.pose_pub.publish(self.pose_stamped)
-
-        # Create and publish gripper command based on button inputs
-        if (input_dict["GRIPPER_OPEN"] or input_dict["GRIPPER_CLOSE"]):
-            gripper_command = JointState()
-            gripper_command.name = ["gripper_joint"]
-            gripper_command.position = [(1 + input_dict["GRIPPER_CLOSE"] - input_dict["GRIPPER_OPEN"]) / 2] # 1 = closed, 0 = open
-            gripper_command.velocity = [0.05] # m/s
-            gripper_command.effort = [20] # N
-            self.gripper_pub.publish(gripper_command)
+        self.gripper_pub.publish(self.gripper_command)
     
     def get_transform(self, target_frame=None, source_frame=None, time=Time(), timeout=Duration(seconds=1)):
         """ Convenience function to lookup a transform from the tf_buffer with error handling. """
@@ -157,26 +154,35 @@ class TeleopTwist(TeleopBase):
         twist.header.frame_id                   = self.frame_id
         twist.twist.linear.x, twist.twist.linear.y, twist.twist.linear.z, twist.twist.angular.x, twist.twist.angular.y, twist.twist.angular.z = command
         self.twist_stamped = twist
-        return twist
+        return self.twist_stamped
 
     def update_wrench(self, twist_stamped):
         # Update wrench based on twist
-        self.wrench_stamped.header.stamp        = twist_stamped.header.stamp
-        self.wrench_stamped.header.frame_id     = self.frame_id
-        self.wrench_stamped.wrench              = twist_to_wrench(twist_stamped.twist, scaling_factor=1)
+        wrench = WrenchStamped()
+        wrench.header.stamp        = twist_stamped.header.stamp
+        wrench.header.frame_id     = self.frame_id
+        wrench.wrench              = twist_to_wrench(twist_stamped.twist, scaling_factor=1)
+        self.wrench_stamped = wrench
+        return self.wrench_stamped
 
-    def update_pose(self, twist_stamped, tf_stamped):
-        # Find dt
-        last_time = Time.from_msg(self.pose_stamped.header.stamp)
-        current_time = Time.from_msg(twist_stamped.header.stamp)
-        dt = (current_time - last_time).nanoseconds * 1e-9 # Convert nanoseconds to seconds
-        dt = np.clip(dt, 0.0, 0.1)  # Limit dt to avoid large jumps in pose
-
+    def update_pose(self, twist_stamped, tf_stamped, dt):
         # Update pose based on linear velocity and dt
-        self.pose_stamped.header.stamp          = twist_stamped.header.stamp
-        self.pose_stamped.header.frame_id       = self.frame_id
-        self.pose_stamped.pose                  = apply_twist(twist_stamped.twist, transform_to_pose(tf_stamped.transform), dt=dt)
+        pose = PoseStamped()
+        pose.header.stamp          = twist_stamped.header.stamp
+        pose.header.frame_id       = self.frame_id
+        pose.pose                  = apply_twist(twist_stamped.twist, transform_to_pose(tf_stamped.transform), dt=dt)
+        self.pose_stamped = pose
+        return self.pose_stamped
 
+    def update_gripper(self, input_dict):
+        # Update gripper command based on button inputs
+        gripper_command = JointState()
+        gripper_command.name = ["gripper_joint"]
+        gripper_command.position = [(1 + input_dict["GRIPPER_CLOSE"] - input_dict["GRIPPER_OPEN"]) / 2] # 1 = closed, 0 = open
+        gripper_command.velocity = [0.05] # m/s
+        gripper_command.effort = [20] # N
+        self.gripper_command = gripper_command
+    
     def update_input_dict(self, joy_msg):
         input_dict = joy_msg_to_dict(
             joy_msg, 
@@ -197,15 +203,27 @@ class TeleopTwist(TeleopBase):
             # If waiting on an action call, do nothing
             if self._waiting:
                 return
-            self.update_input_dict(joy_msg)
+            
+            # Get the latest transform from the end effector to the base frame
             tf_stamped = self.get_transform(
                 target_frame = self.frame_id, 
                 source_frame = self.end_effector, 
                 time=Time())
+            
+            # Find dt
+            last_time = self.last_time if self.last_time is not None else Time.from_msg(tf_stamped.header.stamp)
+            current_time = Time.from_msg(tf_stamped.header.stamp)
+            dt = (current_time - last_time).nanoseconds * 1e-9 # Convert nanoseconds to seconds
+            dt = np.clip(dt, 0.0, 0.1)  # Limit dt to avoid large jumps in pose
+            self.last_time = current_time
+
+            # Update commands
+            self.update_input_dict(joy_msg)
             self.update_buffer(self.input_dict)
             self.update_twist(self.get_mean_command(), stamp=joy_msg.header.stamp)
             self.update_wrench(self.twist_stamped)
-            self.update_pose(self.twist_stamped, tf_stamped)
+            self.update_pose(self.twist_stamped, tf_stamped, 0.01)
+            self.update_gripper(self.input_dict)
             self.publish(self.input_dict)
         except Exception as e:
             self.get_logger().warn(f"Exception in update for teleop_twist: {e}")

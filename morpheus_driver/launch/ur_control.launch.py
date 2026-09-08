@@ -98,6 +98,7 @@ def launch_setup(context):
             ("cartesian_force_controller/ft_sensor_wrench", "ft_sensor_wrench"),
             ("cartesian_compliance_controller/ft_sensor_wrench", "ft_sensor_wrench"),
         ],
+        arguments=['--ros-args', '--log-level', 'WARN'],
     )
 
     dashboard_client_node = IncludeLaunchDescription(

@@ -100,7 +100,7 @@ class GripperActionController(Node):
         velocity = self._calculate_velocity(displacement_factor, velocity_factor)
         
         # Print commands
-        self.get_logger().info(
+        self.get_logger().debug(
             f'Moving to {position:.3f} with velocity={velocity:.4f}mm/s ({velocity_factor*100:.0f}%), '
             f'effort={effort:.1f}N ({effort_factor*100:.0f}%)'
         )
@@ -157,7 +157,7 @@ class GripperActionController(Node):
         """Handle action result."""
         result = future.result().result
         try:
-            self.get_logger().info(
+            self.get_logger().debug(
                 f'Goal completed | Position: {np.array2string(np.array(result.state.position), precision=3)} | '
                 f'Velocity: {np.array2string(np.array(result.state.velocity), precision=3)}mm/s | '
                 f'Effort: {np.array2string(np.array(result.state.effort), precision=1)}N | '
@@ -173,7 +173,7 @@ class GripperActionController(Node):
         """Handle action feedback."""
         feedback = feedback_msg.feedback
         try:
-            self.get_logger().info(
+            self.get_logger().debug(
                 f'Feedback: Position={np.array2string(np.array(feedback.state.position), precision=3)} | '
                 f'Velocity={np.array2string(np.array(feedback.state.velocity), precision=3)}mm/s | '
                 f'Effort={np.array2string(np.array(feedback.state.effort), precision=1)}N'
@@ -220,12 +220,12 @@ class GripperActionController(Node):
 
     def open_gripper(self, velocity=None, effort=None, velocity_factor=1.0, effort_factor=1.0, wait_for_result=False):
         """Open gripper with controlled velocity and effort."""
-        self.get_logger().info('Opening gripper')
+        self.get_logger().debug('Opening gripper')
         return self.move_to_position(0.0, velocity=velocity, effort=effort, velocity_factor=velocity_factor, effort_factor=effort_factor, wait_for_result=wait_for_result)
     
     def close_gripper(self, velocity=None, effort=None, velocity_factor=1.0, effort_factor=1.0, wait_for_result=False):
         """Close gripper with controlled velocity and effort."""
-        self.get_logger().info('Closing gripper')
+        self.get_logger().debug('Closing gripper')
         return self.move_to_position(1.0, velocity=velocity, effort=effort, velocity_factor=velocity_factor, effort_factor=effort_factor, wait_for_result=wait_for_result)
     
     def grip_object(self, effort=40.0, velocity_factor=1.0, wait_for_result=False):
@@ -235,7 +235,7 @@ class GripperActionController(Node):
     def cancel_goal(self):
         """Cancel current goal."""
         if self._goal_handle:
-            self.get_logger().info('Cancelling goal')
+            self.get_logger().debug('Cancelling goal')
             cancel_future = self._goal_handle.cancel_goal_async()
             cancel_future.add_done_callback(self._cancel_done_callback)
     
@@ -243,14 +243,16 @@ class GripperActionController(Node):
         """Handle cancel response."""
         cancel_response = future.result()
         if cancel_response.return_code == 0:  # CancelResponse.ERROR_NONE
-            self.get_logger().info('Goal cancelled successfully')
+            self.get_logger().debug('Goal cancelled successfully')
         else:
             self.get_logger().warn('Failed to cancel goal')
     
     def _gripper_command_callback(self, msg):
         """Handle incoming gripper command messages."""
         try:
-            self.get_logger().info(f'Received gripper command: position={msg.position[0]:.3f}m, velocity={msg.velocity[0]:.3f}mm/s, effort={msg.effort[0]:.1f}N')
+            if len(msg.position) == 0 and len(msg.velocity) == 0 and len(msg.effort) == 0:
+                return
+            self.get_logger().debug(f'Received gripper command: position={msg.position[0]:.3f}m, velocity={msg.velocity[0]:.3f}mm/s, effort={msg.effort[0]:.1f}N')
             self.move_to_position(
                 position=msg.position[0],
                 velocity=msg.velocity[0],

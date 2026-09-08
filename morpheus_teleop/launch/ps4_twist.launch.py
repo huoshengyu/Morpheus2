@@ -4,6 +4,7 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     OpaqueFunction,
+    GroupAction,
 )
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import AnyLaunchDescriptionSource
@@ -12,12 +13,14 @@ from launch.substitutions import (
     NotSubstitution,
     PathJoinSubstitution,
 )
-from launch_ros.actions import Node
+from launch_ros.actions import Node, PushROSNamespace
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context):
+    # Group arguments
+    namespace = LaunchConfiguration("namespace")
     # Joy Node Arguments
     dev = LaunchConfiguration("dev")
     dev_ff = LaunchConfiguration("dev_ff")
@@ -28,9 +31,11 @@ def launch_setup(context):
     # Twist to Pose Arguments
     frame_id = LaunchConfiguration("frame_id")
     end_effector = LaunchConfiguration("end_effector")
+    joy_topic = LaunchConfiguration("joy_topic")
     twist_topic = LaunchConfiguration("twist_topic")
     wrench_topic = LaunchConfiguration("wrench_topic")
     pose_topic = LaunchConfiguration("pose_topic")
+    gripper_topic = LaunchConfiguration("gripper_topic")
     
     joy_node = Node(
         package='joy',
@@ -55,15 +60,22 @@ def launch_setup(context):
             {'controller_type': controller_type,},
             {'frame_id': frame_id,},
             {'end_effector': end_effector,},
+            {'joy_topic': joy_topic,},
             {'twist_topic': twist_topic,},
             {'wrench_topic': wrench_topic,},
             {'pose_topic': pose_topic,},
+            {'gripper_topic': gripper_topic,},
         ]
     )
     
     nodes_to_start = [
-        joy_node,
-        teleop_twist_node,
+        GroupAction(
+            actions=[
+                PushROSNamespace(namespace),
+                joy_node,
+                teleop_twist_node,
+            ]
+        )
     ]
     
     return nodes_to_start
@@ -71,6 +83,12 @@ def launch_setup(context):
     
 def generate_launch_description():
     declared_arguments = []
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            name='namespace',
+            default_value='',
+        )
+    )
     declared_arguments.append(
         DeclareLaunchArgument(
             name='dev',
@@ -87,12 +105,6 @@ def generate_launch_description():
         DeclareLaunchArgument(
             name='default_trig_val',
             default_value='true',
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            name='twist_topic',
-            default_value='target_twist',
         )
     )
     declared_arguments.append(
@@ -121,6 +133,18 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
+            name='joy_topic',
+            default_value='/joy',
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            name='twist_topic',
+            default_value='target_twist',
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
             name='wrench_topic',
             default_value='target_wrench',
         )
@@ -129,6 +153,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             name='pose_topic',
             default_value='target_frame',
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            name='gripper_topic',
+            default_value='gripper_command',
         )
     )
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
