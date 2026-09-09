@@ -6,6 +6,7 @@ pymodbus===2.1.0
 pynput
 PyQt6
 pyserial
+pytest
 readchar
 scipy
 setuptools

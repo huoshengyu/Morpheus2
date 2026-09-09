@@ -22,9 +22,9 @@ def launch_setup(context):
     # Group arguments
     namespace = LaunchConfiguration("namespace")
     # Joy Node Arguments
-    dev = LaunchConfiguration("dev")
-    dev_ff = LaunchConfiguration("dev_ff")
-    default_trig_val = LaunchConfiguration("default_trig_val")
+    device_id = LaunchConfiguration("device_id")
+    device_name = LaunchConfiguration("device_name")
+    deadzone = LaunchConfiguration("deadzone")
     # Teleop Arguments
     arm_group = LaunchConfiguration("arm_group")
     controller_type = LaunchConfiguration("controller_type")
@@ -43,9 +43,12 @@ def launch_setup(context):
         name='joy_node',
         output='screen',
         parameters=[
-            {'dev': dev},
-            {'dev_ff': dev_ff},
-            {'default_trig_val': default_trig_val},
+            {'device_id': device_id},
+            {'device_name': device_name},
+            {'deadzone': deadzone},
+            {'autorepeat_rate': 20.0},
+            {'sticky_buttons': False},
+            {'coalesce_interval_ms': 1},
         ]
     )
     
@@ -91,20 +94,20 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            name='dev',
-            default_value='/dev/input/js0',
+            name='device_id',
+            default_value='0',
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            name='dev_ff',
-            default_value='/dev/input/event7',
+            name='device_name',
+            default_value='',
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            name='default_trig_val',
-            default_value='true',
+            name='deadzone',
+            default_value='0.05',
         )
     )
     declared_arguments.append(

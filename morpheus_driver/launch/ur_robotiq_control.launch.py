@@ -115,4 +115,75 @@ def generate_launch_description():
             default_value="robotiq",
         )
     )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_tool_communication",
+            default_value="true",
+            description="Only available for e series!",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "tool_parity",
+            default_value="0",
+            description="Parity configuration for serial communication. Only effective, if "
+            "use_tool_communication is set to True.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "tool_baud_rate",
+            default_value="115200",
+            description="Baud rate configuration for serial communication. Only effective, if "
+            "use_tool_communication is set to True.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "tool_stop_bits",
+            default_value="1",
+            description="Stop bits configuration for serial communication. Only effective, if "
+            "use_tool_communication is set to True.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "tool_rx_idle_chars",
+            default_value="1.5",
+            description="RX idle chars configuration for serial communication. Only effective, "
+            "if use_tool_communication is set to True.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "tool_tx_idle_chars",
+            default_value="3.5",
+            description="TX idle chars configuration for serial communication. Only effective, "
+            "if use_tool_communication is set to True.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "tool_device_name",
+            default_value="/tmp/ttyUR",
+            description="File descriptor that will be generated for the tool communication device. "
+            "The user has be be allowed to write to this location. "
+            "Only effective, if use_tool_communication is set to True.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "tool_tcp_port",
+            default_value="54321",
+            description="Remote port that will be used for bridging the tool's serial device. "
+            "Only effective, if use_tool_communication is set to True.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "tool_voltage",
+            default_value="24",  # 24 is the operating voltage for the Robotiq 2F-85 gripper
+            description="Tool voltage that will be setup.",
+        )
+    )
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
