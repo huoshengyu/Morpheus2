@@ -26,8 +26,6 @@ services:
       - LD_LIBRARY_PATH=/usr/lib/wsl/lib
       # Fix a bug with QT
       - QT_X11_NO_MITSHM=1
-      # Grant display access to X Server.
-      - XAUTHORITY
        # Configure for Moveit and Gazebo
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
@@ -44,7 +42,7 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /mnt/wslg:/mnt/wslg
       # Share the Xauthority file with the container.
-      - ${XAUTHORITY}:${XAUTHORITY}
+      - ~/.Xauthority:/root/.Xauthority
       # Mount the ROS workspace into the container.
       - .:/root/ros2_ws/src
       # Share input devices and GPU with the container.
