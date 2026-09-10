@@ -42,6 +42,7 @@ from launch.substitutions import (
     LaunchConfiguration,
     NotSubstitution,
     PathJoinSubstitution,
+    ExecuteProcess,
 )
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterFile
@@ -74,6 +75,12 @@ def launch_setup(context):
 
     control_params = [
         update_rate_config_file,
+        {
+            "hardware_synchronization.expect_blocking_read_write": LaunchConfiguration(
+                "blocking_read"
+            ),
+            "overruns.print_warnings": NotSubstitution(LaunchConfiguration("headless_mode")),
+        },
         ParameterFile(controllers_file, allow_substs=True),
         # We use the tf_prefix as substitution in there, so that's why we keep it as an
         # argument for this launchfile
@@ -127,19 +134,27 @@ def launch_setup(context):
         ],
     )
 
-    tool_communication_node = Node(
-        package="ur_robot_driver",
-        condition=IfCondition(use_tool_communication),
-        executable="tool_communication.py",
+    tool_comm_path = PathJoinSubstitution(
+        [
+            FindPackagePrefix("ur_client_library"),
+            "lib",
+            "ur_client_library",
+            "tool_communication.py",
+        ]
+    )
+
+    tool_communication_script = ExecuteProcess(
         name="ur_tool_comm",
-        output="screen",
-        parameters=[
-            {
-                "robot_ip": robot_ip,
-                "tcp_port": tool_tcp_port,
-                "device_name": tool_device_name,
-            }
+        condition=IfCondition(use_tool_communication),
+        cmd=[
+            tool_comm_path,
+            robot_ip,
+            "--tcp-port",
+            tool_tcp_port,
+            "--device-name",
+            tool_device_name,
         ],
+        output="screen",
     )
 
     urscript_interface = Node(
@@ -168,6 +183,7 @@ def launch_setup(context):
                     "speed_scaling_state_broadcaster",
                     "tcp_pose_broadcaster",
                     "ur_configuration_controller",
+                    "gravity_update_controller",
                 ]
             },
         ],
@@ -217,6 +233,8 @@ def launch_setup(context):
         "force_torque_sensor_broadcaster",
         "tcp_pose_broadcaster",
         "ur_configuration_controller",
+        "gravity_update_controller",
+        "friction_model_controller",
     ]
     controllers_inactive = [
         "scaled_joint_trajectory_controller",
@@ -228,6 +246,7 @@ def launch_setup(context):
         "passthrough_trajectory_controller",
         "freedrive_mode_controller",
         "tool_contact_controller",
+        "twist_controller",
         "cartesian_compliance_controller",
         "cartesian_force_controller",
         "cartesian_motion_controller",
@@ -245,8 +264,8 @@ def launch_setup(context):
         controllers_active.append("robotiq_gripper_controller")
         robotiq_control = Node(
             package="morpheus_driver",
-            executable="robotiq_control.py",
-            name="robotiq_control",
+            executable="robotiq_action_controller.py",
+            name="robotiq_action_controller",
             output="screen",
             parameters=[
                 {
@@ -260,8 +279,8 @@ def launch_setup(context):
         controllers_active.append("onrobot_gripper_controller")
         onrobot_control = Node(
             package="morpheus_driver",
-            executable="onrobot_control.py",
-            name="onrobot_control",
+            executable="onrobot_action_controller.py",
+            name="onrobot_action_control",
             output="screen",
             parameters=[
                 {
@@ -291,7 +310,7 @@ def launch_setup(context):
         control_node,
         dashboard_client_node,
         robot_state_helper_node,
-        tool_communication_node,
+        tool_communication_script,
         controller_stopper_node,
         urscript_interface,
         rsp,
@@ -607,6 +626,13 @@ def generate_launch_description():
                 LaunchConfiguration("ur_type"),
                 "_update_rate.yaml",
             ],
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "blocking_read",
+            default_value="false",
+            description="Block in read() effectively synchronizing the driver with the robot controller.",
         )
     )
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
