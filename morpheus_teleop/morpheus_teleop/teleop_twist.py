@@ -60,9 +60,6 @@ class TeleopTwist(TeleopBase):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.tf_stamped = None
-        
-        # Track time
-        self.last_time = None
 
         # Declare command messages
         self.twist_stamped = TwistStamped()
@@ -90,7 +87,7 @@ class TeleopTwist(TeleopBase):
         self.input_dict = {}
 
         # Set scaling factor on inputs
-        self.linear_scale = 1
+        self.linear_scale = 2
         self.angular_scale = 10
 
         # Set limits on raw inputs and outputs
@@ -209,15 +206,11 @@ class TeleopTwist(TeleopBase):
                 target_frame = self.frame_id, 
                 source_frame = self.end_effector, 
                 time=Time())
-            
-            # Find dt
-            last_time = self.last_time if self.last_time is not None else Time.from_msg(tf_stamped.header.stamp)
-            current_time = Time.from_msg(tf_stamped.header.stamp)
-            dt = (current_time - last_time).nanoseconds * 1e-9 # Convert nanoseconds to seconds
-            dt = np.clip(dt, 0.0, 0.1)  # Limit dt to avoid large jumps in pose
-            self.last_time = current_time
 
             # Update commands
+            # A constant scaling factor is used for update_pose instead of dt,
+            # since the target pose is calculated each step from the tf transform 
+            # and not based on the previous target pose
             self.update_input_dict(joy_msg)
             self.update_buffer(self.input_dict)
             self.update_twist(self.get_mean_command(), stamp=joy_msg.header.stamp)
