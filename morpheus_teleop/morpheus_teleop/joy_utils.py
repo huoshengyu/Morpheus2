@@ -75,7 +75,7 @@ def joy_msg_to_dict(msg, linear_scale=1.0, angular_scale=0.1, input_min=0.05, in
         joy_dict["EE_Y_DEC"]    *= linear_scale
         joy_dict["EE_Z"]        *= linear_scale
         joy_dict["EE_ROLL"]     *= angular_scale
-        joy_dict["EE_PITCH"]    *= angular_scale
+        joy_dict["EE_PITCH"]    *= -angular_scale
         joy_dict["WAIST_CCW"]   *= angular_scale
         joy_dict["WAIST_CW"]    *= angular_scale
         # Combine controls to get final outputs

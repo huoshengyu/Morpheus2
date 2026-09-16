@@ -61,10 +61,10 @@ class KeyToJoy(Node):
 
         # Keep a record of what keys should be when not pressed
         if controller == "xbox360":
-            self._default_axes = np.array([0.0,0.0,1.0,0.0,0.0,1.0,0.0,0.0]) # Triggers should be 1 when unpressed
+            self._default_axes = np.array([0.0,0.0,0.0,0.0,1.0,1.0,0.0,0.0]) # Triggers should be 1 when unpressed
         else:
             self._default_axes = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]) # Triggers should be 0 when unpressed
-        self._default_buttons = np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0]) # Need 13 buttons to accomodate PS4 controller (Xbox needs 11)
+        self._default_buttons = np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) # Need 21 buttons to accomodate arbitrary controllers
         # Initialize joystick values
         self.joy.axes = np.copy(self._default_axes)
         self.joy.buttons = np.copy(self._default_buttons)

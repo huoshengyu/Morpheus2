@@ -108,11 +108,9 @@ class TeleopTwist(TeleopBase):
     def publish(self, input_dict):
         # If menu button is pressed, move to home
         if input_dict["HOME_POSE"] == 1:
-            self.get_logger().info("Attempting trajectory to home position")
             self.move_to_named_target("home")
             return
         if input_dict["SLEEP_POSE"] == 1:
-            self.get_logger().info("Attempting trajectory to up position")
             self.move_to_named_target("up")
             return
 
@@ -181,6 +179,7 @@ class TeleopTwist(TeleopBase):
         self.gripper_command = gripper_command
     
     def update_input_dict(self, joy_msg):
+        # Convert joy_msg to input_dict
         input_dict = joy_msg_to_dict(
             joy_msg, 
             linear_scale=self.linear_scale, 
@@ -229,6 +228,12 @@ class TeleopTwist(TeleopBase):
         self.update(self.joy_msg)
     
     def move_to_named_target(self, name):
+        # Check if the action server is ready
+        if self._move_to_named_target_action_client is None or not self._move_to_named_target_action_client.server_is_ready():
+            self.get_logger().info("Move to named target action server is not ready. Skipping move to named target command.", throttle_duration_sec=1.0)
+            return
+        self.get_logger().info("Attempting trajectory to position: " + name)
+        
         # Create goal message to move to named position
         goal_msg = MoveToNamedTarget.Goal()
         goal_msg.target_name = name
