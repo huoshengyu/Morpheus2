@@ -22,7 +22,7 @@ class RobotiqGripperController(GripperActionController):
         """Helper to allow child classes to easily change parameter defaults."""
         # Parameters for gripper limits
         self.declare_parameter('open_position', 0.0)            # proportion (0 = open)
-        self.declare_parameter('closed_position', 0.786)          # proportion (1 = closed)
+        self.declare_parameter('closed_position', 0.786)        # proportion (1 = closed)
         self.declare_parameter('max_velocity', 0.150)           # mm/s, [0.0, 0.150]
         self.declare_parameter('max_effort', 40.0)              # Newtons, [0.0, 235.0]
         

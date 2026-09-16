@@ -53,9 +53,9 @@
     <!-- Common End Effector Arguments -->
     <xacro:arg name="sim_gazebo" default="false"/>
     <!-- Robotiq Gripper Arguments -->
-    <xacro:arg name="sim_isaac" default="false"/>
-    <xacro:arg name="isaac_joint_commands" default="/isaac_joint_commands"/>
-    <xacro:arg name="isaac_joint_states" default="/isaac_joint_states"/>
+    <xacro:arg name="sim_topic_based" default="false"/>
+    <xacro:arg name="sim_joint_commands_topic" default="/sim_joint_commands_topic"/>
+    <xacro:arg name="sim_joint_states_topic" default="/sim_joint_states_topic"/>
     <xacro:arg name="include_ros2_control" default="true"/>
     <xacro:arg name="gripper_speed_multiplier" default="1.0"/>
     <xacro:arg name="gripper_force_multiplier" default="0.5"/>
@@ -103,9 +103,9 @@
         sim_gazebo="$(arg sim_gazebo)"
         device="$(arg tool_device_name)"
         
-        sim_isaac="$(arg sim_isaac)"
-        isaac_joint_commands="$(arg isaac_joint_commands)"
-        isaac_joint_states="$(arg isaac_joint_states)"
+        sim_topic_based="$(arg sim_topic_based)"
+        sim_joint_commands_topic="$(arg sim_joint_commands_topic)"
+        sim_joint_states_topic="$(arg sim_joint_states_topic)"
         mock_sensor_commands="$(arg mock_sensor_commands)"
         include_ros2_control="$(arg include_ros2_control)"
         gripper_speed_multiplier="$(arg gripper_speed_multiplier)"

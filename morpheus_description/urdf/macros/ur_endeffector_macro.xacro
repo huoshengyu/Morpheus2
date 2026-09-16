@@ -32,9 +32,9 @@
         sim_gazebo:=false
         device:=/dev/ttyUSB0
         
-        sim_isaac:=false
-        isaac_joint_commands:=/isaac_joint_commands
-        isaac_joint_states:=/isaac_joint_states
+        sim_topic_based:=false
+        sim_joint_commands_topic:=/sim_joint_commands_topic
+        sim_joint_states_topic:=/sim_joint_states_topic
         mock_sensor_commands:=false
         include_ros2_control:=true
         gripper_speed_multiplier:=1.0
@@ -84,9 +84,9 @@
                 prefix="${tf_prefix}"
                 parent="${tf_prefix}${last_link}"
                 sim_gazebo="${sim_gazebo}"
-                sim_isaac="${sim_isaac}"
-                isaac_joint_commands="${isaac_joint_commands}"
-                isaac_joint_states="${isaac_joint_states}"
+                sim_topic_based="${sim_topic_based}"
+                sim_joint_commands_topic="${sim_joint_commands_topic}"
+                sim_joint_states_topic="${sim_joint_states_topic}"
                 use_fake_hardware="${use_mock_hardware}"
                 mock_sensor_commands="${mock_sensor_commands}"
                 include_ros2_control="${include_ros2_control}"

@@ -30,6 +30,9 @@ controller_manager:
     force_mode_controller:
       type: ur_controllers/ForceModeController
 
+    friction_model_controller:
+      type: ur_controllers/FrictionModelController
+
     freedrive_mode_controller:
       type: ur_controllers/FreedriveModeController
 
@@ -45,6 +48,12 @@ controller_manager:
     tool_contact_controller:
       type: ur_controllers/ToolContactController
 
+    gravity_update_controller:
+      type: ur_controllers/GravityUpdateController
+
+    twist_controller:
+      type: ur_controllers/TwistController
+
     # Cartesian controllers
     # https://github.com/fzi-forschungszentrum-informatik/cartesian_controllers
     cartesian_compliance_controller:
@@ -55,6 +64,9 @@ controller_manager:
 
     cartesian_motion_controller:
       type: cartesian_motion_controller/CartesianMotionController
+
+    motion_control_handle:
+      type: cartesian_controller_handles/MotionControlHandle
 
     # The way this is currently implemented upstream doesn't really work for us. When using
     # position control, the robot will have a tracking error. However, limits will be enforced
@@ -74,6 +86,10 @@ io_and_status_controller:
     tf_prefix: "$(var tf_prefix)"
 
 ur_configuration_controller:
+  ros__parameters:
+    tf_prefix: "$(var tf_prefix)"
+
+twist_controller:
   ros__parameters:
     tf_prefix: "$(var tf_prefix)"
 
@@ -198,6 +214,10 @@ force_mode_controller:
   ros__parameters:
     tf_prefix: "$(var tf_prefix)"
 
+friction_model_controller:
+  ros__parameters:
+    tf_prefix: "$(var tf_prefix)"
+
 freedrive_mode_controller:
   ros__parameters:
     tf_prefix: "$(var tf_prefix)"
@@ -210,6 +230,10 @@ tcp_pose_broadcaster:
       child_frame_id: $(var tf_prefix)tool0_controller
 
 tool_contact_controller:
+  ros__parameters:
+    tf_prefix: "$(var tf_prefix)"
+
+gravity_update_controller:
   ros__parameters:
     tf_prefix: "$(var tf_prefix)"
 
@@ -317,3 +341,16 @@ cartesian_motion_controller:
         rot_x: {p: 0.5}
         rot_y: {p: 0.5}
         rot_z: {p: 0.5}
+
+motion_control_handle:
+  ros__parameters:
+    end_effector_link: "$(var tf_prefix)tool0"
+    robot_base_link: "$(var tf_prefix)base"
+    ft_sensor_ref_link: "$(var tf_prefix)tool0"
+    joints:
+      - $(var tf_prefix)shoulder_pan_joint
+      - $(var tf_prefix)shoulder_lift_joint
+      - $(var tf_prefix)elbow_joint
+      - $(var tf_prefix)wrist_1_joint
+      - $(var tf_prefix)wrist_2_joint
+      - $(var tf_prefix)wrist_3_joint

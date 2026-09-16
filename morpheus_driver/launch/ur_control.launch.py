@@ -34,6 +34,7 @@ from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
     OpaqueFunction,
+    ExecuteProcess,
 )
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import AnyLaunchDescriptionSource
@@ -42,11 +43,10 @@ from launch.substitutions import (
     LaunchConfiguration,
     NotSubstitution,
     PathJoinSubstitution,
-    ExecuteProcess,
 )
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterFile
-from launch_ros.substitutions import FindPackageShare
+from launch_ros.substitutions import FindPackagePrefix, FindPackageShare
 
 
 def launch_setup(context):
@@ -183,7 +183,7 @@ def launch_setup(context):
                     "speed_scaling_state_broadcaster",
                     "tcp_pose_broadcaster",
                     "ur_configuration_controller",
-                    "gravity_update_controller",
+                    #"gravity_update_controller",
                 ]
             },
         ],
@@ -233,7 +233,7 @@ def launch_setup(context):
         "force_torque_sensor_broadcaster",
         "tcp_pose_broadcaster",
         "ur_configuration_controller",
-        "gravity_update_controller",
+        #"gravity_update_controller",
         "friction_model_controller",
     ]
     controllers_inactive = [
@@ -246,7 +246,7 @@ def launch_setup(context):
         "passthrough_trajectory_controller",
         "freedrive_mode_controller",
         "tool_contact_controller",
-        "twist_controller",
+        #"twist_controller",
         "cartesian_compliance_controller",
         "cartesian_force_controller",
         "cartesian_motion_controller",

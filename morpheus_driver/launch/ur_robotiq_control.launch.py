@@ -118,7 +118,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "use_tool_communication",
-            default_value="true",
+            default_value="false",
             description="Only available for e series!",
         )
     )
