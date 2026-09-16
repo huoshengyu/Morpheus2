@@ -8,156 +8,86 @@ from copy import deepcopy
 # ROS Imports
 from rclpy.logging import get_logger
 
-### Button mappings adapted from xsarm_joy.cpp from the Trossen Robotics Interbotix Library ###
-# PS3 Controller button mappings
-# Left stick:   x = -axes[0], y = axes[1]
-# Right stick:  x = -axes[3], y = axes[4]
-# Triggers:     LT = axes[2], RT = axes[5]
-# Buttons:      [X, O, S, T, LB, RB, LT, RT, Share, Menu, Xbox, Lstick, Rstick, DU, DD, DL, DR]
-ps3 = {
-    "GRIPPER_PWM_DEC": 0,    # buttons start here
-    "GRIPPER_OPEN": 1,
-    "GRIPPER_PWM_INC": 2,
-    "GRIPPER_CLOSE": 3,
-    "EE_Y_INC": 4,
-    "EE_Y_DEC": 5,
-    "WAIST_CCW": 6,
-    "WAIST_CW": 7,
-    "SLEEP_POSE": 8,
-    "HOME_POSE": 9,
-    "TORQUE_ENABLE": 10,
-    "FLIP_EE_X": 11,
-    "FLIP_EE_ROLL": 12,
-    "SPEED_INC": 13,
-    "SPEED_DEC": 14,
-    "SPEED_COARSE": 15,
-    "SPEED_FINE": 16,
-    "EE_X": 0,              # axes start here
-    "EE_Z": 1,
-    "EE_ROLL": 2,
-    "EE_PITCH": 3,
+# ROS2 Joy controller button mappings
+# https://github.com/ros-drivers/joystick_drivers/blob/ros2/joy/README.md
+# 'key':[i,j] where i,j select input channel [buttons, axes][i][j]
+# Buttons:      [X/A, O/B, S/X, T/Y, Share, Xbox/PS, Menu, Lstick, Rstick, LB, RB, Dpad U, D, L, R]
+# Axes:         [-Lstick x, Lstick y, -Rstick x, Rstick y, LT, RT]
+bm = {
+    # Command           Gamepad Input
+    # Buttons:  [X/A, O/B, S/X, T/Y, Share, Xbox/PS, Menu, Lstick, Rstick, LB, RB, Dpad U, D, L, R]
+    "GRIPPER_PWM_DEC":  (0, 0),
+    "GRIPPER_OPEN":     (0, 1),
+    "GRIPPER_PWM_INC":  (0, 2),
+    "GRIPPER_CLOSE":    (0, 3),
+    "SLEEP_POSE":       (0, 4),
+    "TORQUE_ENABLE":    (0, 5),
+    "HOME_POSE":        (0, 6),
+    "FLIP_EE_X":        (0, 7),
+    "FLIP_EE_ROLL":     (0, 8),
+    "WAIST_CCW":        (0, 9),
+    "WAIST_CW":         (0, 10),
+    "SPEED_INC":        (0, 11),
+    "SPEED_DEC":        (0, 12),
+    "SPEED_COARSE":     (0, 13),
+    "SPEED_FINE":       (0, 14),
+    # Axes:     [-Lstick x, Lstick y, -Rstick x, Rstick y, LT, RT]
+    "EE_X":             (1, 0),
+    "EE_Z":             (1, 1),
+    "EE_ROLL":          (1, 2),
+    "EE_PITCH":         (1, 3),
+    "EE_Y_INC":         (1, 4),
+    "EE_Y_DEC":         (1, 5),
     }
-
-# PS4 Controller button mappings
-# Left stick:   x = -axes[0], y = axes[1]
-# Right stick:  x = -axes[3], y = axes[4]
-# Triggers:     LT = axes[2], RT = axes[5]
-# Dpad:         L/R = -axes[6], U/D = axes[7]
-# Buttons:      [X, O, S, T, LB, RB, LT, RT, Share, Menu, Xbox, Lstick, Rstick]
-ps4 = {
-    "GRIPPER_PWM_DEC": 0,    # buttons start here
-    "GRIPPER_OPEN": 1,
-    "GRIPPER_PWM_INC": 2,
-    "GRIPPER_CLOSE": 3,
-    "EE_Y_INC": 4,
-    "EE_Y_DEC": 5,
-    "WAIST_CCW": 6,
-    "WAIST_CW": 7,
-    "SLEEP_POSE": 8,
-    "HOME_POSE": 9,
-    "TORQUE_ENABLE": 10,
-    "FLIP_EE_X": 11,
-    "FLIP_EE_ROLL": 12,
-    "EE_X": 0,              # axes start here
-    "EE_Z": 1,
-    "EE_ROLL": 2,
-    "EE_PITCH": 3,
-    "SPEED_TYPE": 4,
-    "SPEED": 5,
-    }
-
-# Xbox 360 Controller button mappings
-# Left stick:   x = -axes[0], y = axes[1]
-# Right stick:  x = -axes[3], y = axes[4]
-# Triggers:     LT = axes[2], RT = axes[5]
-# Dpad:         L/R = -axes[6], U/D = axes[7]
-# Buttons:      [A, B, X, Y, LB, RB, Share, Menu, Xbox, Lstick, Rstick]
-xbox360 = {
-"GRIPPER_PWM_DEC": 0, # buttons start here
-"GRIPPER_OPEN": 1,
-"GRIPPER_CLOSE": 2,
-"GRIPPER_PWM_INC": 3,
-"WAIST_CCW": 4,
-"WAIST_CW": 5,
-"SLEEP_POSE": 6,
-"HOME_POSE": 7,
-"TORQUE_ENABLE": 8,
-"FLIP_EE_X": 9,
-"FLIP_EE_ROLL": 10,
-"EE_X": 0,            # axes start here
-"EE_Z": 1,
-"EE_Y_INC": 2,
-"EE_ROLL": 3,
-"EE_PITCH": 4,
-"EE_Y_DEC": 5,
-"SPEED_TYPE": 6,
-"SPEED": 7,
-}
-
-# Map of button mappings
-button_mappings = {"ps3": ps3, "ps4": ps4, "xbox360": xbox360}
 
 def get_joy_msg(joy_msg, joy_msg_mutex):
-    # Retrieve joy_msg and return a safe copy
+    """Retrieve joy_msg and return a safe copy"""
     joy_msg_mutex.acquire()
     msg = deepcopy(joy_msg)
     joy_msg_mutex.release()
     return msg
 
-def joy_msg_to_dict(msg, controller_type="ps4", linear_scale=1.0, angular_scale=0.1, input_min=0.05, input_max=1.0, output_max=1.0, logger=get_logger("joy_utils")):
-    # Get button mapping based on controller type
-    if (controller_type == "xbox360"):
-        button_mapping = xbox360
-    elif (controller_type == "ps3"):
-        button_mapping = ps3
-    else:
-        button_mapping = ps4
-    
-    # Convert joy_msg inputs to command outputs in 6 DOF
-    axes = list(msg.axes)
-    buttons = list(msg.buttons)
+def joy_msg_to_dict(msg, linear_scale=1.0, angular_scale=0.1, input_min=0.05, input_max=1.0, output_max=1.0, logger=get_logger("joy_utils")):
+    """Convert joy_msg inputs to command outputs"""
+    # Get button and axis values from joy_msg
+    buttons = np.array(msg.buttons)
+    axes = np.array(msg.axes)
 
     # Set a deadzone and a limit in input values
     for i in range(len(axes)):
         if abs(axes[i]) < input_min:
             axes[i] = 0
         if abs(axes[i]) > input_max:
-            axes[i] = axes[i] / abs(axes[i])
+            axes[i] = np.clip(axes[i], -input_max, input_max)
 
-    # Retrieve movement controls by name
-    joy_dict = {"EE_X": axes[button_mapping["EE_X"]] * linear_scale,
-                "EE_Z": axes[button_mapping["EE_Z"]] * linear_scale,  
-                "EE_PITCH": axes[button_mapping["EE_PITCH"]] * angular_scale, 
-                "EE_ROLL": axes[button_mapping["EE_ROLL"]] * angular_scale, 
-                "WAIST": (buttons[button_mapping["WAIST_CCW"]] - buttons[button_mapping["WAIST_CW"]]) * angular_scale,}
-    if controller_type == "xbox360":
-        joy_dict["EE_Y"] = (axes[button_mapping["EE_Y_INC"]] - axes[button_mapping["EE_Y_DEC"]]) * linear_scale
-    else:
-        joy_dict["EE_Y"] = (buttons[button_mapping["EE_Y_INC"]] - buttons[button_mapping["EE_Y_DEC"]]) * linear_scale
-
-    # Enforce a safety limit on speed
-    for key, value in joy_dict.items():
-        joy_dict[key] = np.clip(value, -output_max, output_max)
-
-    # Retrieve other controls by name
+    # Calculate joy_dict values based on button and axis inputs
+    padded_buttons = np.append(buttons, [0] * (21 - len(buttons))) # Pad buttons to max button length (21)
+    padded_axes = np.append(axes, [0] * (21 - len(axes))) # Pad axes to match max button length
+    cmd = np.array([padded_buttons, padded_axes])
+    joy_dict = {}
     try:
-        joy_dict["GRIPPER_PWM_INC"] = buttons[button_mapping["GRIPPER_PWM_INC"]]
-        joy_dict["GRIPPER_PWM_DEC"] = buttons[button_mapping["GRIPPER_PWM_DEC"]]
-        joy_dict["GRIPPER_OPEN"] = buttons[button_mapping["GRIPPER_OPEN"]]
-        joy_dict["GRIPPER_CLOSE"] = buttons[button_mapping["GRIPPER_CLOSE"]]
-        joy_dict["SLEEP_POSE"] = buttons[button_mapping["SLEEP_POSE"]]
-        joy_dict["HOME_POSE"] = buttons[button_mapping["HOME_POSE"]]
-        joy_dict["TORQUE_ENABLE"] = buttons[button_mapping["TORQUE_ENABLE"]]
-        joy_dict["FLIP_EE_X"] = buttons[button_mapping["FLIP_EE_X"]]
-        joy_dict["FLIP_EE_ROLL"] = buttons[button_mapping["FLIP_EE_ROLL"]]
-        if controller_type == "ps3":
-            joy_dict["SPEED_TYPE"] = buttons[button_mapping["SPEED_COARSE"]] - buttons[button_mapping["SPEED_FINE"]]
-            joy_dict["SPEED"] = buttons[button_mapping["SPEED_INC"]] - buttons[button_mapping["SPEED_DEC"]]
-        else:
-            joy_dict["SPEED_TYPE"] = axes[button_mapping["SPEED_TYPE"]]
-            joy_dict["SPEED"] = axes[button_mapping["SPEED"]]
+        # Retrieve movement controls by name
+        for key, value in bm.items():
+            joy_dict[key] = cmd[value]
+        # Apply motion scaling factors
+        joy_dict["EE_X"]        *= linear_scale
+        joy_dict["EE_Y_INC"]    *= linear_scale
+        joy_dict["EE_Y_DEC"]    *= linear_scale
+        joy_dict["EE_Z"]        *= linear_scale
+        joy_dict["EE_ROLL"]     *= angular_scale
+        joy_dict["EE_PITCH"]    *= angular_scale
+        joy_dict["WAIST_CCW"]   *= angular_scale
+        joy_dict["WAIST_CW"]    *= angular_scale
+        # Combine controls to get final outputs
+        joy_dict["EE_Y"] = (joy_dict["EE_Y_INC"] - joy_dict["EE_Y_DEC"])
+        joy_dict["WAIST"] = (joy_dict["WAIST_CCW"] - joy_dict["WAIST_CW"])
+        joy_dict["SPEED_TYPE"] = (joy_dict["SPEED_COARSE"] - joy_dict["SPEED_FINE"])
+        joy_dict["SPEED"] = (joy_dict["SPEED_INC"] - joy_dict["SPEED_DEC"])
+        # Enforce a safety limit on speed
+        for key, value in joy_dict.items():
+            joy_dict[key] = np.clip(value, -output_max, output_max)
     except IndexError as e:
         logger.error(f"IndexError: {e}")
-        logger.error(f"Expected controller type was {controller_type}, but joy message had {len(axes)} axes and {len(buttons)} buttons.")
+        logger.error(f"Joy message had {len(axes)} axes and {len(buttons)} buttons.")
     
     return joy_dict

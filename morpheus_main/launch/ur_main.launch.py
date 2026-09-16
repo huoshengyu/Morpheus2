@@ -21,6 +21,8 @@ def launch_setup(context):
     # Control arguments
     controller = LaunchConfiguration("controller")
     use_keyboard = LaunchConfiguration("use_keyboard")
+    # Moveit arguments
+    collision = LaunchConfiguration("collision")
 
     ur_control_node = IncludeLaunchDescription(
         launch_description_source=AnyLaunchDescriptionSource(
@@ -74,6 +76,25 @@ def launch_setup(context):
                 ),
             )
         )
+    
+    if collision.perform(context) == "true":
+        moveit_node = IncludeLaunchDescription(
+            launch_description_source=AnyLaunchDescriptionSource(
+                PathJoinSubstitution(
+                    [FindPackageShare("morpheus_moveit"), "launch", "moveit.launch.py"]
+                )
+            )
+        )
+        collision_node = IncludeLaunchDescription(
+            launch_description_source=AnyLaunchDescriptionSource(
+                PathJoinSubstitution(
+                    [FindPackageShare("morpheus_collision"), "launch", "collision.launch.py"]
+                )
+            )
+        )
+        control_nodes.append(moveit_node)
+        control_nodes.append(collision_node)
+    
 
     nodes_to_start = [
         ur_control_node,

@@ -139,7 +139,7 @@ class TeleopTwist(TeleopBase):
             
     def update_buffer(self, input_dict):
         # Get command based on the input dictionary
-        command = [input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_ROLL"], input_dict["EE_PITCH"], input_dict["WAIST"]]
+        command = [input_dict["EE_X"], input_dict["EE_Y"], input_dict["EE_Z"], input_dict["EE_PITCH"], input_dict["EE_ROLL"], input_dict["WAIST"]]
         # Append inputs on each axis to the respective buffers
         for i, buffer in enumerate(self.buffer_list):
             buffer.append(command[i])
@@ -183,7 +183,6 @@ class TeleopTwist(TeleopBase):
     def update_input_dict(self, joy_msg):
         input_dict = joy_msg_to_dict(
             joy_msg, 
-            controller_type=self.controller_type, 
             linear_scale=self.linear_scale, 
             angular_scale=self.angular_scale, 
             input_min=self.input_min, 
