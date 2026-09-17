@@ -21,7 +21,7 @@ bm = {
     "GRIPPER_PWM_INC":  (0, 2),
     "GRIPPER_CLOSE":    (0, 3),
     "SLEEP_POSE":       (0, 4),
-    "TORQUE_ENABLE":    (0, 5),
+    "FRAME_SWAP":       (0, 5),
     "HOME_POSE":        (0, 6),
     "FLIP_EE_X":        (0, 7),
     "FLIP_EE_ROLL":     (0, 8),
@@ -39,13 +39,6 @@ bm = {
     "EE_Y_INC":         (1, 4),
     "EE_Y_DEC":         (1, 5),
     }
-
-def get_joy_msg(joy_msg, joy_msg_mutex):
-    """Retrieve joy_msg and return a safe copy"""
-    joy_msg_mutex.acquire()
-    msg = deepcopy(joy_msg)
-    joy_msg_mutex.release()
-    return msg
 
 def joy_msg_to_dict(msg, linear_scale=1.0, angular_scale=0.1, input_min=0.05, input_max=1.0, output_max=1.0, logger=get_logger("joy_utils")):
     """Convert joy_msg inputs to command outputs"""
@@ -75,7 +68,7 @@ def joy_msg_to_dict(msg, linear_scale=1.0, angular_scale=0.1, input_min=0.05, in
         joy_dict["EE_Y_DEC"]    *= linear_scale
         joy_dict["EE_Z"]        *= linear_scale
         joy_dict["EE_ROLL"]     *= angular_scale
-        joy_dict["EE_PITCH"]    *= -angular_scale
+        joy_dict["EE_PITCH"]    *= angular_scale
         joy_dict["WAIST_CCW"]   *= angular_scale
         joy_dict["WAIST_CW"]    *= angular_scale
         # Combine controls to get final outputs
