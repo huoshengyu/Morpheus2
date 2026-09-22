@@ -164,7 +164,14 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "use_keyboard",
-            description="Type of control device.",
+            description="Whether or not to use keyboard control.",
+            default_value="false",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "collision",
+            description="Whether or not to use collision detection.",
             default_value="false",
         )
     )
