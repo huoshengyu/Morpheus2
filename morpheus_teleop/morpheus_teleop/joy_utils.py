@@ -72,7 +72,7 @@ def joy_msg_to_dict(msg, linear_scale=1.0, angular_scale=0.1, input_min=0.05, in
         joy_dict["WAIST_CCW"]   *= angular_scale
         joy_dict["WAIST_CW"]    *= angular_scale
         # Combine controls to get final outputs
-        joy_dict["EE_Y"] = (joy_dict["EE_Y_INC"] - joy_dict["EE_Y_DEC"])
+        joy_dict["EE_Y"] = (joy_dict["EE_Y_INC"] - joy_dict["EE_Y_DEC"])/2
         joy_dict["WAIST"] = (joy_dict["WAIST_CCW"] - joy_dict["WAIST_CW"])
         joy_dict["SPEED_TYPE"] = (joy_dict["SPEED_COARSE"] - joy_dict["SPEED_FINE"])
         joy_dict["SPEED"] = (joy_dict["SPEED_INC"] - joy_dict["SPEED_DEC"])

@@ -13,14 +13,14 @@ def rearrange_command(command, logger=get_logger("frame_utils")):
     rearranged_command = command
     try:
         r_control_linear =  R.from_matrix([[ 1,  0,  0],
-                                           [ 0,  0,  1],
-                                           [ 0, -1,  0]])
-        r_control_angular = R.from_matrix([[ 0, -1,  0],
-                                           [ 1,  0,  0],
+                                           [ 0,  0, -1],
+                                           [ 0,  1,  0]])
+        r_control_angular = R.from_matrix([[ 0,  1,  0],
+                                           [-1,  0,  0],
                                            [ 0,  0,  1]])
 
         rearranged_command = np.concatenate((r_control_linear.apply(command[:3]), r_control_angular.apply(command[3:])))
-        rearranged_command = np.multiply(rearranged_command, [-1, 1, 1,-1, 1, 1])
+        rearranged_command = np.multiply(rearranged_command, [1, 1, 1,-1, 1, 1])
     except (ValueError) as e:
         logger.warn(f"Control axis rearrangement failed due to ValueError: {e}")
     return rearranged_command

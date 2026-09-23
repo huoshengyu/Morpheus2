@@ -91,7 +91,7 @@ class TeleopTwist(TeleopBase):
         # A constant scaling factor is used for update_pose instead of dynamic dt,
         # since the target pose is calculated each step from the tf transform 
         # and not based on the previous target pose
-        self.dt = 0.01
+        self.dt = 0.05
 
         # Set limits on raw inputs and outputs
         self.input_min = 0.05 # Deadzone for joystick inputs
@@ -215,7 +215,7 @@ class TeleopTwist(TeleopBase):
         gripper_command.name = ["gripper_joint"]
         gripper_command.position = [(1 + self.input_dict["GRIPPER_CLOSE"] - self.input_dict["GRIPPER_OPEN"]) / 2] # 1 = closed, 0 = open
         gripper_command.velocity = [0.05] # m/s
-        gripper_command.effort = [20] # N
+        gripper_command.effort = [5] # N
         self.gripper_command = gripper_command
 
     def publish(self) -> None:

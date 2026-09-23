@@ -23,6 +23,7 @@ services:
       - DISPLAY
       - WAYLAND_DISPLAY
       - XDG_RUNTIME_DIR
+      - XAUTHORITY=/tmp/.Xauthority
       - LD_LIBRARY_PATH=/usr/lib/wsl/lib
       # Fix a bug with QT
       - QT_X11_NO_MITSHM=1
@@ -39,10 +40,10 @@ services:
       - LIBVA_DRIVER_NAME=d3d12
     volumes:
       # Share X11, Wayland, and/or Pulse servers with the container.
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - /mnt/wslg:/mnt/wslg
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - /mnt/wslg:/mnt/wslg:ro
       # Share the Xauthority file with the container.
-      - ~/.Xauthority:/root/.Xauthority
+      - ~/.Xauthority:/tmp/.Xauthority:ro
       # Mount the ROS workspace into the container.
       - .:/root/ros2_ws/src
       # Share input devices and GPU with the container.
