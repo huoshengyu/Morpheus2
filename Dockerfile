@@ -236,7 +236,7 @@ COPY ./ ./src/
 ENV VIRTUAL_ENV=.venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
-RUN echo "source ${VIRTUAL_ENV}/bin/activate" >> ~/.bashrc
+RUN echo "source /root/ros2_ws/${VIRTUAL_ENV}/bin/activate" >> ~/.bashrc
 
 # # Install non-debian python dependencies 
 # # (Force pip to permit package installation)
