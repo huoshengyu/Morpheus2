@@ -234,8 +234,9 @@ COPY ./ ./src/
 
 # Create and activate venv to avoid conflict with externally managed environment
 ENV VIRTUAL_ENV=.venv
-RUN python3 -m venv $VIRTUAL_ENV
+RUN python3 -m venv $VIRTUAL_ENV --system-site-packages --symlinks
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
+ENV PYTHONPATH="${VIRTUAL_ENV}/lib/python3.12/site-packages:$PYTHONPATH"
 RUN echo "source /root/ros2_ws/${VIRTUAL_ENV}/bin/activate" >> ~/.bashrc
 
 # # Install non-debian python dependencies 
