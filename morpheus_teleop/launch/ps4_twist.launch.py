@@ -1,21 +1,13 @@
-from ament_index_python.packages import get_package_share_directory
-
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     OpaqueFunction,
     GroupAction,
 )
-from launch.conditions import IfCondition, UnlessCondition
-from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.substitutions import (
     LaunchConfiguration,
-    NotSubstitution,
-    PathJoinSubstitution,
 )
 from launch_ros.actions import Node, PushROSNamespace
-from launch_ros.parameter_descriptions import ParameterFile
-from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context):

@@ -1,12 +1,13 @@
 #! /usr/bin/env python3
 
-### Base class for teleoperation ###
-# Receives inputs from controller drivers.
-# Converts inputs to outputs.
-# Sends outputs to robot drivers.
+"""
+Base class for teleoperation
 
-# General Packages
-import sys
+Receives inputs from controller drivers.
+Converts inputs to outputs.
+Sends outputs to robot drivers.
+"""
+
 # ROS Packages
 import rclpy
 from rclpy.executors import ExternalShutdownException

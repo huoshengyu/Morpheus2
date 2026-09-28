@@ -3,7 +3,6 @@
 import numpy as np
 import quaternion
 import rclpy
-from rclpy.node import Node
 import geometry_msgs.msg
 import trajectory_msgs.msg
 
