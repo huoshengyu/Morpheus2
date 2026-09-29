@@ -243,7 +243,7 @@ RUN echo "source /root/ros2_ws/${VIRTUAL_ENV}/bin/activate" >> ~/.bashrc
 # # (Force pip to permit package installation)
 # RUN echo "[global]" >> etc/pip.conf
 # RUN echo "break-system-packages = true" >> etc/pip.conf
-RUN python3 -m pip install --upgrade pip
+RUN .venv/bin/python3 -m pip install --upgrade pip
 RUN .venv/bin/python3 -m pip install --no-cache-dir -r ./src/requirements.txt
 
 # Install GELLO dependencies
