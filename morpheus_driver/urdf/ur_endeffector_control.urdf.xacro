@@ -62,8 +62,8 @@
     <xacro:arg name="gripper_max_speed" default="0.150"/>
     <xacro:arg name="gripper_max_force" default="235.0"/>
     <xacro:arg name="gripper_closed_position" default="0.7929"/>
-    <!-- OnRobot Gripper Arguments -->
-    <xacro:arg name="connection_type" default="serial"/>
+    <!-- Gripper Connection Arguments -->
+    <xacro:arg name="connection_type" default="tcp"/>
     <xacro:arg name="ip_address" default="$(arg robot_ip)"/>
     <xacro:arg name="port" default="$(arg tool_tcp_port)"/>
 

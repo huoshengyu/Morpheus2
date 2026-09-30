@@ -43,9 +43,9 @@
         gripper_max_force:=235.0
         gripper_closed_position:=0.7929
         
-        connection_type:=serial
-        ip_address:=192.168.1.1
-        port:=502
+        connection_type:=tcp
+        ip_address:=192.168.1.102
+        port:=63352
         ">
         
         <!-- UR Robot -->
@@ -96,6 +96,9 @@
                 gripper_max_speed="${gripper_max_speed}"
                 gripper_max_force="${gripper_max_force}"
                 gripper_closed_position="${gripper_closed_position}"
+                use_socket="${connection_type == 'tcp'}"
+                robot_ip="${ip_address}"
+                robot_port="${port}"
                 >
                 <origin xyz="0 0 0.003" rpy="0 0 0" />
             </xacro:robotiq_gripper>

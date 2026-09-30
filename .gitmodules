@@ -30,4 +30,5 @@
 	url = https://github.com/huoshengyu/gello_software
 [submodule "submodules/ros"]
 	path = submodules/robotiq_ros
-	url = https://github.com/robotiq/ros
+	url = https://github.com/huoshengyu/robotiq_ros
+	branch = socket
