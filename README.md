@@ -1,12 +1,12 @@
-# Morpheus
+# Morpheus2
 
 This repository combines UR and Trossen robot drivers, multiple hand controller types, robot and environment simulation, tools for collision and trajectory guidance and visualization, and data collection. It is currently in active development, and not all commits will be stable.
 
 All software and documentation herein is distributed under a GPL-3.0-only License. See file "COPYING" for details.
 
-As of 07/2025, the primary author and maintainer of this repository is Brian Sanyu Huo (bshuo@ucdavis.edu) at the Human/Robotics/Vehicle Integration & Performance Laboratory at the University of California, Davis (https://hrvip.ucdavis.edu/).
+The current primary author and maintainer of this repository is Brian Sanyu Huo (bshuo@ucdavis.edu) at the Human/Robotics/Vehicle Integration & Performance Laboratory at the University of California, Davis (https://hrvip.ucdavis.edu/).
 
-# Morpheus Install Instructions
+# Morpheus2 Install Instructions
 
 ## 1. Install Docker
 
@@ -36,9 +36,9 @@ https://code.visualstudio.com/download
 In a terminal, navigate to an appropriate directory.  
 1. Run the following to clone Morpheus:  
 ```
-mkdir morpheus_git
-cd morpheus_git
-git clone https://github.com/huoshengyu/Morpheus  
+mkdir morpheus2_git
+cd morpheus2_git
+git clone https://github.com/huoshengyu/Morpheus2  
 ```  
 2. Clone and update all submodules:
 ```
@@ -47,7 +47,7 @@ git submodule update --init --recursive --checkout --progress
 
 ## 4. Build the Docker image:
 
-In a terminal, check that the current directory is morpheus_git.  
+In a terminal, check that the current directory is morpheus2_git.  
 1. Build the Docker image:
 ```
 docker compose build
@@ -103,10 +103,10 @@ xhost +
 1. Open a new terminal (In VSCode, on the top bar, click "Terminal" and select "New Terminal").  
 2. Build catkin workspace in the new terminal (must do on first run and whenever C code is changed):
 ```
-catkin build
+colcon build --symlink-install
 ```
 
-# Morpheus Hardware Launch Instructions
+# Morpheus2 Hardware Launch Instructions (Soecific to HRVIP lab configuration)
 
 ## 1. Power on the computer
 
@@ -144,15 +144,11 @@ OnRobot RG2-FT gripper:
 1. Plug power cable into power outlet
 2. Plug green control cable into OnRobot gripper
 3. Plug ethernet cable into ethernet adapter (which is also plugged in to the computer and robot control box)
-4. Verify that light on side of gripper turns on.
+4. Verify that light on side of gripper turns green.
 
 Robotiq 2f-85 gripper:
 1. Powered automatically by the robot.
-2. Verify that light on side of gripper turns on.
-
-<div class="alert alert-block alert-info">
-<b>NOTE:</b> You may need to run ```gello_software/tool_communication.py``` to use the Robotiq gripper with the IRSS (but this should be run automatically by the launch files).
-</div>
+2. Verify that light on side of gripper turns blue.
 
 ## 5. UR5e: Set the robot control mode
 
@@ -165,7 +161,7 @@ If using Xbox/Playstation controller:
 
 # Morpheus Software Launch Instructions
 
-## 1. Windows: Launch Docker
+## 1. Windows: Launch Docker Desktop
 
 Open Docker Desktop and allow ~1 minute to start up.
 
@@ -179,45 +175,40 @@ Open a new terminal and enter `code`.
 
 In VSCode, on the left sidebar:
 1. Select the Docker extension tab
-2. Right click on the Morpheus Docker container and select "Attach Visual Studio Code"
+2. Right click on the Morpheus2 Docker container and select "Attach Visual Studio Code"
 
-## 4. Launch Morpheus:
+## 4. Launch Morpheus2:
 
 ### All at once:
 
 Inside the Docker container:  
 ```
-roslaunch morpheus_main a_bot_main.launch
+ros2 launch morpheus_main ur_main.launch.py
 ```
-<div class="alert alert-block alert-info">
-<b>NOTE:</b> As of 2/2025, the ...main.launch files do not launch the spawner node (to avoid race condition with the collision node) or the data collection node (to avoid unwanted file creation).
-</div>
 
 ### Part by part:
 
 Inside the Docker container:  
-1. Open a_bot in simulation with keyboard controls:
-
-
+1. Open UR robot in simulation:
     ```
-    roslaunch morpheus_teleop a_bot_fake_keyboard_control.launch
+    ros2 launch morpheus_driver ur_control.launch.py use_mock_hardware:=true
     ```
-    <div class="alert alert-block alert-info">
-    <b>NOTE:</b> To cancel/end the above command, you must first press esc, then ctrl+c. Keyboard controls use the following keys: qweasd, uiojkl.
-    </div>
-
+2. Open a new terminal. Start the keyboard control node.
+    ```
+    ros2 launch morpheus_teleop key_ps4_twist.launch.py
+    ```
 3. Open a new terminal. Start the collision tracking node (and display nearest collisions in Rviz):
-```
-roslaunch morpheus_collision collision.launch
-```
+    ```
+    ros2 launch morpheus_collision collision.launch.py
+    ```
 3. Open a new terminal. Start the data recording node:
-```
-roslaunch morpheus_data data.launch
-```
+    ```
+    ros2 launch morpheus_data data.launch.py
+    ```
 4. Open a new terminal. Start the goal haptics node:
-```
-roslaunch morpheus_teleop goal_haptics.launch
-```
+    ```
+    ros2 launch morpheus_trajectory goal_haptics.launch.py
+    ```
 
 ## 5. Launch the IRSS
 
@@ -225,12 +216,16 @@ Inside the Docker container:
 1. Check that the robot is near the home position and not near any possibe collisions. Launching the IRSS will cause the robot to move to the home position.
 2. Open a new terminal. Start the IRSS node:
 ```
-./gello_software/run_gello_onrobot.sh
+./submodules/gello_software/run_gello_onrobot.sh
+```
+OR:
+```
+./submodules/gello_software/run_gello_robotiq.sh
 ```
 3. Check the joint angles. The IRSS will not start unless the joint angles of the controller also match the home position.
 4. Repeat steps 2-3 until the IRSS is correctly launched.
 
-# Morpheus Software Arduino Side
+# Morpheus2 Software Arduino Side
 Before running the experiment, provide one of two sleeves (collision avoidance = long sleeve, trajectory guidance = short sleeve)
 Set up the Arduino serial connectivity:
 1. Ctrl + T (open terminal on the UBUNTU)
