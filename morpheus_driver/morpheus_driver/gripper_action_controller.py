@@ -44,7 +44,7 @@ class GripperActionController(Node):
         # Wait for action server to be available
         self._wait_for_action_server()
     
-    def _declare_parameters(self):
+    def _declare_parameters(self) -> None:
         """Helper to allow child classes to easily change parameter defaults."""
         # Parameters for gripper limits
         self.declare_parameter('open_position', 0.0)            # Defined by gripper hardware interface
@@ -57,7 +57,7 @@ class GripperActionController(Node):
         self.declare_parameter('joint_state_topic', 'joint_states')
         self.declare_parameter('gripper_joint', 'gripper_joint')
     
-    def _wait_for_action_server(self):
+    def _wait_for_action_server(self) -> None:
         """Wait for the action server to be available."""
         self.get_logger().info(f'Waiting for action server: {self.action_name}')
         self._action_client.wait_for_server()
@@ -78,6 +78,23 @@ class GripperActionController(Node):
         Returns:
             Goal handle if wait_for_result=False, result otherwise
         """
+        # Calculate target displacement as a proportion of the position range
+        displacement_factor = np.clip(self.target_position - self.current_position, -1.0, 1.0)
+        
+        # Calculate dynamic effort based on state
+        effort = self._calculate_effort(displacement_factor, effort_factor)
+        velocity = self._calculate_velocity(displacement_factor, velocity_factor)
+        
+        # Print commands
+        self.get_logger().debug(
+            f'Moving to {position:.3f} with velocity={velocity:.4f}mm/s ({velocity_factor*100:.0f}%), '
+            f'effort={effort:.1f}N ({effort_factor*100:.0f}%)'
+        )
+        
+        send_goal_future = self.move(position, velocity, effort, wait_for_result)
+        return send_goal_future
+    
+    def move(self, position, velocity, effort, wait_for_result=False):
         # Get needed parameters
         open_position = self.get_parameter('open_position').value
         closed_position = self.get_parameter('closed_position').value
@@ -91,19 +108,6 @@ class GripperActionController(Node):
         self.target_position = position
         # Scale target position to hardware range
         position_hardware = open_position + position * position_range
-        
-        # Calculate target displacement as a proportion of the position range
-        displacement_factor = np.clip(self.target_position - self.current_position, -1.0, 1.0)
-        
-        # Calculate dynamic effort based on state
-        effort = self._calculate_effort(displacement_factor, effort_factor)
-        velocity = self._calculate_velocity(displacement_factor, velocity_factor)
-        
-        # Print commands
-        self.get_logger().debug(
-            f'Moving to {position:.3f} with velocity={velocity:.4f}mm/s ({velocity_factor*100:.0f}%), '
-            f'effort={effort:.1f}N ({effort_factor*100:.0f}%)'
-        )
         
         # Create the goal
         goal = self.get_goal(name=gripper_joint, position=position_hardware, velocity=velocity, effort=effort)
@@ -247,7 +251,7 @@ class GripperActionController(Node):
         else:
             self.get_logger().warn('Failed to cancel goal')
     
-    def _gripper_command_callback(self, msg):
+    def _gripper_command_callback(self, msg: JointState):
         """Handle incoming gripper command messages."""
         try:
             if len(msg.position) == 0 and len(msg.velocity) == 0 and len(msg.effort) == 0:
