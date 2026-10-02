@@ -174,7 +174,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_tcp_port",
-            default_value="54321",
+            default_value="63352",
             description="Remote port that will be used for bridging the tool's serial device. "
             "Only effective, if use_tool_communication is set to True.",
         )

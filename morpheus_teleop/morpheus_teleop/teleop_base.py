@@ -22,12 +22,6 @@ class TeleopBase(Node):
 
     def update(self, msg):
         return NotImplementedError
-    
-    def loop_once(self):
-        return NotImplementedError
-
-    def callback(self, msg):
-        return NotImplementedError
 
 def main(args=None):
     try:

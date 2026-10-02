@@ -58,12 +58,21 @@ class TeleopTwist(TeleopBase):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.tf_stamped = tf2_ros.TransformStamped()
 
-        # Declare command messages
+        # Initialize state variables
+        self.joy_msg = Joy()
+        self.joy_msg_mutex = Lock()
+        self.input_dict = {}
+
+        # Initialize command variables
         self.command = np.zeros(6)  # [linear_x, linear_y, linear_z, angular_x, angular_y, angular_z]
         self.twist_stamped = TwistStamped()
         self.wrench_stamped = WrenchStamped()
         self.pose_stamped = PoseStamped()
         self.gripper_command = JointState()
+        self.gripper_command.name = ["gripper_joint"]
+        self.gripper_command.position = [0.0]  # 1 = closed, 0 = open
+        self.gripper_command.velocity = [0.0]  # m/s
+        self.gripper_command.effort = [0.0]  # N
 
         # Get topics
         self.joy_topic = self.declare_parameter("joy_topic", "/joy").value
@@ -78,11 +87,6 @@ class TeleopTwist(TeleopBase):
         self.wrench_pub = self.create_publisher(WrenchStamped, self.wrench_topic, 1)
         self.pose_pub = self.create_publisher(PoseStamped, self.pose_topic, 1)
         self.gripper_pub = self.create_publisher(JointState, self.gripper_topic, 1)
-
-        # Initialize variables for holding joystick inputs
-        self.joy_msg = Joy()
-        self.joy_msg_mutex = Lock()
-        self.input_dict = {}
 
         # Set scaling factor on inputs
         self.linear_scale = 2
@@ -191,11 +195,11 @@ class TeleopTwist(TeleopBase):
         wrench.header.stamp                     = self.tf_stamped.header.stamp
         wrench.header.frame_id                  = self.frame_id
         wrench.wrench.force.x                   = self.command[0] * self.dt
-        wrench.wrench.force.y                   = self.command[1]
-        wrench.wrench.force.z                   = self.command[2]
-        wrench.wrench.torque.x                  = self.command[3]
-        wrench.wrench.torque.y                  = self.command[4]
-        wrench.wrench.torque.z                  = self.command[5]
+        wrench.wrench.force.y                   = self.command[1] * self.dt
+        wrench.wrench.force.z                   = self.command[2] * self.dt
+        wrench.wrench.torque.x                  = self.command[3] * self.dt
+        wrench.wrench.torque.y                  = self.command[4] * self.dt
+        wrench.wrench.torque.z                  = self.command[5] * self.dt
         self.wrench_stamped = wrench
         return self.wrench_stamped
 
@@ -212,7 +216,12 @@ class TeleopTwist(TeleopBase):
         # Update gripper command based on button inputs
         gripper_command = JointState()
         gripper_command.name = ["gripper_joint"]
-        gripper_command.position = [(1 + self.input_dict["GRIPPER_CLOSE"] - self.input_dict["GRIPPER_OPEN"]) / 2] # 1 = closed, 0 = open
+        # 1 = closed, 0 = open
+        gripper_command.position = [np.clip(
+              self.gripper_command.position[0]
+            + (self.input_dict["GRIPPER_CLOSE"] - self.input_dict["GRIPPER_OPEN"]),
+            0.0, 1.0)
+        ]
         gripper_command.velocity = [0.05] # m/s
         gripper_command.effort = [5] # N
         self.gripper_command = gripper_command

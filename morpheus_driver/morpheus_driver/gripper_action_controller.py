@@ -198,7 +198,8 @@ class GripperActionController(Node):
         max_velocity = self.get_parameter('max_velocity').value
         ramp = self._calculate_ramp(displacement_factor)
         velocity = -np.sign(displacement_factor) * max_velocity * ramp * velocity_factor
-        return np.clip(velocity, -max_velocity, max_velocity)
+        return 0.15
+        return np.abs(np.clip(velocity, -max_velocity, max_velocity))
 
     def _calculate_effort(self, displacement_factor, effort_factor):
         """
@@ -210,7 +211,8 @@ class GripperActionController(Node):
         ramp = self._calculate_ramp(displacement_factor)
         if displacement_factor < 0: ramp = ramp * 0.5  # Reduce effort when opening for safety
         effort = -np.sign(displacement_factor) * max_effort * ramp * effort_factor
-        return np.clip(effort, -max_effort, max_effort)
+        return 10
+        return np.abs(np.clip(effort, -max_effort, max_effort))
     
     def _calculate_ramp(self, displacement_factor):
         """

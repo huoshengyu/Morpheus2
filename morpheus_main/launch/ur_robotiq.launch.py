@@ -131,7 +131,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "use_tool_communication",
-            default_value="true",
+            default_value="false",
             description="Only available for e series!",
         )
     )
@@ -145,7 +145,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "reverse_ip",
-            default_value="192.168.1.2",
+            default_value="192.168.1.103",
             description="IP that will be used for the robot controller to communicate back to the driver.",
         )
     )
