@@ -158,8 +158,6 @@ def launch_setup(context):
     moveit_config_builder.pilz_cartesian_limits(Path("config") / ur_type.perform(context) / "pilz_cartesian_limits.yaml")
     moveit_config_builder.trajectory_execution(Path("config") / ur_type.perform(context) / "moveit_controllers.yaml")
     moveit_config_builder.sensors_3d(Path("config") / ur_type.perform(context) / "sensors_3d.yaml")
-    
-    print(srdf_file)
 
     moveit_config = (
         moveit_config_builder.to_moveit_configs()
