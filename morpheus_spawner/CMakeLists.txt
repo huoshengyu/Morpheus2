@@ -37,16 +37,34 @@ include_directories(include)
 # ------------------------------------------------------------------------------
 # C++ Executables
 # ------------------------------------------------------------------------------
-add_executable(spawner src/spawner.cpp)
-ament_target_dependencies(spawner
+add_library(spawner_node src/spawner.cpp)
+ament_target_dependencies(spawner_node
   rclcpp 
   std_msgs 
   tf2_eigen 
   moveit_ros_planning_interface 
-  moveit_ros_planning morpheus_msgs
+  moveit_ros_planning 
+  morpheus_msgs
 )
 
-install(TARGETS spawner
+add_executable(spawner src/main.cpp)
+target_link_libraries(spawner spawner_node)
+ament_target_dependencies(spawner
+  rclcpp
+)
+
+add_executable(test_spawner test/test_spawner.cpp)
+target_link_libraries(test_spawner spawner_node)
+ament_target_dependencies(test_spawner
+  rclcpp 
+  std_msgs 
+  tf2_eigen 
+  moveit_ros_planning_interface 
+  moveit_ros_planning 
+  morpheus_msgs
+)
+
+install(TARGETS spawner_node spawner test_spawner
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -68,6 +86,10 @@ ament_python_install_package(${PROJECT_NAME})
 # ------------------------------------------------------------------------------
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME}
+)
+install(
+  DIRECTORY include/
+  DESTINATION include/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)

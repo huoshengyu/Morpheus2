@@ -1,5 +1,5 @@
 
-#include "morpheus_spawner/include/spawner.hpp"
+#include "morpheus_spawner/spawner.hpp"
 
 int main(int argc, char** argv)
 {
@@ -48,44 +48,49 @@ int main(int argc, char** argv)
     }
   }
 
-  Eigen::Quaterniond quaternion = eulerToQuaternion(euler);
+  Eigen::Quaterniond quaternion;
+  quaternion = Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX())
+    * Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY())
+    * Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ());
+
 
   Eigen::Vector3d scale = {0.0254, 0.0254, 0.0254};
 
   if (mode == "spawn") {
-    moveit_msgs::msg::CollisionObject collision_object = spawner_node->create(mesh_path, scale=scale, position=position, quaternion=quaternion);
-    spawner_node->spawn(spawner_node->attached_collision_object_vector_.size() - 1);
+    moveit_msgs::msg::CollisionObject collision_object = spawner_node->create(mesh_path, scale, position, quaternion);
+    spawner_node->save(std::make_shared<moveit_msgs::msg::CollisionObject>(collision_object));
+    spawner_node->spawn(static_cast<int>(spawner_node->attached_collision_object_vector_.size() - 1));
   }
   if (mode == "despawn") {
-    spawner_node->despawn(spawner_node->attached_collision_object_vector_.size() - 1);
+    spawner_node->despawn(static_cast<int>(spawner_node->attached_collision_object_vector_.size() - 1));
   }
   if (mode == "attach") {
-    spawner_node->attach(spawner_node->attached_collision_object_vector_.size() - 1);
+    spawner_node->attach(static_cast<int>(spawner_node->attached_collision_object_vector_.size() - 1));
   }
   if (mode == "detach") {
-    spawner_node->detach(spawner_node->attached_collision_object_vector_.size() - 1);
+    spawner_node->detach(static_cast<int>(spawner_node->attached_collision_object_vector_.size() - 1));
   }
 
-  moveit_msgs::msg::CollisionObject sphere_object;
-  sphere_object.header.frame_id = spawner_node->move_group_interface_->getPlanningFrame();
-  sphere_object.id = "test_sphere";
+  moveit_msgs::msg::CollisionObject::SharedPtr sphere_object = std::make_shared<moveit_msgs::msg::CollisionObject>();
+  sphere_object->header.frame_id = spawner_node->move_group_interface_->getPlanningFrame();
+  sphere_object->id = "test_sphere";
   shape_msgs::msg::SolidPrimitive sphere_primitive;
   sphere_primitive.type = sphere_primitive.SPHERE;
   sphere_primitive.dimensions.resize(1);
   sphere_primitive.dimensions[0] = 0.2;
-  sphere_object.primitives.resize(1);
-  sphere_object.primitives[0] = sphere_primitive;
-  sphere_object.pose.position.x = 0.0;
-  sphere_object.pose.position.y = 0.85;
-  sphere_object.pose.position.z = 0.95;
-  sphere_object.pose.orientation.w = 1.0;
-  sphere_object.operation = sphere_object.ADD;
+  sphere_object->primitives.resize(1);
+  sphere_object->primitives[0] = sphere_primitive;
+  sphere_object->pose.position.x = 0.0;
+  sphere_object->pose.position.y = 0.85;
+  sphere_object->pose.position.z = 0.95;
+  sphere_object->pose.orientation.w = 1.0;
+  sphere_object->operation = sphere_object->ADD;
   //spawner_node->save(sphere_object);
   //spawner_node->spawn(sphere_object);
 
-  moveit_msgs::msg::CollisionObject mesh_object;
-  mesh_object.header.frame_id = spawner_node->move_group_interface_->getPlanningFrame();
-  mesh_object.id = "test_mesh";
+  moveit_msgs::msg::CollisionObject::SharedPtr mesh_object = std::make_shared<moveit_msgs::msg::CollisionObject>();
+  mesh_object->header.frame_id = spawner_node->move_group_interface_->getPlanningFrame();
+  mesh_object->id = "test_mesh";
   std::string test_mesh_path = "file:///root/ros2_ws/src/morpheus_description/meshes/collision/teapot.obj";
   const Eigen::Vector3d scale_eigen(0.05, 0.05, 0.05); // mm/inch
   shapes::Mesh* m = shapes::createMeshFromResource(test_mesh_path, scale_eigen);
@@ -94,29 +99,29 @@ int main(int argc, char** argv)
   shapes::constructMsgFromShape(m, shape_msg);
   mesh_msg = boost::get<shape_msgs::msg::Mesh>(shape_msg);
 
-  mesh_object.meshes.resize(2);
-  mesh_object.meshes[0] = mesh_msg;
-  mesh_object.meshes[1] = mesh_msg;
+  mesh_object->meshes.resize(2);
+  mesh_object->meshes[0] = mesh_msg;
+  mesh_object->meshes[1] = mesh_msg;
 
-  //mesh_object.primitives.resize(1);
-  //mesh_object.primitives[0] = sphere_primitive;
+  //mesh_object->primitives.resize(1);
+  //mesh_object->primitives[0] = sphere_primitive;
 
-  mesh_object.pose.position.x = 0.3;
-  mesh_object.pose.position.y = 0.35;
-  mesh_object.pose.position.z = 0.95;
-  mesh_object.pose.orientation.w = 1.0;
+  mesh_object->pose.position.x = 0.3;
+  mesh_object->pose.position.y = 0.35;
+  mesh_object->pose.position.z = 0.95;
+  mesh_object->pose.orientation.w = 1.0;
   
-  mesh_object.mesh_poses.resize(2);
-  mesh_object.mesh_poses[0].position.z = 0.2;
-  mesh_object.mesh_poses[0].orientation.w = 1;
-  mesh_object.mesh_poses[1].position.z = -0.2;
-  mesh_object.mesh_poses[1].orientation.w = 1;
+  mesh_object->mesh_poses.resize(2);
+  mesh_object->mesh_poses[0].position.z = 0.2;
+  mesh_object->mesh_poses[0].orientation.w = 1;
+  mesh_object->mesh_poses[1].position.z = -0.2;
+  mesh_object->mesh_poses[1].orientation.w = 1;
 
-  //mesh_object.primitive_poses.resize(1);
-  //mesh_object.primitive_poses[0].position.z = -0.2;
-  //mesh_object.primitive_poses[0].orientation.w = 1;
+  //mesh_object->primitive_poses.resize(1);
+  //mesh_object->primitive_poses[0].position.z = -0.2;
+  //mesh_object->primitive_poses[0].orientation.w = 1;
 
-  mesh_object.operation = mesh_object.ADD;
+  mesh_object->operation = mesh_object->ADD;
   RCLCPP_INFO_STREAM(spawner_node->get_logger(), "Test spawning object");
   spawner_node->save(mesh_object);
   spawner_node->spawn(0);
@@ -124,7 +129,7 @@ int main(int argc, char** argv)
 
   //RCLCPP_INFO_STREAM(spawner_node->get_logger(), "Spawner Node spinning");
 
-  spawner_node->spin();
-
+  rclcpp::spin(spawner_node);
+  rclcpp::shutdown();
   return 0;
 }

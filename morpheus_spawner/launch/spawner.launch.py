@@ -28,7 +28,7 @@ def generate_launch_description():
         ),
         Node(
             package='morpheus_spawner',
-            executable='morpheus_spawner',
+            executable='spawner',
             name='morpheus_spawner',
             output='screen',
             parameters=[
