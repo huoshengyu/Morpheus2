@@ -1,5 +1,4 @@
 #include <rclcpp/rclcpp.hpp>
-#include <moveit/planning_scene_monitor/planning_scene_monitor.hpp>
 #include <moveit_msgs/msg/contact_information.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 
@@ -9,8 +8,12 @@
 #include <errno.h>      // Error number
 #include <string.h>     // String operations
 #include <iostream>     // IO Stream
+#include <iomanip>
 #include <map>
 #include <cmath>
+#include <set>
+#include <sstream>
+#include <string>
 #include <sys/ioctl.h>  // ✅ Add this line to fix your build
 #include <thread>
 

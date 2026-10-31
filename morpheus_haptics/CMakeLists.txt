@@ -15,50 +15,18 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
-find_package(moveit_core REQUIRED)
-find_package(moveit_ros_planning REQUIRED)
-find_package(moveit_ros_planning_interface REQUIRED)
-find_package(moveit_visual_tools REQUIRED)
-find_package(moveit_msgs REQUIRED)
-find_package(morpheus_msgs REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_action REQUIRED)
-find_package(rclcpp_lifecycle REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
-
-include_directories(include)
+find_package(moveit_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 add_executable(collision_serial src/collision_serial.cpp)
-ament_target_dependencies(collision_serial rclcpp std_msgs moveit_msgs sensor_msgs moveit_ros_planning_interface)
+ament_target_dependencies(collision_serial rclcpp moveit_msgs sensor_msgs)
+
 add_executable(collision_simple src/collision_simple.cpp)
+ament_target_dependencies(collision_simple rclcpp moveit_msgs sensor_msgs geometry_msgs)
+
 add_executable(collision_haptics src/collision_haptics.cpp)
-
-set(LIBRARY_DIRS ${ament_cmake_LIBRARIES}
-  ${moveit_ros_planning_interface_LIBRARIES} ${morpheus_msgs_LIBRARIES}
-  ${moveit_msgs_LIBRARIES} ${rclcpp_LIBRARIES} ${moveit_core_LIBRARIES}
-  ${geometry_msgs_LIBRARIES} ${rosidl_default_generators_LIBRARIES}
-  ${moveit_ros_planning_LIBRARIES} ${moveit_visual_tools_LIBRARIES})
-target_link_libraries(collision_serial ${LIBRARY_DIRS})
-target_link_libraries(collision_simple ${LIBRARY_DIRS})
-target_link_libraries(collision_haptics ${LIBRARY_DIRS})
-set(LIBS ${ament_cmake_LIBRARIES} ${moveit_ros_planning_interface_LIBRARIES}
-  ${morpheus_msgs_LIBRARIES} ${moveit_msgs_LIBRARIES} ${rclcpp_LIBRARIES}
-  ${moveit_core_LIBRARIES} ${geometry_msgs_LIBRARIES}
-  ${rosidl_default_generators_LIBRARIES} ${moveit_ros_planning_LIBRARIES}
-  ${moveit_visual_tools_LIBRARIES})
-
-ament_export_dependencies(ament_cmake)
-ament_export_dependencies(moveit_ros_planning)
-ament_export_dependencies(moveit_ros_planning_interface)
-ament_export_dependencies(morpheus_msgs)
-ament_export_dependencies(moveit_msgs)
-ament_export_dependencies(rclcpp)
-ament_export_dependencies(moveit_core)
-ament_export_dependencies(geometry_msgs)
-ament_export_dependencies(rosidl_default_generators)
-ament_export_dependencies(moveit_ros_planning)
-ament_export_dependencies(moveit_visual_tools)
-ament_export_include_directories(${INCLUDE_DIRS})
+ament_target_dependencies(collision_haptics rclcpp moveit_msgs sensor_msgs)
 
 ament_package()
