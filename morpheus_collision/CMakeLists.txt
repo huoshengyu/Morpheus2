@@ -111,7 +111,7 @@ install(TARGETS collision
 # ------------------------------------------------------------------------------
 # Shared Resources
 # ------------------------------------------------------------------------------
-install(DIRECTORY config launch
+install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
 

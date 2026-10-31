@@ -72,6 +72,7 @@ public:
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr relative_direction_publisher_;
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr directional_distance_publisher_; //testing before full integration with arduino
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr yaw_directional_distance_publisher_; //testing before full integration with arduino
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr collision_avoidance_torque_publisher_;
 
     // Declare collision info variables
     collision_detection::CollisionRequest c_req_;
@@ -82,10 +83,15 @@ public:
     std::vector<collision_detection::Contact> sorted_contacts_;
     std::vector<collision_detection::Contact> yaw_contacts_;
     std::vector<collision_detection::Contact> relative_contacts_;
+    std::vector<std::string> proximity_link_names_;
+    EigenSTL::vector_Isometry3d proximity_poses_;
+    EigenSTL::vector_Vector3d proximity_forces_;
+    EigenSTL::vector_Vector3d proximity_moments_;
+    Eigen::VectorXd proximity_torques_;
 
     // Declare collision visualization variables
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_publisher_;
-    visualization_msgs::msg::MarkerArray collision_points_;
+    visualization_msgs::msg::MarkerArray marker_array_msg_;
     moveit_visual_tools::MoveItVisualToolsPtr visual_tools_;
     std::vector<collision_detection::Contact>::size_type max_markers_ = 20;
 
@@ -157,9 +163,11 @@ public:
         // Prepare collision result and request objects
         c_res_.clear();
         c_req_.group_name = arm_group_;
-        c_req_.contacts = true;
+        c_req_.pad_environment_collisions = true;
+        c_req_.pad_self_collisions = false;
         c_req_.distance = true;
         c_req_.cost = true;
+        c_req_.contacts = true;
         c_req_.max_contacts = 25;
         c_req_.max_contacts_per_pair = 5;
         c_req_.max_cost_sources = 5;
@@ -235,12 +243,11 @@ public:
     }
 
     // Load collision gradients into the GroupStateRepresentationPtr
-    void getCollisionGradients(
-        const collision_detection::CollisionRequest& req, 
-        collision_detection::CollisionResult& res, 
-        const moveit::core::RobotState& state,
-        const collision_detection::AllowedCollisionMatrix* acm, 
-        collision_detection::GroupStateRepresentationPtr& gsr)
+    void getCollisionGradients(const collision_detection::CollisionRequest& req, 
+                               collision_detection::CollisionResult& res, 
+                               const moveit::core::RobotState& state,
+                               const collision_detection::AllowedCollisionMatrix* acm, 
+                               collision_detection::GroupStateRepresentationPtr& gsr)
     {
         // Check if the collision environment is a distance field or hybrid, and if so, get the collision gradients
         if (collision_env_distance_field_ != nullptr)
@@ -254,7 +261,7 @@ public:
     }
 
     // Get the proximity gradient markers
-    void getProximityGradientMarkers(collision_detection::GroupStateRepresentationPtr& gsr, visualization_msgs::msg::MarkerArray& arr)
+    void getProximityGradientMarkers(const collision_detection::GroupStateRepresentationConstPtr& gsr, visualization_msgs::msg::MarkerArray& arr)
     {
         collision_detection::getProximityGradientMarkers(
             "world", 
@@ -269,23 +276,173 @@ public:
     // Calculate resultant wrench from forces and application points
     void getResultant(const EigenSTL::vector_Vector3d& forces,
                       const EigenSTL::vector_Vector3d& points,
-                      const Eigen::Isometry3d& reference_point,
+                      const Eigen::Vector3d& reference_point,
                       Eigen::Vector3d& resultant_force,
-                      Eigen::Vector3d& resultant_moment) {
-        if (forces.size() != points.size()) {
-            throw std::invalid_argument("Forces and points vectors must have the same size.");
-        }
+                      Eigen::Vector3d& resultant_moment) 
+    {
+        assert(forces.size() == points.size() && "Forces and points vectors must have the same size.");
 
-        resultant_force = Eigen::Vector3d::Zero(3);
-        resultant_moment = Eigen::Vector3d::Zero(3);
+        resultant_force = Eigen::Vector3d::Zero();
+        resultant_moment = Eigen::Vector3d::Zero();
         for (size_t i = 0; i < forces.size(); ++i) {
-            Eigen::Vector3d offset_point = points[i] - reference_point.translation(); // Vector from reference point to application point
+            Eigen::Vector3d offset_point = points[i] - reference_point; // Vector from reference point to application point
             resultant_force += forces[i]; // Sum of forces
             resultant_moment += offset_point.cross(forces[i]).real(); // Sum of moments (r × F)
         }
     }
 
-    void getProximityForces(const collision_detection::GroupStateRepresentationPtr& gsr,
+    void getLinkNameByIndex(const collision_detection::GroupStateRepresentationConstPtr& gsr, const std::size_t& index, std::string& link_name)
+    {
+        try
+        {
+            if (index < gsr->dfce_->link_names_.size())
+            {
+                // For robot links, use the link name and posed decomposition points
+                link_name = gsr->dfce_->link_names_[index]; 
+            }
+            else
+            {
+                // For attached objects, get the parent link name and use the posed vector decomposition points
+                const std::size_t attached_index = index - gsr->dfce_->link_names_.size();
+                link_name = gsr->dfce_->state_->getRigidlyConnectedParentLinkModel(gsr->dfce_->attached_body_names_[attached_index])->getName();
+                
+            }
+        }
+        catch (const std::exception& e)
+        {
+            RCLCPP_ERROR(this->get_logger(), "Exception in getLinkNameByIndex: %s", e.what());
+        }
+    }
+
+    void getGradientPointsByIndex(const collision_detection::GroupStateRepresentationConstPtr& gsr,
+                                  const std::size_t& index,
+                                  EigenSTL::vector_Vector3d& gradient_points)
+    {
+        try
+        {
+            if (index < gsr->dfce_->link_names_.size())
+            {
+                // For robot links, use the link name and posed decomposition points
+                if (gsr->link_body_decompositions_[index])
+                {
+                    gradient_points = gsr->link_body_decompositions_[index]->getSphereCenters();
+                }
+                else
+                {
+                    gradient_points.clear();
+                }
+                
+            }
+            else
+            {
+                // For attached objects, get the parent link and use the posed vector decomposition points
+                const std::size_t attached_index = index - gsr->dfce_->link_names_.size();
+                if (gsr->attached_body_decompositions_[attached_index])
+                {
+                    gradient_points = gsr->attached_body_decompositions_[attached_index]->getSphereCenters();
+                }
+                else
+                {
+                    gradient_points.clear();
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            RCLCPP_ERROR(this->get_logger(), "Exception in getGradientPointsByIndex: %s", e.what());
+        }
+    }
+
+    void getGradientForcesByIndex(const collision_detection::GroupStateRepresentationConstPtr& gsr,
+                                  const std::size_t& index, 
+                                  EigenSTL::vector_Vector3d& gradient_forces)
+    {
+        try
+        {
+            double gain = 1.0;
+            double safe_distance = 0.25;
+            gradient_forces.resize(gsr->gradients_[index].gradients.size()); // One force per gradient
+            for (std::size_t j = 0; j < gsr->gradients_[index].gradients.size(); ++j)
+            {
+                // Force is proportional to negative gradient (moving away from obstacle)
+                // Here we use a simple linear factor, decreasing as distance increases
+                double distance_factor = std::min(1.0, std::max(0.0, 1 - (gsr->gradients_[index].distances[j]/safe_distance))); // Stronger force if nearer to collision
+                Eigen::Vector3d force = gain * gsr->gradients_[index].gradients[j] * distance_factor; // Scale force by distance factor
+                gradient_forces[j] = force;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            RCLCPP_ERROR(this->get_logger(), "Exception in getGradientForcesByIndex: %s", e.what());
+            gradient_forces = EigenSTL::vector_Vector3d();
+        }
+    }
+
+    void getProximityTorquesByLink(const collision_detection::GroupStateRepresentationConstPtr& gsr,
+                                   const std::string& link_name,
+                                   const Eigen::Vector3d& offset,
+                                   const Eigen::Vector3d& resultant_force,
+                                   const Eigen::Vector3d& resultant_moment,
+                                   Eigen::VectorXd& joint_torques)
+    {
+        Eigen::VectorXd wrench(6);
+        wrench << resultant_force, resultant_moment;
+        if (wrench.norm() > 1e-6)
+        {
+            // Get Jacobian for this link's tip point. An offset could be added if necessary.
+            Eigen::MatrixXd jacobian;
+            gsr->dfce_->state_->getJacobian(gsr->dfce_->state_->getJointModelGroup(arm_group_), gsr->dfce_->state_->getLinkModel(link_name), offset, jacobian);
+
+            // tau = J^T * Force (treating gradient as a linear force)
+            // Note: Jacobian is 6xN, we only use the linear part (top 3 rows)
+            joint_torques += jacobian.transpose() * wrench;
+        }
+    }
+
+    void getProximityLinkNames(const collision_detection::GroupStateRepresentationConstPtr& gsr,
+                               std::vector<std::string>& link_names)
+    {
+        if (!gsr)
+        {
+            return;
+        }
+        
+        // Preallocate output vector
+        link_names = std::vector<std::string>(gsr->gradients_.size());
+
+        // The gsr_ (GroupStateRepresentation) contains gradients for each link and each attached object
+        for (std::size_t i = 0; i < gsr->gradients_.size(); ++i)
+        {
+            std::string link_name = "";
+            getLinkNameByIndex(gsr, i, link_name);
+            link_names[i] = link_name;
+        }
+    }
+
+    void getProximityPoses(const collision_detection::GroupStateRepresentationConstPtr& gsr,
+                           const std::vector<std::string>& link_names,
+                           EigenSTL::vector_Isometry3d& poses)
+    {
+        if (!gsr || !collision_env_hybrid_)
+        {
+            return;
+        }
+
+        const moveit::core::RobotStateConstPtr& robot_state = std::make_shared<moveit::core::RobotState>(planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState());
+        
+        // Preallocate output vector
+        poses = EigenSTL::vector_Isometry3d(gsr->gradients_.size());
+
+        // The gsr_ (GroupStateRepresentation) contains gradients for each link and each attached object
+        for (std::size_t i = 0; i < gsr->gradients_.size(); ++i)
+        {
+            Eigen::Isometry3d tip_pose = getRootPoseTip(robot_state, link_names[i]);
+            poses[i] = tip_pose;
+        }
+    }
+
+    void getProximityForces(const collision_detection::GroupStateRepresentationConstPtr& gsr,
+                            const EigenSTL::vector_Vector3d& points,
                             EigenSTL::vector_Vector3d& resultant_forces,
                             EigenSTL::vector_Vector3d& resultant_moments)
     {
@@ -293,227 +450,50 @@ public:
         {
             return;
         }
-
-        // Get the collision information from the group state representation
-        const std::vector<collision_detection::PosedBodySphereDecompositionPtr>& posed_decompositions = gsr->link_body_decompositions_;
-        const std::vector<collision_detection::PosedBodySphereDecompositionVectorPtr>& posed_vector_decompositions = gsr->attached_body_decompositions_;
-        const std::vector<collision_detection::GradientInfo>& gradients = gsr->gradients_;
-
-        // Get the joint model group from the current robot state
-        const moveit::core::RobotStatePtr robot_state = gsr->dfce_->state_;
-        const moveit::core::JointModelGroup* joint_model_group = robot_state->getJointModelGroup(arm_group_);
         
         // Preallocate output vectors
-        resultant_forces = EigenSTL::vector_Vector3d(gradients.size());
-        resultant_moments = EigenSTL::vector_Vector3d(gradients.size());
-
-        // Define the distance at which collision avoidance forces should start to be applied
-        // TODO: Make this a class member variable?
-        // double safe_distance = 0.25; // 25 cm, can be tuned. Do not set this higher than the collision detector's threshold.
+        resultant_forces = EigenSTL::vector_Vector3d(gsr->gradients_.size());
+        resultant_moments = EigenSTL::vector_Vector3d(gsr->gradients_.size());
 
         // The gsr_ (GroupStateRepresentation) contains gradients for each link and each attached object
         // Gradients are in world frame. We map them to joint torques using the Jacobian: tau = J^T * F
-        for (std::size_t i = 0; i < gradients.size(); ++i)
+        for (std::size_t i = 0; i < gsr->gradients_.size(); ++i)
         {
-            const std::string* link_name = nullptr;
             EigenSTL::vector_Vector3d gradient_points;
-            if (i < gsr->dfce_->link_names_.size())
-            {
-                // For robot links, use the link name and posed decomposition points
-                if (i >= posed_decompositions.size() || !posed_decompositions[i])
-                {
-                    RCLCPP_WARN(this->get_logger(), "Skipping invalid robot link decomposition %zu", i);
-                    continue;
-                }
-                link_name = &gsr->dfce_->link_names_[i];
-                gradient_points = posed_decompositions[i]->getSphereCenters();
-            }
-            else
-            {
-                // For attached objects, get the parent link and use the posed vector decomposition points
-                std::size_t attached_index = i - gsr->dfce_->link_names_.size();
-                if (attached_index >= posed_vector_decompositions.size() || !posed_vector_decompositions[attached_index])
-                {
-                    RCLCPP_WARN(this->get_logger(), "Skipping invalid attached object decomposition %zu", attached_index);
-                    continue;
-                }
-                link_name = &robot_state->getRigidlyConnectedParentLinkModel(gsr->dfce_->attached_body_names_[attached_index], joint_model_group)->getName();
-                gradient_points = posed_vector_decompositions[attached_index]->getSphereCenters();
-            }
-            if (!link_name)
-            {
-                RCLCPP_WARN(this->get_logger(), "Skipping gradient entry %zu with no link name", i);
-                continue;
-            }
-            if (gradient_points.size() != gradients[i].gradients.size())
-            {
-                RCLCPP_WARN(this->get_logger(), "Gradient point count mismatch for entry %zu: %zu points vs %zu gradients", i, gradient_points.size(), gradients[i].gradients.size());
-                continue;
-            }
+            getGradientPointsByIndex(gsr, i, gradient_points);
             EigenSTL::vector_Vector3d gradient_forces;
-            gradient_forces.resize(gradients[i].gradients.size()); // One force per gradient
-            for (std::size_t j = 0; j < gradients[i].gradients.size(); ++j)
-            {
-                // Force is proportional to negative gradient (moving away from obstacle)
-                // Here we use a simple linear gain, decreasing as distance increases
-                // double gain = std::min(1.0, std::max(0.0, 1 - (gradients[i].distances[j]/safe_distance))); // Stronger force if nearer to collision
-                double gain = 1.0; // Use constant gain for now. TODO: Tune dynamic gain.
-                Eigen::Vector3d force = gain * gradients[i].gradients[j];
+            getGradientForcesByIndex(gsr, i, gradient_forces); // Get the gradient forces for this link
 
-                gradient_forces[j] = force;
-            }
-            const Eigen::Isometry3d tip_point = getRootPoseTip(robot_state, *link_name);
-            
             Eigen::Vector3d resultant_force;
             Eigen::Vector3d resultant_moment;
-            getResultant(gradient_forces, gradient_points, tip_point, resultant_force, resultant_moment);
+            getResultant(gradient_forces, gradient_points, points[i], resultant_force, resultant_moment);
             resultant_forces[i] = resultant_force;
             resultant_moments[i] = resultant_moment;
         }
     }
 
-    void getProximityJointTorques(const collision_detection::GroupStateRepresentationPtr& gsr,
-                                  std::vector<std::string>& joint_names,
-                                  Eigen::VectorXd& joint_torques)
+    void getProximityTorques(const collision_detection::GroupStateRepresentationConstPtr& gsr,
+                             const std::vector<std::string>& link_names,
+                             const EigenSTL::vector_Vector3d& resultant_forces,
+                             const EigenSTL::vector_Vector3d& resultant_moments,
+                             Eigen::VectorXd& joint_torques)
     {
         if (!gsr || !collision_env_hybrid_)
         {
             return;
         }
 
-        // Get the collision information from the group state representation
-        const std::vector<collision_detection::PosedBodySphereDecompositionPtr>& posed_decompositions = gsr->link_body_decompositions_;
-        const std::vector<collision_detection::PosedBodySphereDecompositionVectorPtr>& posed_vector_decompositions = gsr->attached_body_decompositions_;
-        const std::vector<collision_detection::GradientInfo>& gradients = gsr->gradients_;
-
-        // Get the joint model group from the current robot state
-        const moveit::core::RobotStatePtr robot_state = gsr->dfce_->state_;
-        const moveit::core::JointModelGroup* joint_model_group = robot_state->getJointModelGroup(arm_group_);
-        
-        // Clear output vectors
-        joint_names.clear();
-        // Preallocate output vectors
-        joint_names = joint_model_group->getJointModelNames();
-        joint_torques = Eigen::VectorXd::Zero(joint_model_group->getActiveVariableCount());
-
-        // Define the distance at which collision avoidance forces should start to be applied
-        // TODO: Make this a class member variable?
-        // double safe_distance = 0.25; // 25 cm, can be tuned. Do not set this higher than the collision detector's threshold.
+        joint_torques = Eigen::VectorXd::Zero(gsr->dfce_->state_->getJointModelGroup(arm_group_)->getActiveVariableCount());
 
         // The gsr_ (GroupStateRepresentation) contains gradients for each link and each attached object
         // Gradients are in world frame. We map them to joint torques using the Jacobian: tau = J^T * F
-        for (std::size_t i = 0; i < gradients.size(); ++i)
-        {
-            const std::string* link_name = nullptr;
-            EigenSTL::vector_Vector3d gradient_points;
-            if (i < gsr->dfce_->link_names_.size())
-            {
-                // For robot links, use the link name and posed decomposition points
-                if (i >= posed_decompositions.size() || !posed_decompositions[i])
-                {
-                    RCLCPP_WARN(this->get_logger(), "Skipping invalid robot link decomposition %zu", i);
-                    continue;
-                }
-                link_name = &gsr->dfce_->link_names_[i];
-                gradient_points = posed_decompositions[i]->getSphereCenters();
-            }
-            else
-            {
-                // For attached objects, get the parent link and use the posed vector decomposition points
-                std::size_t attached_index = i - gsr->dfce_->link_names_.size();
-                if (attached_index >= posed_vector_decompositions.size() || !posed_vector_decompositions[attached_index])
-                {
-                    RCLCPP_WARN(this->get_logger(), "Skipping invalid attached object decomposition %zu", attached_index);
-                    continue;
-                }
-                link_name = &robot_state->getRigidlyConnectedParentLinkModel(gsr->dfce_->attached_body_names_[attached_index], joint_model_group)->getName();
-                gradient_points = posed_vector_decompositions[attached_index]->getSphereCenters();
-            }
-            if (!link_name)
-            {
-                RCLCPP_WARN(this->get_logger(), "Skipping gradient entry %zu with no link name", i);
-                continue;
-            }
-            if (gradient_points.size() != gradients[i].gradients.size())
-            {
-                RCLCPP_WARN(this->get_logger(), "Gradient point count mismatch for entry %zu: %zu points vs %zu gradients", i, gradient_points.size(), gradients[i].gradients.size());
-                continue;
-            }
-            EigenSTL::vector_Vector3d gradient_forces;
-            gradient_forces.resize(gradients[i].gradients.size()); // One force per gradient
-            for (std::size_t j = 0; j < gradients[i].gradients.size(); ++j)
-            {
-                // Force is proportional to negative gradient (moving away from obstacle)
-                // Here we use a simple linear gain, decreasing as distance increases
-                // double gain = std::min(1.0, std::max(0.0, 1 - (gradients[i].distances[j]/safe_distance))); // Stronger force if nearer to collision
-                double gain = 1.0; // Use constant gain for now. TODO: Tune dynamic gain.
-                Eigen::Vector3d force = gain * gradients[i].gradients[j];
-
-                gradient_forces[j] = force;
-            }
-            const Eigen::Isometry3d tip_point = getRootPoseTip(robot_state, *link_name);
-            
-            Eigen::Vector3d resultant_force;
-            Eigen::Vector3d resultant_moment;
-            getResultant(gradient_forces, gradient_points, tip_point, resultant_force, resultant_moment);
-            Eigen::VectorXd wrench(6);
-            wrench << resultant_force, resultant_moment;
-
-            if (wrench.norm() > 1e-6)
-            {
-                // Get Jacobian for this link's tip point. An offset could be added if necessary.
-                Eigen::MatrixXd jacobian;
-                robot_state->getJacobian(joint_model_group, robot_state->getLinkModel(*link_name), Eigen::Vector3d::Zero(), jacobian);
-
-                // tau = J^T * Force (treating gradient as a linear force)
-                // Note: Jacobian is 6xN, we only use the linear part (top 3 rows)
-                joint_torques += jacobian.transpose() * wrench;
-            }
-        }
-    }
-
-    void getProximityPoints(const collision_detection::GroupStateRepresentationPtr& gsr,
-                            EigenSTL::vector_Vector3d& points)
-    {
-        if (!gsr)
-        {
-            return;
-        }
-
-        // Get the joint model group from the current robot state
-        const moveit::core::RobotStatePtr robot_state = gsr->dfce_->state_;
-        
-        // Preallocate output vector
-        points.clear();
-        points.reserve(gsr->gradients_.size());
-
-        // The gsr_ (GroupStateRepresentation) contains gradients for each link and each attached object
         for (std::size_t i = 0; i < gsr->gradients_.size(); ++i)
         {
-            const std::string* link_name = nullptr;
-            if (i < gsr->dfce_->link_names_.size())
-            {
-                // For robot links, use the link name
-                link_name = &gsr->dfce_->link_names_[i];
-            }
-            else
-            {
-                // For attached objects, get the parent link
-                std::size_t attached_index = i - gsr->dfce_->link_names_.size();
-                link_name = &robot_state->getRigidlyConnectedParentLinkModel(gsr->dfce_->attached_body_names_[attached_index])->getName();
-            }
-            if (!link_name)
-            {
-                // Skip entries with no link name, as these correspond to empty gradient entries
-                // RCLCPP_WARN(this->get_logger(), "Skipping gradient entry %zu with no link name", i);
-                continue;
-            }
-            Eigen::Isometry3d tip_pose = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState().getGlobalLinkTransform(*link_name); // Get the global transform of the link
-            points.push_back(tip_pose.translation());
+            getProximityTorquesByLink(gsr, link_names[i], Eigen::Vector3d::Zero(), resultant_forces[i], resultant_moments[i], joint_torques);
         }
     }
 
-    void getProximityForceMarkers(const std::string& frame_id, const std::string& ns, const rclcpp::Duration& /*dur*/,
+    void getProximityForceMarkers(const std::string& frame_id, const std::string& ns, const rclcpp::Duration& lifetime,
                                   const EigenSTL::vector_Vector3d& forces,
                                   const EigenSTL::vector_Vector3d& points,
                                   visualization_msgs::msg::MarkerArray& arr)
@@ -522,13 +502,16 @@ public:
         // For each proximity force, create an arrow marker in Rviz
         for (std::size_t i = 0; i < forces.size(); ++i)
         {
-            if (forces[i].norm() < 1e-6)
-            {
-                continue; // Skip negligible forces
-            }
             visualization_msgs::msg::Marker marker;
             marker.type = visualization_msgs::msg::Marker::ARROW;
-            marker.action = visualization_msgs::msg::Marker::ADD;
+            if (forces[i].norm() < 1e-6)
+            {
+                marker.action = visualization_msgs::msg::Marker::DELETE; // Remove negligible forces
+            }
+            else
+            {
+                marker.action = visualization_msgs::msg::Marker::ADD;
+            }
             marker.header.frame_id = frame_id;
             marker.header.stamp = now;
             if (ns.empty())
@@ -549,11 +532,13 @@ public:
             marker.color.r = 1.0;
             marker.color.g = 0.5;
             marker.color.b = 0.2;
+            marker.lifetime = lifetime;
+            marker.frame_locked = true;
             arr.markers.push_back(marker);
         }
     }
 
-    Eigen::Isometry3d getRootPoseTip(const moveit::core::RobotStatePtr& robot_state, const std::string& link_name)
+    Eigen::Isometry3d getRootPoseTip(const moveit::core::RobotStateConstPtr& robot_state, const std::string& link_name)
     {
         // Based on MoveIt2's getJacobian() function, which calculates the Jacobian at the root link of the robot model.
         // We can use the same transformations to get the pose of the link tip in the root frame, which is needed to calculate the offset corresponding to a gradient.
@@ -579,41 +564,11 @@ public:
         // Perform one cycle of collision checking and visualization
         update();
         publish();
-        // visualize();
-        gsr_.reset();
-        getCollisionGradients(
-            c_req_,
-            c_res_,
-            planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState(),
-            &planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getAllowedCollisionMatrix(),
-            gsr_
-        );
-        if (!gsr_)
-        {
-            RCLCPP_WARN(this->get_logger(), "Failed to get group state representation with collision gradients.");
-            return;
-        }
-        visualization_msgs::msg::MarkerArray arr;
-        getProximityGradientMarkers(gsr_, arr);
-        EigenSTL::vector_Vector3d forces;
-        EigenSTL::vector_Vector3d moments;
-        getProximityForces(gsr_, forces, moments);
-        EigenSTL::vector_Vector3d points;
-        getProximityPoints(gsr_, points);
-        getProximityForceMarkers("world", "forces", rclcpp::Duration(1,0), forces, points, arr);
-        publishMarkers(arr);
-        // Get all contact vectors which correspond to robot<->obstacle pairs
-        //for (int i : contact_map)
-        //{
-
-        //}
+        visualize();
     }
 
     void update()
     {
-        // Update the planning scene monitor, in case new collision objects have been added
-        // planning_scene_monitor_->requestPlanningSceneState();
-
         // Update the collision result, based on the collision request
         c_res_.clear();
         // Get locked planning scene to ensure scene does not change during update
@@ -638,18 +593,31 @@ public:
             relative_contacts_.push_back(contactToRelativeContact(contact));
         }
 
-        /*
-        rclcpp::Time update_time = planning_scene_monitor_->getLastUpdateTime(); // Get last update time
-        std::stringstream update_time_ss; // Instantiate stringstream for concatenation
-        update_time_ss << update_time.sec << "." << update_time.nsec; // Concatenate seconds.nanoseconds
-        std::string update_time_str = update_time_ss.str(); // Convert to std::string
-        RCLCPP_INFO(update_time_str.c_str()); // Convert to const char*
-        */
+        getCollisionGradients(
+            c_req_,
+            c_res_,
+            planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState(),
+            &planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getAllowedCollisionMatrix(),
+            gsr_
+        );
+        if (!gsr_)
+        {
+            RCLCPP_WARN(this->get_logger(), "Failed to get group state representation.");
+        }
+        getProximityLinkNames(gsr_, proximity_link_names_);
+        getProximityPoses(gsr_, proximity_link_names_, proximity_poses_);
+        // Get the translation part of the poses
+        EigenSTL::vector_Vector3d proximity_points;
+        for (const auto& pose : proximity_poses_)
+        {
+            proximity_points.push_back(pose.translation());
+        }
+        getProximityForces(gsr_, proximity_points, proximity_forces_, proximity_moments_);
+        getProximityTorques(gsr_, proximity_link_names_, proximity_forces_, proximity_moments_, proximity_torques_);
     }
 
     void publish()
     {
-
         // Publish contact map as text string
         std_msgs::msg::String contacts_msg;
         contacts_msg.data = contactMapToString(c_res_.contacts);
@@ -785,6 +753,23 @@ public:
             direction_msg.z = relative_contact.normal[2];
             relative_direction_publisher_->publish(direction_msg);
         }
+    }
+
+    void visualize()
+    {
+        // Visualize the collision result by publishing markers
+        visualization_msgs::msg::MarkerArray arr;
+        getCollisionMarkers(arr);
+        RCLCPP_INFO(this->get_logger(), "Number of collision markers: %s", std::to_string(arr.markers.size()).c_str());
+        getProximityGradientMarkers(gsr_, arr);
+        // Get the translation part of the poses
+        EigenSTL::vector_Vector3d proximity_points;
+        for (const auto& pose : proximity_poses_)
+        {
+            proximity_points.push_back(pose.translation());
+        }
+        getProximityForceMarkers("world", "forces", rclcpp::Duration(1,0), proximity_forces_, proximity_points, arr);
+        publishMarkers(arr);
     }
 
     std::vector<collision_detection::Contact> get_sorted_contacts(collision_detection::CollisionResult res)
@@ -1090,8 +1075,7 @@ public:
         mk.scale.y = 0.02; // Arrow head diameter
         mk.scale.z = 0.02; // Arrow head length
         mk.color = color; // Color specified above
-        mk.lifetime = rclcpp::Duration(1,0); // Remain until deleted
-        mk.lifetime = lifetime; // Remain for n sec or until replaced
+        mk.lifetime = lifetime; // Remain for n seconds and m nanoseconds, or until replaced
         return mk;
     }
 
@@ -1122,7 +1106,7 @@ public:
             color.b = color_1.b * (1 - color_interp_factor) + color_2.b * color_interp_factor;
             color.a = color_1.a * (1 - color_interp_factor) + color_2.a * color_interp_factor;
 
-            rclcpp::Duration lifetime(1,0);
+            rclcpp::Duration lifetime(1,0); // Remain for n seconds and m nanoseconds, or until replaced
             
             visualization_msgs::msg::Marker mk = contactToMarker(contact, marker_frame, color, lifetime, ns_counts);
             markers.markers.push_back(mk); // Add to MarkerArray markers
@@ -1132,20 +1116,20 @@ public:
     void publishMarkers(visualization_msgs::msg::MarkerArray& markers)
     {
         // Delete old markers
-        if (!collision_points_.markers.empty())
+        if (!marker_array_msg_.markers.empty())
         {
-            for (auto& marker : collision_points_.markers)
+            for (auto& marker : marker_array_msg_.markers)
             marker.action = visualization_msgs::msg::Marker::DELETE;
 
-            // marker_array_publisher_->publish(collision_points_);
+            // marker_array_publisher_->publish(marker_array_msg_);
         }
 
-        // Move new markers into collision_points_
-        std::swap(collision_points_.markers, markers.markers);
+        // Move new markers into marker_array_msg_
+        std::swap(marker_array_msg_.markers, markers.markers);
 
         // Draw new markers (if there are any)
-        if (!collision_points_.markers.empty())
-            marker_array_publisher_->publish(collision_points_);
+        if (!marker_array_msg_.markers.empty())
+            marker_array_publisher_->publish(marker_array_msg_);
     }
     
 private:
@@ -1160,7 +1144,11 @@ private:
     {
         if (initialized_)
         {
+            rclcpp::Time start = this->get_clock()->now();
             loop_once();
+            rclcpp::Time end = this->get_clock()->now();
+            rclcpp::Duration duration = end - start;
+            RCLCPP_INFO(this->get_logger(), "Collision check duration: %f seconds", duration.seconds());
         }
     }
 }; // class CollisionNode
