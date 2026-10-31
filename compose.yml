@@ -1,17 +1,14 @@
-# References:
-# GPU Passthrough in WSL: https://github.com/microsoft/wslg/blob/main/samples/container/Containers.md
-# Realtime task priority: https://control.ros.org/rolling/doc/ros2_control/controller_manager/doc/userdoc.html
+# Portable baseline. Add a platform override for display mounts and host networking.
 services:
   morpheus2:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: morpheus2
-    command: tail -F /dev/null # Entrypoint. /dev/null discards print
+    command: ["bash", "-lc", "source /opt/ros/${ROS_DISTRO:-jazzy}/setup.bash && tail -F /dev/null"]
+    init: true
 
-    # Enable realtime task priority
-    privileged: true
-    network_mode: host
+    # Realtime scheduling requires host-kernel support; these settings alone
+    # do not make a standard Linux or WSL kernel a realtime kernel.
     cap_add:
       - SYS_NICE
     ulimits:
@@ -19,40 +16,23 @@ services:
       memlock: -1
 
     environment:
-      # Share GUI environment variables with the container.
-      - DISPLAY
-      - WAYLAND_DISPLAY
-      - XDG_RUNTIME_DIR
-      - XAUTHORITY=/tmp/.Xauthority
-      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
-      # Fix a bug with QT
-      - QT_X11_NO_MITSHM=1
-       # Configure for Moveit and Gazebo
-      - ROS_DOMAIN_ID=0
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-      - RCUTILS_COLORIZED_OUTPUT=1
-      - GZ_VERSION=harmonic
-      # Configure Nvidia Docker interface.
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      - NVIDIA_DISABLE_REQUIRE=1
-      - __GLX_VENDOR_LIBRARY_NAME=nvidia
-      - LIBVA_DRIVER_NAME=d3d12
-    volumes:
-      # Share X11, Wayland, and/or Pulse servers with the container.
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - /mnt/wslg:/mnt/wslg
-      # Share the Xauthority file with the container.
-      - ~/.Xauthority:/tmp/.Xauthority
-      # Mount the ROS workspace into the container.
-      - .:/root/ros2_ws/src
-      # Share input devices and GPU with the container.
-      - /dev:/dev
-      # Share WSL mount locations with the container
-      - /usr/lib/wsl:/usr/lib/wsl
+      DISPLAY: ${DISPLAY:-}
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-}
+      XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-}
+      XAUTHORITY: ${XAUTHORITY:-/tmp/.Xauthority}
+      QT_X11_NO_MITSHM: "1"
+      ROS_DISTRO: jazzy
+      ROS_DOMAIN_ID: "0"
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      RCUTILS_COLORIZED_OUTPUT: "1"
+      GZ_VERSION: harmonic
+      NVIDIA_DRIVER_CAPABILITIES: all
+      __GLX_VENDOR_LIBRARY_NAME: nvidia
 
-    # Reserve GPU resource
-    runtime: nvidia
+    volumes:
+      - .:/root/ros2_ws/src
+
+    # Compose GPU reservation; configure NVIDIA GPU support on the host.
     deploy:
       resources:
         reservations:
@@ -60,3 +40,5 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+    # Add host networking only on platforms where its behavior is suitable.

@@ -1,0 +1,13 @@
+services:
+  morpheus2:
+    # Native Linux host networking supports ROS 2 DDS discovery/multicast.
+    network_mode: host
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      WAYLAND_DISPLAY: wayland-0
+      XDG_RUNTIME_DIR: /tmp
+      XAUTHORITY: /tmp/.Xauthority
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${XAUTHORITY:-${HOME}/.Xauthority}:/tmp/.Xauthority:ro
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/${WAYLAND_DISPLAY:-wayland-0}:/tmp/wayland-0
