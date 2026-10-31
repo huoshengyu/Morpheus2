@@ -81,7 +81,7 @@ def launch_setup(context):
         moveit_node = IncludeLaunchDescription(
             launch_description_source=AnyLaunchDescriptionSource(
                 PathJoinSubstitution(
-                    [FindPackageShare("morpheus_moveit"), "launch", "moveit.launch.py"]
+                    [FindPackageShare("morpheus_moveit"), "launch", "ur_moveit.launch.py"]
                 )
             )
         )
