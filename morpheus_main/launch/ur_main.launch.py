@@ -13,9 +13,10 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context):
-    # UR specific arguments
+    # Robot arguments
     ur_type = LaunchConfiguration("ur_type")
     robot_ip = LaunchConfiguration("robot_ip")
+    use_mock_hardware = LaunchConfiguration("use_mock_hardware")
     # End effector arguments
     ee_type = LaunchConfiguration("ee_type")
     # Control arguments
@@ -29,7 +30,13 @@ def launch_setup(context):
             PathJoinSubstitution(
                 [FindPackageShare("morpheus_driver"), "launch", "ur_control.launch.py"]
             )
-        )
+        ),
+        launch_arguments={
+            "ur_type": ur_type,
+            "robot_ip": robot_ip,
+            "ee_type": ee_type,
+            "use_mock_hardware": use_mock_hardware,
+        }.items(),
     )
     
     control_nodes = []
@@ -83,7 +90,13 @@ def launch_setup(context):
                 PathJoinSubstitution(
                     [FindPackageShare("morpheus_moveit"), "launch", "ur_moveit.launch.py"]
                 )
-            )
+            ),
+            launch_arguments={
+                "ur_type": ur_type,
+                "robot_ip": robot_ip,
+                "ee_type": ee_type,
+                "launch_rviz": "false",
+            }.items(),
         )
         collision_node = IncludeLaunchDescription(
             launch_description_source=AnyLaunchDescriptionSource(
@@ -134,6 +147,13 @@ def generate_launch_description():
             "robot_ip", 
             default_value="192.168.1.102",
             description="IP address by which the robot can be reached."
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_mock_hardware",
+            default_value="false",
+            description="Start robot with mock hardware mirroring command to its states.",
         )
     )
     declared_arguments.append(
