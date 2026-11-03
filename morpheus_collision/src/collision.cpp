@@ -70,8 +70,8 @@ public:
     rclcpp::Publisher<moveit_msgs::msg::ContactInformation>::SharedPtr relative_contact_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr relative_distance_publisher_;
     rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr relative_direction_publisher_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr directional_distance_publisher_; //testing before full integration with arduino
-    rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr yaw_directional_distance_publisher_; //testing before full integration with arduino
+    rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr directional_distance_publisher_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr yaw_directional_distance_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr collision_avoidance_torque_publisher_;
 
     // Declare collision info variables
@@ -154,8 +154,9 @@ public:
         relative_contact_publisher_ = this->create_publisher<moveit_msgs::msg::ContactInformation>("collision/relative/contact", 1);
         relative_distance_publisher_ = this->create_publisher<std_msgs::msg::Float64>("collision/relative/distance", 1);
         relative_direction_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/relative/direction", 1);
-        directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/directional_distance", 1); //testing before full integration with arduino
-        yaw_directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/yaw_distance", 1); //testing before full integration with arduino
+        directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/nearest/directional_distance", 1);
+        yaw_directional_distance_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("collision/yaw/yaw_distance", 1);
+        collision_avoidance_torque_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("collision/torques", 1);
 
         // Create a marker array publisher for publishing shapes to Rviz
         marker_array_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("visualization_marker_array", 1);
@@ -753,6 +754,15 @@ public:
             direction_msg.z = relative_contact.normal[2];
             relative_direction_publisher_->publish(direction_msg);
         }
+
+        // Publish joint torques associated with proximity gradients
+        if (proximity_torques_.size() > 0)
+        { 
+            sensor_msgs::msg::JointState torque_msg;
+            torque_msg.name = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState().getJointModelGroup(arm_group_)->getActiveJointModelNames();
+            torque_msg.effort = std::vector<double>(proximity_torques_.data(), proximity_torques_.data() + proximity_torques_.size());
+            collision_avoidance_torque_publisher_->publish(torque_msg);
+        }
     }
 
     void visualize()
@@ -760,7 +770,7 @@ public:
         // Visualize the collision result by publishing markers
         visualization_msgs::msg::MarkerArray arr;
         getCollisionMarkers(arr);
-        RCLCPP_INFO(this->get_logger(), "Number of collision markers: %s", std::to_string(arr.markers.size()).c_str());
+        RCLCPP_DEBUG(this->get_logger(), "Number of collision markers: %s", std::to_string(arr.markers.size()).c_str());
         getProximityGradientMarkers(gsr_, arr);
         // Get the translation part of the poses
         EigenSTL::vector_Vector3d proximity_points;
@@ -1148,7 +1158,7 @@ private:
             loop_once();
             rclcpp::Time end = this->get_clock()->now();
             rclcpp::Duration duration = end - start;
-            RCLCPP_INFO(this->get_logger(), "Collision check duration: %f seconds", duration.seconds());
+            RCLCPP_DEBUG(this->get_logger(), "Collision check duration: %f seconds", duration.seconds());
         }
     }
 }; // class CollisionNode
