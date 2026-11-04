@@ -1,11 +1,29 @@
 <?xml version='1.0' encoding='utf-8'?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<!--
+Morpheus2: ROS2 control and feedback for manual teleoperation research
+Copyright (C) 2026 Brian Huo
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <package format="3">
   <name>morpheus_collision</name>
   <version>2.0.0</version>
   <description>The morpheus_collision package</description>
   <maintainer email="bshuo@ucdavis.edu">Brian Sanyu Huo</maintainer>
-  <license>GPL-3.0-only</license>
+  <license>GPL-3.0-or-later</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   
   <depend>rclpy</depend>
