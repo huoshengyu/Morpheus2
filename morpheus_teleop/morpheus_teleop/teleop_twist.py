@@ -39,11 +39,16 @@ from threading import Lock
 from copy import deepcopy
 from collections import deque
 # Local Imports
-from joy_utils import joy_msg_to_dict
-from frame_utils import rearrange_command, transform_command
-from morpheus_msgs.action import MoveToNamedTarget
+try:
+    from morpheus_teleop.joy_utils import joy_msg_to_dict
+    from morpheus_teleop.frame_utils import rearrange_command, transform_command
+    from morpheus_teleop.teleop_base import TeleopBase
+except (ImportError, ModuleNotFoundError):
+    from joy_utils import joy_msg_to_dict
+    from frame_utils import rearrange_command, transform_command
+    from teleop_base import TeleopBase
 
-from teleop_base import TeleopBase
+from morpheus_msgs.action import MoveToNamedTarget
 
 class TeleopTwist(TeleopBase):
     """ 
@@ -57,10 +62,10 @@ class TeleopTwist(TeleopBase):
         super().__init__(node_name)
 
         # Set controller type
-        self.controller_type = self.declare_parameter("controller_type", "ps4").value
+        self.controller_type = self.declare_parameter("controller_type", "gamepad").value
         
         # Initialize frame swap variables
-        self.frame_id = self.declare_parameter("frame_id", "base").value
+        self.frame_id = self.declare_parameter("frame_id", "base_link").value
         self.end_effector = self.declare_parameter("end_effector", "tool0").value
         self._already_swapped = False
         self._use_ee_frame = False
@@ -135,10 +140,13 @@ class TeleopTwist(TeleopBase):
             if self._waiting:
                 return
             # Get the latest transform from the end effector to the base frame
-            self.tf_stamped = self.get_transform(
+            tf = self.get_transform(
                 target_frame = self.frame_id, 
                 source_frame = self.end_effector, 
                 time=Time())
+            if tf is None:
+                return
+            self.tf_stamped = tf
             # Update commands
             self.update_input_dict(joy_msg)
             self.update_frame()

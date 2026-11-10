@@ -39,7 +39,6 @@ def generate_launch_description():
         Node(
             package='morpheus_collision',
             executable='collision',
-            name='collision',
             output='screen',
             parameters=[
                 {

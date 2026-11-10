@@ -242,7 +242,7 @@ freedrive_mode_controller:
 
 tcp_pose_broadcaster:
   ros__parameters:
-    frame_id: $(var tf_prefix)base
+    frame_id: $(var tf_prefix)base_link
     pose_name: $(var tf_prefix)tcp_pose
     tf:
       child_frame_id: $(var tf_prefix)tool0_controller
@@ -260,7 +260,7 @@ gravity_update_controller:
 cartesian_compliance_controller:
   ros__parameters:
     end_effector_link: "$(var tf_prefix)tool0"
-    robot_base_link: "$(var tf_prefix)base"
+    robot_base_link: "$(var tf_prefix)base_link"
     ft_sensor_ref_link: "$(var tf_prefix)tool0"
     compliance_ref_link: "$(var tf_prefix)tool0"
     joints:
@@ -301,7 +301,7 @@ cartesian_force_controller:
 
     # See the cartesian_compliance_controller
     end_effector_link: "$(var tf_prefix)tool0"
-    robot_base_link: "$(var tf_prefix)base"
+    robot_base_link: "$(var tf_prefix)base_link"
     ft_sensor_ref_link: "$(var tf_prefix)tool0"
     joints:
       - $(var tf_prefix)shoulder_pan_joint
@@ -333,7 +333,7 @@ cartesian_motion_controller:
 
     # See the cartesian_compliance_controller
     end_effector_link: "$(var tf_prefix)tool0"
-    robot_base_link: "$(var tf_prefix)base"
+    robot_base_link: "$(var tf_prefix)base_link"
     joints:
       - $(var tf_prefix)shoulder_pan_joint
       - $(var tf_prefix)shoulder_lift_joint
@@ -363,7 +363,7 @@ cartesian_motion_controller:
 motion_control_handle:
   ros__parameters:
     end_effector_link: "$(var tf_prefix)tool0"
-    robot_base_link: "$(var tf_prefix)base"
+    robot_base_link: "$(var tf_prefix)base_link"
     ft_sensor_ref_link: "$(var tf_prefix)tool0"
     joints:
       - $(var tf_prefix)shoulder_pan_joint

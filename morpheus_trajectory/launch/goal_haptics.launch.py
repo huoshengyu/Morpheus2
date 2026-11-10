@@ -16,30 +16,44 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ---------------------------------------------------------------------------
 
-import os
-import sys
-
-import launch
-import launch_ros.actions
-from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    ld = launch.LaunchDescription([
-        launch_ros.actions.Node(
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            name='world_frame',
+            default_value='base_link',
+            description='World frame for goal haptics'
+        ),
+        DeclareLaunchArgument(
+            name='ee_frame',
+            default_value='tool0',
+            description='End effector frame for goal haptics'
+        ),
+        Node(
             package='morpheus_trajectory',
             executable='goal_haptics.py',
             name='goal_haptics',
-            output='screen'
+            output='screen',
+            parameters=[
+                {'world_frame': LaunchConfiguration('world_frame')},
+                {'ee_frame': LaunchConfiguration('ee_frame')},
+            ]
         ),
-        launch.actions.IncludeLaunchDescription(
-            launch.launch_description_sources.PythonLaunchDescriptionSource(
-                os.path.join(get_package_share_directory(
-                    'morpheus_trajectory'), 'launch/goal_transform.launch.py')
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                PathJoinSubstitution(
+                    [FindPackageShare('morpheus_trajectory'), 'launch', 'goal_transform.launch.py']
+                )
             )
         )
     ])
-    return ld
 
 
 if __name__ == '__main__':

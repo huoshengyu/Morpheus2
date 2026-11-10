@@ -1,5 +1,5 @@
 modern_robotics
-numpy
+numpy>=1.24,<2.0
 numpy-quaternion
 pygame-ce
 pymodbus
@@ -8,6 +8,6 @@ PyQt6
 pyserial
 pytest
 readchar
-scipy
+scipy>=1.12.0,<1.14.0
 setuptools
 transforms3d

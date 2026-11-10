@@ -26,7 +26,6 @@
 // Moveit
 #include <moveit/moveit_cpp/moveit_cpp.hpp>
 #include <moveit/planning_scene_monitor/planning_scene_monitor.hpp>
-#include <moveit/move_group_interface/move_group_interface.hpp>
 #include <moveit/collision_detection_bullet/collision_env_bullet.hpp>
 #include <moveit/collision_detection_bullet/collision_detector_allocator_bullet.hpp>
 #include <moveit/collision_distance_field/collision_env_hybrid.hpp>
@@ -37,7 +36,6 @@
 #include <moveit/collision_detection/collision_detector_allocator.hpp>
 #include <moveit/collision_detection/collision_env.hpp>
 #include <moveit/collision_detection/collision_tools.hpp>
-#include <moveit_visual_tools/moveit_visual_tools.h>
 #include <morpheus_collision/collision_detector_allocator_hybrid.hpp>
 
 // Messages
@@ -110,7 +108,6 @@ public:
     // Declare collision visualization variables
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_publisher_;
     visualization_msgs::msg::MarkerArray marker_array_msg_;
-    moveit_visual_tools::MoveItVisualToolsPtr visual_tools_;
     std::vector<collision_detection::Contact>::size_type max_markers_ = 20;
 
     // Declare variables for identifying robot vs environment
@@ -118,10 +115,7 @@ public:
     std::string arm_group_;
     std::string gripper_group_;
     std::string robot_description_topic_;
-    
-    // Declare interfaces for retrieving robot link models and other info
-    std::shared_ptr<moveit::planning_interface::MoveGroupInterface> arm_interface_;
-    std::shared_ptr<moveit::planning_interface::MoveGroupInterface> gripper_interface_;
+    std::string yaw_joint_;
     
     // Declare variables for tracking attached collision objects
     rclcpp::Subscription<moveit_msgs::msg::PlanningScene>::SharedPtr planning_scene_fake_subscription_;
@@ -132,7 +126,7 @@ public:
 
     // Initialize ROS node
     explicit CollisionNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions()) 
-        : Node("collision_node", options)
+        : Node("collision", options)
     {
         // Declare parameters
         this->declare_parameter("arm_group", "arm");
@@ -201,31 +195,49 @@ public:
     std::shared_ptr<rclcpp::Node> initialize()
     {
         RCLCPP_INFO(this->get_logger(), "Initializing collision node...");
-        RCLCPP_INFO(this->get_logger(), "Initializing visual tools...");
-        // Initialize visual tools for visualizing markers in Rviz
-        visual_tools_ = std::make_shared<moveit_visual_tools::MoveItVisualTools>(shared_from_this(), "world", "moveit_visual_markers");
-
-        RCLCPP_INFO(this->get_logger(), "Initializing arm interface...");
-        // Start move group interfaces for retrieving robot links
-        arm_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(shared_from_this(), arm_group_);
-        RCLCPP_INFO(this->get_logger(), "Initializing gripper interface...");
-        gripper_interface_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(shared_from_this(), gripper_group_);
-        // Set robot link vector to include all parts of the robot
-        // Get all links in the robot arm
-        std::vector<std::string> arm_link_vector = arm_interface_->getLinkNames();
-        robot_link_vector_.insert(robot_link_vector_.end(), arm_link_vector.begin(), arm_link_vector.end());
-        // Get all links in the robot gripper
-        std::vector<std::string> gripper_link_vector = gripper_interface_->getLinkNames();
-        robot_link_vector_.insert(robot_link_vector_.end(), gripper_link_vector.begin(), gripper_link_vector.end());
 
         // Initialize PlanningSceneMonitor
-        planning_scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(shared_from_this(), robot_description_topic_, "planning_scene_monitor");
+        planning_scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(
+            shared_from_this(), robot_description_topic_, "planning_scene_monitor");
         // Start the PlanningSceneMonitor
         planning_scene_monitor_->startStateMonitor(joint_states_topic_, attached_collision_object_topic_); // Get robot state updates from move group
         planning_scene_monitor_->startWorldGeometryMonitor(collision_object_topic_, planning_scene_world_topic_); // Get world geometry updates from move group
         planning_scene_monitor_->startSceneMonitor(planning_scene_topic_); // Get planning scene updates from move group
         // Ensure the PlanningSceneMonitor is ready
         planning_scene_monitor_->requestPlanningSceneState(planning_scene_service_);
+
+        // Query robot link models and yaw joint directly from planning_scene_monitor's RobotModel
+        auto robot_model = planning_scene_monitor_->getRobotModel();
+        if (robot_model)
+        {
+            if (robot_model->hasJointModelGroup(arm_group_))
+            {
+                const auto* arm_group_model = robot_model->getJointModelGroup(arm_group_);
+                std::vector<std::string> arm_links = arm_group_model->getLinkModelNames();
+                robot_link_vector_.insert(robot_link_vector_.end(), arm_links.begin(), arm_links.end());
+                const auto& active_joints = arm_group_model->getActiveJointModelNames();
+                if (!active_joints.empty())
+                {
+                    yaw_joint_ = active_joints[0];
+                    RCLCPP_INFO(this->get_logger(), "Arm group '%s' yaw joint: %s", arm_group_.c_str(), yaw_joint_.c_str());
+                }
+            }
+            else
+            {
+                RCLCPP_WARN(this->get_logger(), "Arm group '%s' not found in robot model.", arm_group_.c_str());
+            }
+
+            if (!gripper_group_.empty() && robot_model->hasJointModelGroup(gripper_group_))
+            {
+                const auto* gripper_group_model = robot_model->getJointModelGroup(gripper_group_);
+                std::vector<std::string> gripper_links = gripper_group_model->getLinkModelNames();
+                robot_link_vector_.insert(robot_link_vector_.end(), gripper_links.begin(), gripper_links.end());
+            }
+        }
+        else
+        {
+            RCLCPP_WARN(this->get_logger(), "Robot model not yet loaded in PlanningSceneMonitor during initialize().");
+        }
         try
         {   
             // Change the PlanningScene's collision detector to hybrid
@@ -597,13 +609,36 @@ public:
         sorted_contacts_ = get_sorted_contacts(c_res_);
         // Transform contacts based on yaw, which is assumed to be the first joint of the robot
         yaw_contacts_.clear();
-        std::string yaw_joint = arm_interface_->getActiveJoints()[0];
-        const double* yaw = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCurrentState().getJointPositions(yaw_joint);
-        Eigen::Affine3d yaw_tf; // Must be first declared, then assigned since there is no implicit constructor from AngleAxis
-        yaw_tf = Eigen::AngleAxisd(-*yaw, Eigen::Vector3d(0.0,0.0,1.0));
-        for (auto contact : sorted_contacts_)
+        if (yaw_joint_.empty() && planning_scene_monitor_)
         {
-            yaw_contacts_.push_back(transformContact(contact, yaw_tf));
+            auto robot_model = planning_scene_monitor_->getRobotModel();
+            if (robot_model && robot_model->hasJointModelGroup(arm_group_))
+            {
+                const auto& active_joints = robot_model->getJointModelGroup(arm_group_)->getActiveJointModelNames();
+                if (!active_joints.empty())
+                {
+                    yaw_joint_ = active_joints[0];
+                    RCLCPP_INFO(this->get_logger(), "Arm group '%s' yaw joint initialized: %s", arm_group_.c_str(), yaw_joint_.c_str());
+                }
+            }
+        }
+
+        if (!yaw_joint_.empty())
+        {
+            auto locked_scene = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
+            if (locked_scene)
+            {
+                const double* yaw = locked_scene->getCurrentState().getJointPositions(yaw_joint_);
+                if (yaw)
+                {
+                    Eigen::Affine3d yaw_tf; // Must be first declared, then assigned since there is no implicit constructor from AngleAxis
+                    yaw_tf = Eigen::AngleAxisd(-*yaw, Eigen::Vector3d(0.0, 0.0, 1.0));
+                    for (auto contact : sorted_contacts_)
+                    {
+                        yaw_contacts_.push_back(transformContact(contact, yaw_tf));
+                    }
+                }
+            }
         }
         // Transform contacts to the frame of the link they are associated with
         relative_contacts_.clear();
@@ -822,6 +857,25 @@ public:
 
     bool isRobotLink(std::string link)
     {
+        if (robot_link_vector_.empty() && planning_scene_monitor_)
+        {
+            auto robot_model = planning_scene_monitor_->getRobotModel();
+            if (robot_model)
+            {
+                if (robot_model->hasJointModelGroup(arm_group_))
+                {
+                    const auto* arm_group_model = robot_model->getJointModelGroup(arm_group_);
+                    std::vector<std::string> arm_links = arm_group_model->getLinkModelNames();
+                    robot_link_vector_.insert(robot_link_vector_.end(), arm_links.begin(), arm_links.end());
+                }
+                if (!gripper_group_.empty() && robot_model->hasJointModelGroup(gripper_group_))
+                {
+                    const auto* gripper_group_model = robot_model->getJointModelGroup(gripper_group_);
+                    std::vector<std::string> gripper_links = gripper_group_model->getLinkModelNames();
+                    robot_link_vector_.insert(robot_link_vector_.end(), gripper_links.begin(), gripper_links.end());
+                }
+            }
+        }
         return (std::find(robot_link_vector_.begin(), robot_link_vector_.end(), link) != robot_link_vector_.end());
     }
 
@@ -1185,7 +1239,8 @@ private:
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    auto collision_node = std::make_shared<morpheus_collision::CollisionNode>();
+    rclcpp::NodeOptions options;
+    auto collision_node = std::make_shared<morpheus_collision::CollisionNode>(options);
     collision_node->initialize();
     rclcpp::spin(collision_node);
     rclcpp::shutdown();

@@ -25,7 +25,6 @@ RUN add-apt-repository universe \
 
 # Install and upgrade system, ROS, and development packages
 RUN apt-get update \
-    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         apt-utils \
         build-essential bc bzip2 wget gawk flex bison dwarves linux-lowlatency \
@@ -56,46 +55,44 @@ RUN locale-gen en_US en_US.UTF-8 \
 # Set the working directory in the container
 WORKDIR /root/ros2_ws/
 
+# Create the venv and install requirements before copying frequently changed source.
+# These layers are invalidated only when their dependency manifests change.
+ENV VIRTUAL_ENV=/root/ros2_ws/.venv
+RUN python3 -m venv ${VIRTUAL_ENV} --system-site-packages --symlinks
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+ENV PYTHONPATH="${VIRTUAL_ENV}/lib/python3.12/site-packages:${PYTHONPATH}"
+
+COPY requirements.txt /tmp/morpheus-requirements.txt
+COPY submodules/gello_software/requirements.txt /tmp/gello-requirements.txt
+RUN ${VIRTUAL_ENV}/bin/python3 -m pip install --upgrade pip \
+    && ${VIRTUAL_ENV}/bin/python3 -m pip install --no-cache-dir -r /tmp/gello-requirements.txt \
+    && ${VIRTUAL_ENV}/bin/python3 -m pip install --no-cache-dir -r /tmp/morpheus-requirements.txt
+
 # Copy the morpheus repo
 COPY ./ ./src/
 
 # Source ROS setup files on interactive terminal startup
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc \
+    && echo "source ${VIRTUAL_ENV}/bin/activate" >> ~/.bashrc
 
 # General rosdep install (Includes EOL distros to handle Interbotix library dependencies)
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
-    && apt update \
+    && apt-get update \
     && rosdep update --include-eol-distros \
     && rosdep install -q -y -r \
       --from-paths ./src/ \
       --ignore-src \
     && rm -rf /var/lib/apt/lists/*
-
-# # Build the ROS workspace
+# Build the ROS workspace
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
     && colcon build --symlink-install
 
 # Source the workspace setup files on container startup
 RUN echo "source /root/ros2_ws/install/setup.bash" >> ~/.bashrc
 
-# Create and activate venv to avoid conflict with externally managed environment
-ENV VIRTUAL_ENV=.venv
-RUN python3 -m venv ${VIRTUAL_ENV} --system-site-packages --symlinks
-ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
-ENV PYTHONPATH="${VIRTUAL_ENV}/lib/python3.12/site-packages:${PYTHONPATH}"
-RUN echo "source /root/ros2_ws/${VIRTUAL_ENV}/bin/activate" >> ~/.bashrc
-
-# # Install non-debian python dependencies 
-# # (Force pip to permit package installation)
-# RUN echo "[global]" >> etc/pip.conf
-# RUN echo "break-system-packages = true" >> etc/pip.conf
-RUN ${VIRTUAL_ENV}/bin/python3 -m pip install --upgrade pip
-RUN ${VIRTUAL_ENV}/bin/python3 -m pip install --no-cache-dir -r ./src/requirements.txt
-
-# Install GELLO dependencies
-RUN ${VIRTUAL_ENV}/bin/python3 -m pip install --no-cache-dir -r ./src/submodules/gello_software/requirements.txt
-RUN ${VIRTUAL_ENV}/bin/python3 -m pip install --no-cache-dir -e ./src/submodules/gello_software/. --use-pep517
-RUN ${VIRTUAL_ENV}/bin/python3 -m pip install --no-cache-dir -e ./src/submodules/gello_software/third_party/DynamixelSDK/python/.
+# Install editable GELLO and Dynamixel packages after source is available
+RUN ${VIRTUAL_ENV}/bin/python3 -m pip install --no-cache-dir -e ./src/submodules/gello_software/. --use-pep517 \
+    && ${VIRTUAL_ENV}/bin/python3 -m pip install --no-cache-dir -e ./src/submodules/gello_software/third_party/DynamixelSDK/python/.
 
 # Configure display access (Unsets variable. Setting it may cause Rviz to fail.)
 # RUN echo "unset LIBGL_ALWAYS_INDIRECT" >> ~/.bashrc

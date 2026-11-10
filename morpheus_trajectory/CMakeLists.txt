@@ -63,11 +63,19 @@ ament_target_dependencies(move_to_named_target rclcpp rclcpp_action rclcpp_compo
 add_executable(visualization src/trajectory.cpp)
 ament_target_dependencies(visualization rclcpp moveit_ros_planning_interface moveit_visual_tools morpheus_teleop)
 
+add_executable(goal_vibration src/goal_vibration.cpp)
+ament_target_dependencies(goal_vibration rclcpp std_msgs geometry_msgs)
+
 install(TARGETS 
-  move_to_named_target visualization
+  move_to_named_target visualization goal_vibration
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/goal_haptics.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 # ------------------------------------------------------------------------------

@@ -17,21 +17,28 @@
 # ---------------------------------------------------------------------------
 
 import os
-import sys
-
 import launch
 import launch_ros.actions
+from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
     ld = launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument(
             name='controller',
-            default_value='ps4'
+            default_value='gamepad'
         ),
         launch.actions.DeclareLaunchArgument(
             name='data',
             default_value='true'
+        ),
+        launch.actions.DeclareLaunchArgument(
+            name='base_dir',
+            default_value='/root/ros2_ws/data/'
+        ),
+        launch.actions.DeclareLaunchArgument(
+            name='world_frame',
+            default_value='base_link'
         ),
         launch_ros.actions.Node(
             package='morpheus_data',
@@ -46,22 +53,22 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
-                    'base_dir': '/root/catkin_ws/src/morpheus_data/data/'
+                    'base_dir': LaunchConfiguration('base_dir')
                 },
                 {
                     'basename_topic': '/UCDsession/csv_basename'
                 },
                 {
-                    'world_frame': 'vx300s/base_link'
+                    'world_frame': LaunchConfiguration('world_frame')
                 },
                 {
-                    'log_rate_hz': '10'
+                    'log_rate_hz': 10.0
                 },
                 {
-                    'append': 'false'
+                    'append': False
                 },
                 {
-                    'flush_each_row': 'false'
+                    'flush_each_row': False
                 }
             ]
         ),
@@ -72,16 +79,16 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
-                    'base_dir': '/root/catkin_ws/src/morpheus_data/data/'
+                    'base_dir': LaunchConfiguration('base_dir')
                 },
                 {
                     'basename_topic': '/UCDsession/csv_basename'
                 },
                 {
-                    'append': 'false'
+                    'append': False
                 },
                 {
-                    'flush_each_row': 'false'
+                    'flush_each_row': False
                 }
             ]
         )

@@ -1,0 +1,37 @@
+# Version-control metadata and local tooling
+.git
+.git/**
+**/.git
+**/.git/**
+.vscode/
+**/.vscode/
+
+# Standalone UI prototype and project documentation
+Morpheus_UI_Prototype/
+README.md
+README.pdf
+README.ipynb
+COPYING
+
+# Local Python environments, caches, and generated artifacts
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+**/.pytest_cache/
+.mypy_cache/
+**/.mypy_cache/
+build/
+**/build/
+install/
+log/
+*.py[cod]
+*.egg-info/
+**/*.egg-info/
+
+# Local data captures and large media not required to build the ROS workspace
+*.bag
+*.csv
+*.mp4
+*.gif

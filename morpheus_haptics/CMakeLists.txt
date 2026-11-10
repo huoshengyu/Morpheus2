@@ -47,4 +47,18 @@ ament_target_dependencies(collision_simple rclcpp moveit_msgs sensor_msgs geomet
 add_executable(collision_haptics src/collision_haptics.cpp)
 ament_target_dependencies(collision_haptics rclcpp moveit_msgs sensor_msgs)
 
+# ------------------------------------------------------------------------------
+# Install Rules
+# ------------------------------------------------------------------------------
+install(TARGETS
+  collision_serial
+  collision_simple
+  collision_haptics
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
 ament_package()

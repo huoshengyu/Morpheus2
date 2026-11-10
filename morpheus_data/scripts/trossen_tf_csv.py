@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+# ---------------------------------------------------------------------------
+# Morpheus2: ROS2 control and feedback for manual teleoperation research
+# Copyright (C) 2026 Brian Huo
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# ---------------------------------------------------------------------------
+
+import rclpy
+from data_recorder import DataRecorder
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = DataRecorder(node_name='trossen_tf_csv')
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

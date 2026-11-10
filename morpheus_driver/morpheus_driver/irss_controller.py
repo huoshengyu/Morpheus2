@@ -43,15 +43,20 @@ class FACTRTeleopUR5eROS2(FACTRTeleop):
         self.follower_joint_state_topic = comm_cfg.get("follower_joint_state_topic", "/joint_states")
         self.follower_command_topic = comm_cfg.get("follower_command_topic", "/ur5e/joint_commands")
         self.follower_gripper_state_topic = comm_cfg.get("follower_gripper_state_topic", None)
+        self.collision_info_topic = comm_cfg.get("collision_info_topic", "collision/torques")
         # list of follower joint names expected by the follower controller (optional)
         self.follower_joint_names = self.config.get("arm_teleop", {}).get("follower_joint_names", [])
         # gripper mapping/gain
         self.gripper_feedback_gain = self.config["controller"]["gripper_feedback"].get("gain", 1.0) \
             if "gripper_feedback" in self.config["controller"] else 1.0
+        coll_cfg = self.config["controller"].get("collision_avoidance", {})
+        self.collision_avoidance_gain = float(coll_cfg.get("gain", 1.0))
+        self.collision_avoidance_max_torque = float(coll_cfg.get("max_torque", 10.0))
 
         # storage for last messages
         self._follower_joint_state_msg = None
         self._follower_gripper_msg = None
+        self._collision_info_msg = None
 
     def set_up_communication(self):
         # Subscriber to follower joint_states
@@ -78,6 +83,15 @@ class FACTRTeleopUR5eROS2(FACTRTeleop):
                 10,
             )
 
+        # Optional collision info subscriber
+        if self.collision_info_topic:
+            self.collision_info_sub = self.create_subscription(
+                JointState,
+                self.collision_info_topic,
+                self._collision_info_callback,
+                10,
+            )
+
         # If torque feedback is enabled, wait until joint_states arrives
         if self.enable_torque_feedback:
             t0 = time.time()
@@ -95,6 +109,9 @@ class FACTRTeleopUR5eROS2(FACTRTeleop):
 
     def _follower_gripper_callback(self, msg: JointState):
         self._follower_gripper_msg = msg
+
+    def _collision_info_callback(self, msg: JointState):
+        self._collision_info_msg = msg
 
     def get_leader_arm_external_joint_torque(self):
         """
@@ -143,6 +160,47 @@ class FACTRTeleopUR5eROS2(FACTRTeleop):
             return 0.0
         torque_gripper = -1.0 * gripper_feedback / self.gripper_feedback_gain
         return float(torque_gripper)
+
+    def get_collision_info(self):
+        """
+        Return structured collision torques from the follower.
+        """
+        if self._collision_info_msg is not None:
+            msg = self._collision_info_msg
+            if msg.effort:
+                if self.follower_joint_names and msg.name:
+                    torque_dict = {n: e for n, e in zip(msg.name, msg.effort)}
+                    torques = np.array([torque_dict.get(n, 0.0) for n in self.follower_joint_names[:self.num_arm_joints]], dtype=float)
+                else:
+                    eff = list(msg.effort)
+                    padded = eff + [0.0] * max(0, self.num_arm_joints - len(eff))
+                    torques = np.array(padded[:self.num_arm_joints], dtype=float)
+                return {'torques': torques, 'available': True}
+        return None
+
+    def collision_avoidance(self, arm_joint_pos, arm_joint_vel, collision_info):
+        """
+        Computes resistive joint torques for the leader arm based on collision proximity torques.
+        
+        Scales collision torques such that the leader-follower controller provides resistance
+        against movement toward collision, but does NOT constantly push the controller
+        position away from obstacles when at rest.
+        """
+        if not collision_info or not collision_info.get('available', False):
+            return np.zeros(self.num_arm_joints)
+
+        collision_torques = collision_info.get('torques', np.zeros(self.num_arm_joints))
+        tau_collision = np.zeros(self.num_arm_joints)
+
+        for i in range(min(len(collision_torques), self.num_arm_joints)):
+            tau_c = collision_torques[i]
+            if abs(tau_c) > 1e-4:
+                tau_dir = np.sign(tau_c)
+                vel_toward_collision = max(0.0, -arm_joint_vel[i] * tau_dir)
+                resistive_torque = self.collision_avoidance_gain * vel_toward_collision * tau_c
+                tau_collision[i] = np.clip(resistive_torque, -self.collision_avoidance_max_torque, self.collision_avoidance_max_torque)
+
+        return tau_collision
 
     def update_communication(self, leader_arm_pos, leader_gripper_pos):
         """

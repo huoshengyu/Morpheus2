@@ -33,30 +33,39 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(moveit_ros_planning_interface REQUIRED)
-find_package(morpheus_msgs REQUIRED)
-find_package(moveit_ros_planning REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(moveit_visual_tools REQUIRED)
-find_package(moveit_core REQUIRED)
-find_package(moveit_msgs REQUIRED)
-find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+
+# ------------------------------------------------------------------------------
+# Install Python Executables & Scripts
+# ------------------------------------------------------------------------------
+install(PROGRAMS
+  scripts/session_manager.py
+  scripts/UCDsession.py
+  scripts/data_recorder.py
+  scripts/trossen_tf_csv.py
+  scripts/trossen_tf_csv
+  scripts/backup_bag.py
+  scripts/Backup_Bag
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# ------------------------------------------------------------------------------
+# Install Launch & Config
+# ------------------------------------------------------------------------------
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
 
 ament_export_dependencies(ament_cmake)
-ament_export_dependencies(rclcpp)
-ament_export_dependencies(moveit_ros_planning_interface)
-ament_export_dependencies(morpheus_msgs)
-ament_export_dependencies(moveit_ros_planning)
+ament_export_dependencies(rclpy)
 ament_export_dependencies(std_msgs)
 ament_export_dependencies(geometry_msgs)
 ament_export_dependencies(sensor_msgs)
-ament_export_dependencies(moveit_visual_tools)
-ament_export_dependencies(moveit_core)
-ament_export_dependencies(moveit_msgs)
-ament_export_dependencies(tf2)
-ament_export_include_directories(${INCLUDE_DIRS})
+ament_export_dependencies(tf2_ros)
 
 ament_package()

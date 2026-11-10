@@ -1,200 +1,159 @@
-#! /usr/bin/env python3
-
+#!/usr/bin/env python3
 # ---------------------------------------------------------------------------
 # Morpheus2: ROS2 control and feedback for manual teleoperation research
 # Copyright (C) 2026 Brian Huo
-
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ---------------------------------------------------------------------------
 
 import numpy as np
-import rospy
+import rclpy
+from rclpy.node import Node
+from rclpy.time import Time
 import tf2_ros
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+
 import sensor_msgs.msg
 import std_msgs.msg
 from threading import Lock
-from collections import deque
 from scipy.spatial.transform import Rotation as R
 
-class GoalHaptics():
-    def __init__(self):
-        joy_feedback_topic = rospy.get_param("~joy_feedback_topic", "/joy/set_feedback")
-        goal_haptics_topic = rospy.get_param("~goal_haptics_topic", "/goal/haptics")
-        goal_cost_topic = rospy.get_param("~goal_haptics_cost_topic", "/goal/cost")
 
-        self.joy_feedback_pub = rospy.Publisher(joy_feedback_topic, sensor_msgs.msg.JoyFeedbackArray, queue_size=0)
-        self.goal_haptics_pub = rospy.Publisher(goal_haptics_topic, sensor_msgs.msg.JoyFeedbackArray, queue_size=0)
-        self.goal_cost_pub = rospy.Publisher(goal_cost_topic, std_msgs.msg.Float64, queue_size=0)
-        self.joy_sub = rospy.Subscriber("/joy", sensor_msgs.msg.Joy, self.callback)
+class GoalHaptics(Node):
+    """
+    Computes distance and orientation error to goal positions,
+    publishing rumble feedback to gamepad and cost to topic.
+    """
+    def __init__(self):
+        super().__init__('goal_haptics')
+
+        self.declare_parameter('joy_feedback_topic', '/joy/set_feedback')
+        self.declare_parameter('goal_haptics_topic', '/goal/haptics')
+        self.declare_parameter('goal_cost_topic', '/goal/cost')
+        self.declare_parameter('world_frame', 'base_link')
+        self.declare_parameter('ee_frame', 'tool0')
+        self.declare_parameter('rate_hz', 20.0)
+
+        joy_feedback_topic = self.get_parameter('joy_feedback_topic').value
+        goal_haptics_topic = self.get_parameter('goal_haptics_topic').value
+        goal_cost_topic = self.get_parameter('goal_cost_topic').value
+        self.world_frame = self.get_parameter('world_frame').value
+        self.ee_frame = self.get_parameter('ee_frame').value
+        rate_hz = self.get_parameter('rate_hz').value
+
+        self.joy_feedback_pub = self.create_publisher(
+            sensor_msgs.msg.JoyFeedbackArray, joy_feedback_topic, 10
+        )
+        self.goal_haptics_pub = self.create_publisher(
+            sensor_msgs.msg.JoyFeedbackArray, goal_haptics_topic, 10
+        )
+        self.goal_cost_pub = self.create_publisher(
+            std_msgs.msg.Float64, goal_cost_topic, 10
+        )
+        self.joy_sub = self.create_subscription(
+            sensor_msgs.msg.Joy, '/joy', self.joy_callback, 10
+        )
 
         self.joy_msg = None
         self.joy_msg_mutex = Lock()
-
-        self.on = False
+        self.on = True
         self.already_toggled = False
 
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
-        
-        self.goal_pose_list = [] # (x, y, z, Xr, Yr, Zr, W)
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.goal_weight_list = []
+        # Default goal: [x, y, z, qx, qy, qz, qw]
+        self.goal_pose = [0.35, 0.20, 0.40, 0.0, 0.0, 0.0, 1.0]
+        self.goal_weights = [1.0, 1.0, 1.0, 0.2, 0.2, 0.2, 0.2]
         self.cost = None
 
-        # Attempt to retrieve ideal goal pose from parameter server
-        self.goal_dict = rospy.get_param("/goal", None)
+        timer_period = 1.0 / max(rate_hz, 1.0)
+        self.timer = self.create_timer(timer_period, self.loop_once)
 
-        # Attempt to retrieve a list of goal presets from parameter server
-        self.goal_name_list = rospy.get_param("/goal/name_vector", None)
-        if self.goal_name_list is not None:
-            rospy.loginfo("Using goal name list from parameter server")
-        else:
-            self.goal_name_list = ["keyhole"]
-            rospy.loginfo("Using default goal name list")
+        self.get_logger().info("GoalHaptics node initialized")
 
-        # Retrieve details for all named poses
-        for name in self.goal_name_list:
-            goal_scene = rospy.get_param("/goal/" + name, None)
-            if goal_scene is not None:
-                rospy.loginfo("Using goal transform from parameter server")
-                # Retrieve translation and quaternion from the goal transform dict
-                goal_pose = goal_scene['goal_pose']
-                self.goal_pose_list.append([goal_pose['position']['x'], 
-                                        goal_pose['position']['y'], 
-                                        goal_pose['position']['z'],
-                                        goal_pose['orientation']['x'], 
-                                        goal_pose['orientation']['y'], 
-                                        goal_pose['orientation']['z'], 
-                                        goal_pose['orientation']['w']])
-            else:
-                rospy.loginfo("Failed to retrieve goal transform")
-
-            # Attempt to retrieve goal pose weights from parameter server    
-            if self.goal_scene is not None:
-                rospy.loginfo("Using goal weights from parameter server")
-                # Retrieve translation and quaternion from the goal transform dict
-                self.goal_weight_list.append([goal_scene['position_weights']['x'], 
-                                        goal_scene['position_weights']['y'], 
-                                        goal_scene['position_weights']['z'],
-                                        goal_scene['orientation_weights']['x'], 
-                                        goal_scene['orientation_weights']['y'], 
-                                        goal_scene['orientation_weights']['z'], 
-                                        goal_scene['orientation_weights']['w']])
-            else:
-                rospy.loginfo("Failed to retrieve goal weights")
-
-        self.force_feedback_msg = None
-        self.force_feedback_msg_mutex = Lock()
-
-        self.force_feedback_filter_size = 5  # Adjust this value for the moving average window size
-        self.force_feedback_buffer = deque(maxlen=self.force_feedback_filter_size)
-
+    def joy_callback(self, msg: sensor_msgs.msg.Joy):
+        with self.joy_msg_mutex:
+            self.joy_msg = msg
 
     def update(self):
-        transform = None
-        while transform == None:
-            try:
-                transform = self.tf_buffer.lookup_transform("world", "tcp_link", rospy.Time(0), rospy.Duration(5.0))
-            except:
-                rospy.loginfo("Waiting for tcp_link transform")
-        end_effector_pose = [transform.transform.translation.x, transform.transform.translation.y, transform.transform.translation.z,
-                             transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z, transform.transform.rotation.w]
-        
-        cost_list = [self.get_cost(end_effector_pose, self.goal_pose_list[i], self.goal_weight_list[i]) for i in range(len(self.goal_pose_list))]
-        
-        # Calculate a cost for the current pose, as a function of distance to goal in translation and rotation
-        self.cost = min(cost_list)
+        try:
+            tf = self.tf_buffer.lookup_transform(
+                self.world_frame, self.ee_frame, Time()
+            )
+            trans = tf.transform.translation
+            rot = tf.transform.rotation
+            ee_pose = [trans.x, trans.y, trans.z, rot.x, rot.y, rot.z, rot.w]
+
+            trans_dist = np.linalg.norm(np.array(self.goal_pose[:3]) - np.array(ee_pose[:3]))
+            r_goal = R.from_quat(self.goal_pose[3:])
+            r_ee = R.from_quat(ee_pose[3:])
+            rot_dist = (r_goal * r_ee.inv()).magnitude()
+
+            self.cost = float(trans_dist + 0.1 * rot_dist)
+        except Exception:
+            pass
 
     def publish(self):
-        if self.cost is not None:
-            # Clear force feedback message and make new array
-            self.joy_feedback_array_msg = sensor_msgs.msg.JoyFeedbackArray()
-            joy_feedback_array = []
+        if self.cost is None:
+            return
 
-            # Make new force feedback message and add to array
-            joy_feedback_msg = sensor_msgs.msg.JoyFeedback()
-            joy_feedback_msg.type = 1 # Rumble
-            joy_feedback_msg.id = 0
-            # If cost is below threshold, set feedback intensity to 0
-            rospy.loginfo("Cost was " + str(self.cost))
-            if self.cost < 0.01 or not self.on:
-                joy_feedback_msg.intensity = 0.0
-            # Else, make sure intensity does not exceed 1.0
-            else:
-                joy_feedback_msg.intensity = min(1.0, self.cost)
-            joy_feedback_array.append(joy_feedback_msg)
+        cost_msg = std_msgs.msg.Float64()
+        cost_msg.data = self.cost
+        self.goal_cost_pub.publish(cost_msg)
 
-            # Make new LED feedback message and add to array (Current controller does not have LED)
-            led_feedback_msg = sensor_msgs.msg.JoyFeedback()
-            led_feedback_msg.type = 0 # LED
-            led_feedback_msg.id = 0
-            # If cost is below threshold, set feedback intensity to 0
-            if self.cost < 0.01 or not self.on:
-                led_feedback_msg.intensity = 0.0
-            # Else, make sure intensity does not exceed 1.0
-            else:
-                led_feedback_msg.intensity = min(1.0, self.cost)
-            joy_feedback_array.append(led_feedback_msg)
+        feedback_arr = sensor_msgs.msg.JoyFeedbackArray()
+        rumble = sensor_msgs.msg.JoyFeedback()
+        rumble.type = sensor_msgs.msg.JoyFeedback.TYPE_RUMBLE
+        rumble.id = 0
 
-            # Assign new array to the joy_feedback_array_msg
-            self.joy_feedback_array_msg.array = joy_feedback_array
+        if not self.on or self.cost < 0.02:
+            rumble.intensity = 0.0
+        else:
+            rumble.intensity = float(np.clip(self.cost * 2.0, 0.0, 1.0))
 
-            # Publish message to joy feedback topic
-            self.joy_feedback_pub.publish(self.joy_feedback_array_msg)
-            # Publish message to goal haptics topic (change message if non-joystick haptic device needs to convey different info)
-            self.goal_haptics_pub.publish(self.joy_feedback_array_msg)
-            self.goal_cost_pub.publish(self.cost)
-
-    def get_cost(self, end_effector_pose, goal_pose, weights = [1, 1, 1, 1, 1, 1, 1]):
-        # Calculate final - initial translation
-        translation_to_goal = np.subtract(goal_pose[:3], end_effector_pose[:3])
-
-        # Calculate final - initial rotation
-        rotation_to_goal = R.concatenate((R.from_quat(goal_pose[3:]), R.from_quat(end_effector_pose[3:]).inv())).as_quat()
-        
-        # Calculate a cost for the current pose, as a function of distance to goal in translation and rotation
-        cost = (np.sum(np.multiply(weights[:3], translation_to_goal)) + 
-                np.sum(np.multiply(weights[3:], rotation_to_goal)))
-        return cost
+        feedback_arr.array = [rumble]
+        self.joy_feedback_pub.publish(feedback_arr)
+        self.goal_haptics_pub.publish(feedback_arr)
 
     def loop_once(self):
-        if self.joy_msg is not None:
-            buttons = list(self.joy_msg.buttons)
-            # Check if control frame needs to be swapped
-            # buttons[6] = share button
-            if (buttons[6]==1) and (not self.already_toggled):
-                self.already_toggled = True
-                self.on = not self.on
-            elif (buttons[6]==0):
-                self.already_toggled = False
+        with self.joy_msg_mutex:
+            if self.joy_msg and len(self.joy_msg.buttons) > 6:
+                share_pressed = (self.joy_msg.buttons[6] == 1)
+                if share_pressed and not self.already_toggled:
+                    self.already_toggled = True
+                    self.on = not self.on
+                    self.get_logger().info(f"Haptic feedback toggled: {'ON' if self.on else 'OFF'}")
+                elif not share_pressed:
+                    self.already_toggled = False
+
         self.update()
         self.publish()
-    
-    def callback(self, msg):
-        # Retrieve joy_msg
-        self.joy_msg_mutex.acquire()
-        self.joy_msg = msg
-        self.joy_msg_mutex.release()
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = GoalHaptics()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
 
 if __name__ == '__main__':
-    rospy.init_node('goal_haptics')
-
-    goal_haptics = GoalHaptics()
-
-    rate = rospy.Rate(60)  # hz
-    while not rospy.is_shutdown():
-        goal_haptics.loop_once()
-        rate.sleep()
-    
-    rospy.spin()
+    main()
