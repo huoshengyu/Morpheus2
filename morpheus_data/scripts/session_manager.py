@@ -50,14 +50,14 @@ class SessionManager(Node):
 
         # Periodic status publication (1 Hz)
         self.timer = self.create_timer(1.0, self.publish_status)
+        self.timestamp = datetime.datetime.now().strftime("%Y%m%d")
 
         self.get_logger().info(
-            f"SessionManager initialized: ID={self.subject_id}, Task={self.task_name}, Trial={self.trial}"
+            f"SessionManager initialized: ID={self.subject_id}, Date={self.timestamp}, Task={self.task_name}, Trial={self.trial}"
         )
 
     def get_basename(self) -> str:
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        return f"{self.subject_id}_{self.task_name}_trial{self.trial}_{timestamp}"
+        return f"{self.subject_id}_{self.timestamp}_{self.task_name}_trial{self.trial}"
 
     def publish_status(self):
         basename_msg = String()

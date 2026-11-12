@@ -16,20 +16,36 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ---------------------------------------------------------------------------
 
-import launch
-import launch_ros.actions
+
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import LaunchConfiguration
+
+from launch_ros.actions import Node
 
 
-def generate_launch_description():
-    ld = launch.LaunchDescription([
-        launch_ros.actions.Node(
+def launch_setup(context):
+    namespace = LaunchConfiguration('namespace').perform(context)
+    
+    key_to_joy = Node(
             package='morpheus_teleop',
+            namespace=namespace,
             executable='key_to_joy.py',
             name='key_to_joy',
             output='screen'
         )
-    ])
-    return ld
+    
+    return [key_to_joy]
+    
+def generate_launch_description():
+    declared_arguments = [
+        DeclareLaunchArgument(
+            name='namespace',
+            default_value='',
+        ),
+    ]
+    
+    return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
 
 
 if __name__ == '__main__':

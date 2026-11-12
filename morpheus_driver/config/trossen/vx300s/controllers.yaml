@@ -140,7 +140,7 @@
   cartesian_motion_controller:
     ros__parameters:
       # See the cartesian_compliance_controller
-      end_effector_link: $(var robot_name)/gripper_link
+      end_effector_link: $(var robot_name)/ee_gripper_link
       robot_base_link: $(var robot_name)/base_link
       joints:
         - waist

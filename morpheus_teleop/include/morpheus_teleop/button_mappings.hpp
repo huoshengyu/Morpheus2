@@ -84,6 +84,7 @@ static const std::map<std::string, int> xbox360 = {{"GRIPPER_PWM_DEC", 0}, // bu
                                                    {"SPEED", 7}};
 
 // Map of maps to allow accessing the above by name
-static const std::map<std::string, std::map<std::string, int>> button_mappings = {{"ps3", ps3},
+static const std::map<std::string, std::map<std::string, int>> button_mappings = {{"gamepad", ps4},
+                                                                                {"ps3", ps3},
                                                                                 {"ps4", ps4},
                                                                                 {"xbox360", xbox360}};

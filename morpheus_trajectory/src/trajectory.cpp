@@ -462,8 +462,8 @@ class TrajectoryNode : public rclcpp::Node
             }
             else
             {
-                RCLCPP_INFO_STREAM(this->get_logger(), "Controller type not received from parameter server. Defaulting to ps4.");
-                controller_type = "ps4";
+                RCLCPP_INFO_STREAM(this->get_logger(), "Controller type not received from parameter server. Defaulting to gamepad.");
+                controller_type = "gamepad";
             }
 
             // Create controller msg subscriptions

@@ -73,7 +73,7 @@ class KeyToJoy(Node):
         self.joy = sensor_msgs.msg.Joy()
 
         # Set controller type
-        controller = self.declare_parameter("controller", "ps4").value
+        controller = self.declare_parameter("controller", "gamepad").value
         self.keybinds = button_mapping
         self.get_logger().info("Key to Joy using controller " + controller + ".")
 

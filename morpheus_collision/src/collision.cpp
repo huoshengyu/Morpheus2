@@ -128,17 +128,26 @@ public:
     explicit CollisionNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions()) 
         : Node("collision", options)
     {
-        // Declare parameters
-        this->declare_parameter("arm_group", "arm");
-        this->declare_parameter("gripper_group", "gripper");
-        this->declare_parameter("robot_description_topic", "robot_description");
-        this->declare_parameter("joint_states_topic", "joint_states");
-        this->declare_parameter("attached_collision_object_topic", "attached_collision_object");
-        this->declare_parameter("collision_object_topic", "collision_object");
-        this->declare_parameter("planning_scene_world_topic", "planning_scene_world");
-        this->declare_parameter("planning_scene_topic", "planning_scene");
-        this->declare_parameter("planning_scene_service", "get_planning_scene");
-        this->declare_parameter("monitored_planning_scene_topic", "monitored_planning_scene");
+        // Declare parameters safely (if not already declared via options overrides)
+        auto declare_if_not_declared = [this](const std::string& name, const std::string& default_val) {
+            if (!this->has_parameter(name))
+            {
+                this->declare_parameter(name, default_val);
+            }
+        };
+
+        declare_if_not_declared("arm_group", "arm");
+        declare_if_not_declared("gripper_group", "gripper");
+        declare_if_not_declared("robot_description_topic", "robot_description");
+        declare_if_not_declared("joint_states_topic", "joint_states");
+        declare_if_not_declared("attached_collision_object_topic", "attached_collision_object");
+        declare_if_not_declared("collision_object_topic", "collision_object");
+        declare_if_not_declared("planning_scene_world_topic", "planning_scene_world");
+        declare_if_not_declared("planning_scene_topic", "planning_scene");
+        declare_if_not_declared("planning_scene_service", "get_planning_scene");
+        declare_if_not_declared("monitored_planning_scene_topic", "monitored_planning_scene");
+        declare_if_not_declared("robot_description", "");
+        declare_if_not_declared("robot_description_semantic", "");
 
         // Get parameters from ros server, if possible
         arm_group_ = this->get_parameter("arm_group").as_string();
@@ -208,36 +217,40 @@ public:
 
         // Query robot link models and yaw joint directly from planning_scene_monitor's RobotModel
         auto robot_model = planning_scene_monitor_->getRobotModel();
-        if (robot_model)
+        if (!robot_model)
         {
-            if (robot_model->hasJointModelGroup(arm_group_))
-            {
-                const auto* arm_group_model = robot_model->getJointModelGroup(arm_group_);
-                std::vector<std::string> arm_links = arm_group_model->getLinkModelNames();
-                robot_link_vector_.insert(robot_link_vector_.end(), arm_links.begin(), arm_links.end());
-                const auto& active_joints = arm_group_model->getActiveJointModelNames();
-                if (!active_joints.empty())
-                {
-                    yaw_joint_ = active_joints[0];
-                    RCLCPP_INFO(this->get_logger(), "Arm group '%s' yaw joint: %s", arm_group_.c_str(), yaw_joint_.c_str());
-                }
-            }
-            else
-            {
-                RCLCPP_WARN(this->get_logger(), "Arm group '%s' not found in robot model.", arm_group_.c_str());
-            }
+            RCLCPP_ERROR(this->get_logger(),
+                "Robot model not loaded in PlanningSceneMonitor for description '%s'. "
+                "Ensure robot_description is published or provided as a parameter. "
+                "Collision checking will remain inactive.",
+                robot_description_topic_.c_str());
+            return shared_from_this();
+        }
 
-            if (!gripper_group_.empty() && robot_model->hasJointModelGroup(gripper_group_))
+        if (robot_model->hasJointModelGroup(arm_group_))
+        {
+            const auto* arm_group_model = robot_model->getJointModelGroup(arm_group_);
+            std::vector<std::string> arm_links = arm_group_model->getLinkModelNames();
+            robot_link_vector_.insert(robot_link_vector_.end(), arm_links.begin(), arm_links.end());
+            const auto& active_joints = arm_group_model->getActiveJointModelNames();
+            if (!active_joints.empty())
             {
-                const auto* gripper_group_model = robot_model->getJointModelGroup(gripper_group_);
-                std::vector<std::string> gripper_links = gripper_group_model->getLinkModelNames();
-                robot_link_vector_.insert(robot_link_vector_.end(), gripper_links.begin(), gripper_links.end());
+                yaw_joint_ = active_joints[0];
+                RCLCPP_INFO(this->get_logger(), "Arm group '%s' yaw joint: %s", arm_group_.c_str(), yaw_joint_.c_str());
             }
         }
         else
         {
-            RCLCPP_WARN(this->get_logger(), "Robot model not yet loaded in PlanningSceneMonitor during initialize().");
+            RCLCPP_WARN(this->get_logger(), "Arm group '%s' not found in robot model.", arm_group_.c_str());
         }
+
+        if (!gripper_group_.empty() && robot_model->hasJointModelGroup(gripper_group_))
+        {
+            const auto* gripper_group_model = robot_model->getJointModelGroup(gripper_group_);
+            std::vector<std::string> gripper_links = gripper_group_model->getLinkModelNames();
+            robot_link_vector_.insert(robot_link_vector_.end(), gripper_links.begin(), gripper_links.end());
+        }
+
         try
         {   
             // Change the PlanningScene's collision detector to hybrid
@@ -248,28 +261,38 @@ public:
             if (strcmp((planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName()).c_str(), "HYBRID") == 0)
             {
                 RCLCPP_INFO(this->get_logger(), "Collision detector set to HYBRID.");
+                auto planning_scene = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
+                collision_env_distance_field_ =
+                    dynamic_cast<const collision_detection::CollisionEnvDistanceField*>(
+                    planning_scene->getCollisionEnv(planning_scene->getCollisionDetectorName()).get());
+                collision_env_hybrid_ =
+                    dynamic_cast<const collision_detection::CollisionEnvHybrid*>(
+                    planning_scene->getCollisionEnv(planning_scene->getCollisionDetectorName()).get());
+                if (collision_env_hybrid_)
+                {
+                    initialized_ = true;
+                    RCLCPP_INFO(this->get_logger(), "Collision detector initialized successfully.");
+                }
+                else
+                {
+                    RCLCPP_ERROR(this->get_logger(), "Failed to cast collision environment to CollisionEnvHybrid.");
+                }
             }    
             else
             {
-                RCLCPP_INFO(this->get_logger(), "Collision detector incorrect");
-                RCLCPP_INFO_STREAM(this->get_logger(), planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName());
                 std::string collision_detector_name = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_)->getCollisionDetectorName();
-                throw collision_detector_name;
+                RCLCPP_ERROR(this->get_logger(), "Collision detector name mismatch: expected HYBRID, got '%s'", collision_detector_name.c_str());
             }
         }
-        catch (std::string collision_detector_name)
+        catch (const std::exception& e)
         {
-            RCLCPP_ERROR(this->get_logger(), "Failed to change collision detector.");
+            RCLCPP_ERROR(this->get_logger(), "Exception while setting collision detector to HYBRID: %s", e.what());
+        }
+        catch (...)
+        {
+            RCLCPP_ERROR(this->get_logger(), "Unknown exception while setting collision detector to HYBRID.");
         }
         
-        auto planning_scene = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
-        collision_env_distance_field_ =
-            dynamic_cast<const collision_detection::CollisionEnvDistanceField*>(
-            planning_scene->getCollisionEnv(planning_scene->getCollisionDetectorName()).get());
-        collision_env_hybrid_ =
-            dynamic_cast<const collision_detection::CollisionEnvHybrid*>(
-            planning_scene->getCollisionEnv(planning_scene->getCollisionDetectorName()).get());
-        initialized_ = true;
         return shared_from_this();
     }
 
@@ -1240,6 +1263,7 @@ int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::NodeOptions options;
+    options.automatically_declare_parameters_from_overrides(true);
     auto collision_node = std::make_shared<morpheus_collision::CollisionNode>(options);
     collision_node->initialize();
     rclcpp::spin(collision_node);

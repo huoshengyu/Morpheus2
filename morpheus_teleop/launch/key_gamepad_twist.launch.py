@@ -24,6 +24,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context):
+    namespace = LaunchConfiguration("namespace")
     use_sim_time = LaunchConfiguration('use_sim_time')
     frame_id = LaunchConfiguration('frame_id')
     arm_group = LaunchConfiguration('arm_group')
@@ -36,6 +37,7 @@ def launch_setup(context):
             )
         ),
         launch_arguments={
+            'namespace': namespace,
             'use_sim_time': use_sim_time,
             'launch_joy_node': 'false',
             'frame_id': frame_id,
@@ -49,14 +51,21 @@ def launch_setup(context):
             PathJoinSubstitution(
                 [FindPackageShare('morpheus_teleop'), 'launch', 'key_to_joy.launch.py']
             )
-        )
+        ),
+        launch_arguments={
+            'namespace': namespace,
+        }.items()
     )
 
     return [gamepad_twist, key_to_joy]
 
 
 def generate_launch_description():
-    return LaunchDescription([
+    declared_arguments = [
+        DeclareLaunchArgument(
+            name='namespace',
+            default_value='',
+        ),
         DeclareLaunchArgument(
             name='use_sim_time',
             default_value='false',
@@ -77,8 +86,9 @@ def generate_launch_description():
             default_value='tool0',
             description='End effector frame id',
         ),
-        OpaqueFunction(function=launch_setup),
-    ])
+    ]
+
+    return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
 
 
 if __name__ == '__main__':

@@ -63,6 +63,7 @@ class TeleopTwist(TeleopBase):
 
         # Set controller type
         self.controller_type = self.declare_parameter("controller_type", "gamepad").value
+        self.get_logger().info(f"Started teleop_twist node with controller type: {self.controller_type}")
         
         # Initialize frame swap variables
         self.frame_id = self.declare_parameter("frame_id", "base_link").value
@@ -98,7 +99,7 @@ class TeleopTwist(TeleopBase):
         self.gripper_command.effort = [0.0]  # N
 
         # Get topics
-        self.joy_topic = self.declare_parameter("joy_topic", "/joy").value
+        self.joy_topic = self.declare_parameter("joy_topic", "joy").value
         self.twist_topic = self.declare_parameter("twist_topic", "target_twist").value
         self.wrench_topic = self.declare_parameter("wrench_topic", "target_wrench").value
         self.pose_topic = self.declare_parameter("pose_topic", "target_frame").value

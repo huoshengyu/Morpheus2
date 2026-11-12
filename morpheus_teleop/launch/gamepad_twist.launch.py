@@ -159,7 +159,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             name='joy_topic',
-            default_value='/joy',
+            default_value='joy',
         )
     )
     declared_arguments.append(

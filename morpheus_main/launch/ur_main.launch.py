@@ -37,19 +37,24 @@ def launch_setup(context):
     robot_ip = LaunchConfiguration("robot_ip")
     use_mock_hardware = LaunchConfiguration("use_mock_hardware")
     use_sim_time = LaunchConfiguration("use_sim_time")
+
     # End effector arguments
     ee_type = LaunchConfiguration("ee_type")
+
     # Control arguments
     controller = LaunchConfiguration("controller").perform(context)
     frame_id = LaunchConfiguration("frame_id").perform(context)
-    # Moveit arguments
+
+    # MoveIt & Collision arguments
     collision = LaunchConfiguration("collision").perform(context)
+    launch_rviz = LaunchConfiguration("launch_rviz").perform(context)
 
     # Determine arm and gripper group names
     ee_str = ee_type.perform(context)
     arm_group = "arm" if ee_str else "ur_manipulator"
     gripper_group = "gripper"
 
+    # 1. Driver & Hardware Control
     ur_control_node = IncludeLaunchDescription(
         launch_description_source=PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -62,12 +67,13 @@ def launch_setup(context):
             "ee_type": ee_type,
             "use_mock_hardware": use_mock_hardware,
             "use_sim_time": use_sim_time,
+            "launch_rviz": launch_rviz,
         }.items(),
     )
-    
+
     control_nodes = []
 
-    # Teleoperation controller
+    # 2. Teleoperation Controller
     if controller in ["gamepad", "ps4"]:
         control_nodes.append(
             IncludeLaunchDescription(
@@ -77,10 +83,10 @@ def launch_setup(context):
                     )
                 ),
                 launch_arguments={
-                    "controller_type": controller,
+                    "controller_type": "gamepad",
                     "use_sim_time": use_sim_time,
                     "arm_group": arm_group,
-                    "frame_id": "base_link",
+                    "frame_id": frame_id,
                 }.items(),
             )
         )
@@ -95,7 +101,7 @@ def launch_setup(context):
                 launch_arguments={
                     "use_sim_time": use_sim_time,
                     "arm_group": arm_group,
-                    "frame_id": "base_link",
+                    "frame_id": frame_id,
                 }.items(),
             )
         )
@@ -110,21 +116,24 @@ def launch_setup(context):
                 launch_arguments={
                     "use_sim_time": use_sim_time,
                     "arm_group": arm_group,
-                    "frame_id": "base_link",
+                    "frame_id": frame_id,
                 }.items(),
             )
         )
-    elif controller == "leader_follower":
+    elif controller in ["leader_follower", "factr"]:
         factr_node = Node(
             package="factr_teleop",
             executable="factr_teleop_ur_ros",
             name="factr_teleop_ur_ros",
             output="screen",
             parameters=[
+                {"use_mock_hardware": use_mock_hardware.perform(context).lower() == "true"},
                 {"use_sim_time": use_sim_time.perform(context).lower() == "true"},
             ],
         )
         control_nodes.append(factr_node)
+
+    # 3. MoveIt & Collision Avoidance Pipeline
     if collision.lower() == "true":
         moveit_node = IncludeLaunchDescription(
             launch_description_source=PythonLaunchDescriptionSource(
@@ -162,9 +171,8 @@ def launch_setup(context):
 
 
 def generate_launch_description():
-    declared_arguments = []
-    # UR specific arguments
-    declared_arguments.append(
+    declared_arguments = [
+        # Robot arguments
         DeclareLaunchArgument(
             "ur_type",
             description="Type/series of used UR robot.",
@@ -185,30 +193,23 @@ def generate_launch_description():
                 "ur30",
             ],
             default_value="ur5e",
-        )
-    )
-    declared_arguments.append(
+        ),
         DeclareLaunchArgument(
-            "robot_ip", 
+            "robot_ip",
             default_value="192.168.1.102",
-            description="IP address by which the robot can be reached."
-        )
-    )
-    declared_arguments.append(
+            description="IP address by which the robot can be reached.",
+        ),
         DeclareLaunchArgument(
             "use_mock_hardware",
             default_value="false",
             description="Start robot with mock hardware mirroring command to its states.",
-        )
-    )
-    declared_arguments.append(
+        ),
         DeclareLaunchArgument(
             "use_sim_time",
             default_value="false",
             description="Use simulation clock if true.",
-        )
-    )
-    declared_arguments.append(
+        ),
+        # End effector arguments
         DeclareLaunchArgument(
             "ee_type",
             description="Type/series of end effector.",
@@ -218,9 +219,8 @@ def generate_launch_description():
                 "onrobot",
             ],
             default_value="",
-        )
-    )
-    declared_arguments.append(
+        ),
+        # Control arguments
         DeclareLaunchArgument(
             "controller",
             description="Type of control device.",
@@ -231,22 +231,26 @@ def generate_launch_description():
                 "xbox",
                 "keyboard",
                 "leader_follower",
+                "factr",
             ],
-            default_value="",
-        )
-    )
-    declared_arguments.append(
+            default_value="gamepad",
+        ),
         DeclareLaunchArgument(
             "frame_id",
             description="Reference frame for control commands.",
             default_value="base_link",
-        )
-    )
-    declared_arguments.append(
+        ),
+        # MoveIt & Collision arguments
         DeclareLaunchArgument(
             "collision",
             description="Whether or not to use collision detection.",
             default_value="false",
-        )
-    )
+        ),
+        DeclareLaunchArgument(
+            "launch_rviz",
+            description="Whether to launch RViz visualization.",
+            default_value="true",
+        ),
+    ]
+
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])

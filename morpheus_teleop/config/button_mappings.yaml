@@ -42,6 +42,29 @@ button_mappings:
     EE_ROLL: 3
     EE_PITCH: 4
 
+  gamepad:
+    # Buttons
+    GRIPPER_PWM_DEC: 0
+    GRIPPER_OPEN: 1
+    GRIPPER_PWM_INC: 2
+    GRIPPER_CLOSE: 3
+    EE_Y_INC: 4
+    EE_Y_DEC: 5
+    WAIST_CCW: 6
+    WAIST_CW: 7
+    SLEEP_POSE: 8
+    HOME_POSE: 9
+    TORQUE_ENABLE: 10
+    FLIP_EE_X: 11
+    FLIP_EE_ROLL: 12
+    # Axes
+    EE_X: 0
+    EE_Z: 1
+    EE_ROLL: 3
+    EE_PITCH: 4
+    SPEED_TYPE: 6
+    SPEED: 7
+
   ps4:
     # Buttons
     GRIPPER_PWM_DEC: 0

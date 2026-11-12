@@ -62,7 +62,7 @@ def generate_launch_description():
         DeclareLaunchArgument('device_name', default_value=''),
         DeclareLaunchArgument('deadzone', default_value='0.05'),
         DeclareLaunchArgument('arm_group', default_value='arm'),
-        DeclareLaunchArgument('controller_type', default_value='ps4'),
+        DeclareLaunchArgument('controller_type', default_value='gamepad'),
         DeclareLaunchArgument('frame_id', default_value='base_link'),
         DeclareLaunchArgument('end_effector', default_value='tool0'),
         DeclareLaunchArgument('joy_topic', default_value='/joy'),

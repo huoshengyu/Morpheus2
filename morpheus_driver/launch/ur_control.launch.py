@@ -1,33 +1,24 @@
+# ---------------------------------------------------------------------------
+# Morpheus2: ROS2 control and feedback for manual teleoperation research
+# Copyright (C) 2026 Brian Huo
+#
+# Based on ur_control.launch.py from Universal_Robots_ROS2_Driver
 # Copyright (c) 2021 PickNik, Inc.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#    * Redistributions of source code must retain the above copyright
-#      notice, this list of conditions and the following disclaimer.
-#
-#    * Redistributions in binary form must reproduce the above copyright
-#      notice, this list of conditions and the following disclaimer in the
-#      documentation and/or other materials provided with the distribution.
-#
-#    * Neither the name of the {copyright_holder} nor the names of its
-#      contributors may be used to endorse or promote products derived from
-#      this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
-#
 # Author: Denis Stogl
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# ---------------------------------------------------------------------------
 
 from launch import LaunchDescription
 from launch.actions import (
@@ -73,6 +64,9 @@ def launch_setup(context):
     tool_tcp_port = LaunchConfiguration("tool_tcp_port")
     update_rate_config_file = LaunchConfiguration("update_rate_config_file")
 
+    # ---------------------------------------------------------------------------
+    # 1. Controller Manager (ros2_control Node)
+    # ---------------------------------------------------------------------------
     control_params = [
         update_rate_config_file,
         {
@@ -95,19 +89,28 @@ def launch_setup(context):
         executable="ros2_control_node",
         parameters=control_params,
         output="screen",
-        remappings=[
-            ("~/robot_description", "/robot_description"),
-            ("motion_control_handle/target_frame", "target_frame"),
-            ("cartesian_motion_controller/target_frame", "target_frame"),
-            ("cartesian_compliance_controller/target_frame", "target_frame"),
-            ("cartesian_force_controller/target_wrench", "target_wrench"),
-            ("cartesian_compliance_controller/target_wrench", "target_wrench"),
-            ("cartesian_force_controller/ft_sensor_wrench", "ft_sensor_wrench"),
-            ("cartesian_compliance_controller/ft_sensor_wrench", "ft_sensor_wrench"),
-        ],
-        arguments=['--ros-args', '--log-level', 'WARN'],
+        arguments=[
+            '--ros-args',
+            '-r',
+            'motion_control_handle/target_frame:=target_frame',
+            '-r',
+            'cartesian_motion_controller/target_frame:=target_frame',
+            '-r',
+            'cartesian_compliance_controller/target_frame:=target_frame',
+            '-r',
+            'cartesian_force_controller/target_wrench:=target_wrench',
+            '-r',
+            'cartesian_compliance_controller/target_wrench:=target_wrench',
+            '-r',
+            'cartesian_force_controller/ft_sensor_wrench:=ft_sensor_wrench',
+            '-r',
+            'cartesian_compliance_controller/ft_sensor_wrench:=ft_sensor_wrench',   
+        ]
     )
 
+    # ---------------------------------------------------------------------------
+    # 2. UR Driver & Dashboard Client Nodes
+    # ---------------------------------------------------------------------------
     dashboard_client_node = IncludeLaunchDescription(
         condition=IfCondition(
             AndSubstitution(launch_dashboard_client, NotSubstitution(use_mock_hardware))
@@ -210,7 +213,9 @@ def launch_setup(context):
         ],
     )
 
-    # Spawn controllers
+    # ---------------------------------------------------------------------------
+    # 3. Controller Spawners & End-Effector Drivers
+    # ---------------------------------------------------------------------------
     def controller_spawner(controllers, active=True):
         inactive_flags = ["--inactive"] if not active else []
         return Node(
@@ -296,6 +301,9 @@ def launch_setup(context):
         controller_spawner(controllers_inactive, active=False),
     ]
 
+    # ---------------------------------------------------------------------------
+    # 4. Robot State Publisher & Description
+    # ---------------------------------------------------------------------------
     rsp = IncludeLaunchDescription(
         AnyLaunchDescriptionSource(description_launchfile),
         launch_arguments={
