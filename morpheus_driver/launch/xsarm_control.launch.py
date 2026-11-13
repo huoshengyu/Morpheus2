@@ -29,11 +29,14 @@ from launch.actions import (
     IncludeLaunchDescription,
     OpaqueFunction,
 )
-from launch.conditions import LaunchConfigurationEquals, IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
+    AndSubstitution,
+    OrSubstitution,
+    NotSubstitution,
 )
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterFile
@@ -43,26 +46,27 @@ from launch_ros.substitutions import FindPackageShare
 def launch_setup(context, *args, **kwargs):
     robot_model_launch_arg = LaunchConfiguration('robot_model')
     robot_name_launch_arg = LaunchConfiguration('robot_name')
-    robot_name_str = robot_name_launch_arg.perform(context)
     use_rviz_launch_arg = LaunchConfiguration('use_rviz')
     rviz_config_file = LaunchConfiguration("rviz_config_file")
+    motor_configs_launch_arg = LaunchConfiguration('motor_configs')
     mode_configs_launch_arg = LaunchConfiguration('mode_configs')
+    load_configs_launch_arg = LaunchConfiguration('load_configs')
+    use_sim_launch_arg = LaunchConfiguration('use_sim')
     robot_description_launch_arg = LaunchConfiguration('robot_description')
-    use_mock_hardware_str = LaunchConfiguration('use_mock_hardware').perform(context).lower()
-    
-    # Determine hardware type: mock hardware overrides hardware_type to 'fake'
-    if use_mock_hardware_str == 'true':
-        hardware_type_str = 'fake'
-    else:
-        hardware_type_str = LaunchConfiguration('hardware_type').perform(context)
-
+    use_mock_hardware_launch_arg = LaunchConfiguration('use_mock_hardware')
     xs_driver_logging_level_launch_arg = LaunchConfiguration('xs_driver_logging_level')
     controller_spawner_timeout = LaunchConfiguration('controller_spawner_timeout').perform(context)
     initial_arm_controller = LaunchConfiguration('initial_arm_controller').perform(context)
+    
+    if use_mock_hardware_launch_arg.perform(context).lower() == 'true':
+        context.launch_configurations['hardware_type'] = 'fake'
+    hardware_type_launch_arg = LaunchConfiguration('hardware_type')
+    print(f"Hardware type: {hardware_type_launch_arg.perform(context)}")
 
+    # sets use_sim_time parameter to 'true' if using gazebo hardware
     use_sim_time_param = determine_use_sim_time_param(
         context=context,
-        hardware_type_launch_arg=LaunchConfiguration('hardware_type')
+        hardware_type_launch_arg=hardware_type_launch_arg
     )
 
     ros2_control_controllers_config_parameter_file = ParameterFile(
@@ -77,29 +81,56 @@ def launch_setup(context, *args, **kwargs):
     )
 
     # 1. Hardware Driver Layer
-    xsarm_control_launch_include = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            PathJoinSubstitution([
-                FindPackageShare('interbotix_xsarm_control'),
-                'launch',
-                'xsarm_control.launch.py',
-            ])
-        ]),
-        launch_arguments={
-            'robot_model': robot_model_launch_arg,
-            'robot_name': robot_name_launch_arg,
-            'use_rviz': 'false',
+    nodes_to_start = []
+
+    xs_sdk_node = Node(
+        condition=UnlessCondition(
+            OrSubstitution(
+                use_sim_launch_arg,
+                use_mock_hardware_launch_arg
+            ),
+        ),
+        package='interbotix_xs_sdk',
+        executable='xs_sdk',
+        name='xs_sdk',
+        namespace=robot_name_launch_arg,
+        arguments=[],
+        parameters=[{
+            'motor_configs': motor_configs_launch_arg,
             'mode_configs': mode_configs_launch_arg,
-            'hardware_type': hardware_type_str,
+            'load_configs': load_configs_launch_arg,
+            'robot_description': robot_description_launch_arg,
             'use_sim_time': use_sim_time_param,
             'xs_driver_logging_level': xs_driver_logging_level_launch_arg,
-        }.items(),
-        condition=LaunchConfigurationEquals(
-            launch_configuration_name='hardware_type',
-            expected_value='actual'
-        ) if use_mock_hardware_str != 'true' else None,
+            'hardware_type': hardware_type_launch_arg,
+        }],
+        output={'both': 'screen'},
     )
+    nodes_to_start.append(xs_sdk_node)
 
+    xs_sdk_sim_node = Node(
+        condition=IfCondition(
+            AndSubstitution(
+                use_sim_launch_arg,
+                NotSubstitution(use_mock_hardware_launch_arg)
+            )
+        ),
+        package='interbotix_xs_sdk',
+        executable='xs_sdk_sim.py',
+        name='xs_sdk_sim',
+        namespace=robot_name_launch_arg,
+        arguments=[],
+        parameters=[{
+            'motor_configs': motor_configs_launch_arg,
+            'mode_configs': mode_configs_launch_arg,
+            'robot_description': robot_description_launch_arg,
+            'use_sim_time': use_sim_time_param,
+            'hardware_type': hardware_type_launch_arg,
+        }],
+        output={'both': 'screen'},
+    )
+    nodes_to_start.append(xs_sdk_sim_node)
+    
     xsarm_descriptions_launch_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
@@ -111,22 +142,13 @@ def launch_setup(context, *args, **kwargs):
         launch_arguments={
             'robot_model': robot_model_launch_arg,
             'robot_name': robot_name_launch_arg,
-            'use_rviz': 'false',
-            'mode_configs': mode_configs_launch_arg,
-            'hardware_type': hardware_type_str,
-            'use_sim_time': use_sim_time_param,
+            'use_rviz': use_rviz_launch_arg,
+            'rvizconfig': rviz_config_file,
+            'robot_description': robot_description_launch_arg,
+            'hardware_type': hardware_type_launch_arg,
         }.items(),
     )
-    
-    rviz_node = Node(
-        package="rviz2",
-        namespace=robot_name_launch_arg,
-        condition=IfCondition(use_rviz_launch_arg),
-        executable="rviz2",
-        name="rviz2",
-        output="log",
-        arguments=["-d", rviz_config_file],
-    )
+    nodes_to_start.append(xsarm_descriptions_launch_include)
 
     # 2. Controller Manager (ros2_control_node)
     controller_manager_node = Node(
@@ -134,7 +156,8 @@ def launch_setup(context, *args, **kwargs):
         executable='ros2_control_node',
         namespace=robot_name_launch_arg,
         parameters=[
-            {'robot_description': robot_description_launch_arg},
+            {'robot_description': robot_description_launch_arg,
+            'hardware_type': hardware_type_launch_arg,},
             ros2_control_controllers_config_parameter_file,
         ],
         output={'both': 'screen'},
@@ -156,15 +179,9 @@ def launch_setup(context, *args, **kwargs):
             'cartesian_compliance_controller/ft_sensor_wrench:=ft_sensor_wrench',   
         ]
     )
+    nodes_to_start.append(controller_manager_node)
 
     # 3. Controller Spawners
-    nodes_to_start = [controller_manager_node, rviz_node]
-
-    if hardware_type_str == 'actual':
-        nodes_to_start.append(xsarm_control_launch_include)
-    else:
-        nodes_to_start.append(xsarm_descriptions_launch_include)
-
     # Always active controllers: joint_state_broadcaster and gripper_controller
     spawn_joint_state_broadcaster_node = Node(
         name='joint_state_broadcaster_spawner',
@@ -173,7 +190,7 @@ def launch_setup(context, *args, **kwargs):
         namespace=robot_name_launch_arg,
         arguments=[
             '-c',
-            f'/{robot_name_str}/controller_manager',
+            'controller_manager',
             '--controller-manager-timeout',
             controller_spawner_timeout,
             'joint_state_broadcaster',
@@ -189,7 +206,7 @@ def launch_setup(context, *args, **kwargs):
         namespace=robot_name_launch_arg,
         arguments=[
             '-c',
-            f'/{robot_name_str}/controller_manager',
+            'controller_manager',
             '--controller-manager-timeout',
             controller_spawner_timeout,
             'gripper_controller',
@@ -225,7 +242,7 @@ def launch_setup(context, *args, **kwargs):
         namespace=robot_name_launch_arg,
         arguments=[
             '-c',
-            f'/{robot_name_str}/controller_manager',
+            'controller_manager',
             '--controller-manager-timeout',
             controller_spawner_timeout,
             active_arm_ctrl,
@@ -241,7 +258,7 @@ def launch_setup(context, *args, **kwargs):
         namespace=robot_name_launch_arg,
         arguments=[
             '-c',
-            f'/{robot_name_str}/controller_manager',
+            'controller_manager',
             '--controller-manager-timeout',
             controller_spawner_timeout,
             '--inactive',
@@ -299,7 +316,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             'use_rviz',
-            default_value='false',
+            default_value='true',
             description='launches RViz if set to `true`.',
         )
     )
@@ -310,6 +327,18 @@ def generate_launch_description():
                 [FindPackageShare("morpheus_description"), "rviz", "xsarm_description.rviz"]
             ),
             description="RViz config file (absolute path) to use when launching rviz.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'motor_configs',
+            default_value=[PathJoinSubstitution([
+                FindPackageShare('interbotix_xsarm_control'),
+                'config',
+                LaunchConfiguration('robot_model')]),
+                '.yaml'
+            ],
+            description="the file path to the 'motor config' YAML file.",
         )
     )
     declared_arguments.append(
@@ -325,6 +354,22 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
+            'load_configs',
+            default_value='true',
+            choices=('true', 'false'),
+            description=(
+                'a boolean that specifies whether or not the initial register values '
+                "(under the 'motors' heading) in a Motor Config file should be written "
+                "to the motors; as the values being written are stored in each motor's "
+                'EEPROM (which means the values are retained even after a power cycle), '
+                'this can be set to `false` after the first time using the robot. Setting '
+                'to `false` also shortens the node startup time by a few seconds and '
+                'preserves the life of the EEPROM.'
+            ),
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'xs_driver_logging_level',
             default_value='INFO',
             choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'),
@@ -333,18 +378,29 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
+            'use_sim',
+            default_value='false',
+            choices=('true', 'false'),
+            description=(
+                'if `true`, the DYNAMIXEL simulator node is run; use RViz to visualize the'
+                " robot's motion; if `false`, the real DYNAMIXEL driver node is run."
+            ),
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
             'use_sim_time',
             default_value='false',
             choices=('true', 'false'),
             description=(
-                'tells ROS nodes asking for time to get simulation time published over /clock.'
+                'tells ROS nodes asking for time to get the Gazebo-published simulation time, '
+                'published over the ROS topic /clock; this value is automatically set to `true` if'
+                ' using Gazebo hardware.'
             )
         )
     )
     declared_arguments.extend(
-        declare_interbotix_xsarm_robot_description_launch_arguments(
-            hardware_type='actual'
-        )
+        declare_interbotix_xsarm_robot_description_launch_arguments()
     )
 
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
