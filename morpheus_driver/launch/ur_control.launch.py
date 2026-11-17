@@ -35,7 +35,7 @@ from launch.substitutions import (
     NotSubstitution,
     PathJoinSubstitution,
 )
-from launch_ros.actions import Node
+from launch_ros.actions import Node, PushRosNamespace
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackagePrefix, FindPackageShare
 
@@ -47,6 +47,7 @@ def launch_setup(context):
     # End effector arguments
     ee_type = LaunchConfiguration("ee_type")
     # General arguments
+    robot_name = LaunchConfiguration("robot_name")
     controllers_file = LaunchConfiguration("controllers_file")
     description_launchfile = LaunchConfiguration("description_launchfile")
     description_file = LaunchConfiguration("description_file")
@@ -63,6 +64,8 @@ def launch_setup(context):
     tool_device_name = LaunchConfiguration("tool_device_name")
     tool_tcp_port = LaunchConfiguration("tool_tcp_port")
     update_rate_config_file = LaunchConfiguration("update_rate_config_file")
+    
+    robot_namespace = PushRosNamespace(robot_name.perform(context))
 
     # ---------------------------------------------------------------------------
     # 1. Controller Manager (ros2_control Node)
@@ -223,7 +226,7 @@ def launch_setup(context):
             executable="spawner",
             arguments=[
                 "--controller-manager",
-                "/controller_manager",
+                "controller_manager",
                 "--controller-manager-timeout",
                 controller_spawner_timeout,
             ]
@@ -315,6 +318,7 @@ def launch_setup(context):
     )
 
     nodes_to_start = [
+        robot_namespace,
         control_node,
         dashboard_client_node,
         robot_state_helper_node,
@@ -372,6 +376,15 @@ def generate_launch_description():
                 "onrobot",
             ],
             default_value="",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'robot_name',
+            default_value=LaunchConfiguration('ur_type'),
+            description=(
+                'name of the robot (typically equal to `robot_model`, but could be anything).'
+            ),
         )
     )
     declared_arguments.append(

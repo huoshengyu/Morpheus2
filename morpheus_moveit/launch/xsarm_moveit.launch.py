@@ -25,8 +25,10 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     OpaqueFunction,
+    RegisterEventHandler,
 )
 from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
 from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
@@ -149,25 +151,9 @@ def launch_setup(context):
     warehouse_sqlite_path = LaunchConfiguration('warehouse_sqlite_path').perform(context)
     publish_robot_description_semantic = LaunchConfiguration('publish_robot_description_semantic')
 
-    # 1. URDF Generation
+    # 1. URDF Parameter (received from topic by default; optional string override)
     robot_desc_override = LaunchConfiguration('robot_description').perform(context)
-    if robot_desc_override:
-        urdf_xml = robot_desc_override
-    else:
-        try:
-            urdf_xacro_path = os.path.join(
-                get_package_share_directory('interbotix_xsarm_descriptions'),
-                'urdf',
-                f'{robot_model}.urdf.xacro',
-            )
-            urdf_xml = subprocess.check_output([
-                'xacro',
-                urdf_xacro_path,
-                f'robot_name:={robot_name}',
-                f'hardware_type:={hardware_type}',
-            ], text=True)
-        except Exception as e:
-            urdf_xml = ''
+    robot_description = {'robot_description': robot_desc_override} if robot_desc_override else {}
 
     # 2. SRDF Generation
     robot_desc_sem_override = LaunchConfiguration('robot_description_semantic').perform(context)
@@ -189,7 +175,6 @@ def launch_setup(context):
         except Exception as e:
             srdf_xml = ''
 
-    robot_description = {'robot_description': urdf_xml}
     robot_description_semantic = {'robot_description_semantic': srdf_xml}
 
     # 3. Kinematics Configuration (KDL Kinematics Plugin)
@@ -249,6 +234,7 @@ def launch_setup(context):
         'publish_geometry_updates': True,
         'publish_state_updates': True,
         'publish_transforms_updates': True,
+        'octomap_resolution': 0.1,
     }
 
     # 7. Joint Limits
@@ -280,35 +266,58 @@ def launch_setup(context):
         ),
     ]
 
+    # Synchronize on robot description topic publication
+    wait_robot_description = Node(
+        package='ur_robot_driver',
+        executable='wait_for_robot_description',
+        namespace=robot_name,
+        output='screen',
+    )
+
+    # MoveGroup Parameters
+    move_group_params = [
+        {
+            'planning_scene_monitor_options': {
+                'robot_description': 'robot_description',
+                'joint_state_topic': f'/{robot_name}/joint_states',
+            },
+            'use_sim_time': use_sim_time,
+            'publish_robot_description_semantic': publish_robot_description_semantic,
+        },
+        robot_description_semantic,
+        kinematics_config,
+        ompl_planning_pipeline_config,
+        trajectory_execution_parameters,
+        moveit_controllers,
+        planning_scene_monitor_parameters,
+        joint_limits,
+        warehouse_ros_config,
+    ]
+    if robot_description:
+        move_group_params.append(robot_description)
+
     # MoveGroup Node (Pure MoveIt execution, no controller spawners)
     move_group_node = Node(
+        namespace=robot_name,
         package='moveit_ros_move_group',
         executable='move_group',
-        parameters=[
-            {
-                'planning_scene_monitor_options': {
-                    'robot_description': 'robot_description',
-                    'joint_state_topic': f'/{robot_name}/joint_states',
-                },
-                'use_sim_time': use_sim_time,
-                'publish_robot_description_semantic': publish_robot_description_semantic,
-            },
-            robot_description,
-            robot_description_semantic,
-            kinematics_config,
-            ompl_planning_pipeline_config,
-            trajectory_execution_parameters,
-            moveit_controllers,
-            planning_scene_monitor_parameters,
-            joint_limits,
-            warehouse_ros_config,
-        ],
+        parameters=move_group_params,
         remappings=remappings,
         output={'both': 'screen'},
     )
 
     # Optional MoveIt RViz Node
+    rviz_params = [
+        robot_description_semantic,
+        ompl_planning_pipeline_config,
+        kinematics_config,
+        {'use_sim_time': use_sim_time},
+    ]
+    if robot_description:
+        rviz_params.append(robot_description)
+
     rviz_node = Node(
+        namespace=robot_name,
         condition=IfCondition(launch_rviz),
         package='rviz2',
         executable='rviz2',
@@ -317,20 +326,22 @@ def launch_setup(context):
             '-d', rviz_config_file,
             '-f', rviz_frame,
         ],
-        parameters=[
-            robot_description,
-            robot_description_semantic,
-            ompl_planning_pipeline_config,
-            kinematics_config,
-            {'use_sim_time': use_sim_time},
-        ],
+        parameters=rviz_params,
         remappings=remappings,
         output={'both': 'log'},
     )
 
+    # MoveGroup and RViz are started after robot description is published
+    wait_event_handler = RegisterEventHandler(
+        OnProcessExit(
+            target_action=wait_robot_description,
+            on_exit=[move_group_node, rviz_node],
+        )
+    )
+
     return [
-        move_group_node,
-        rviz_node,
+        wait_robot_description,
+        wait_event_handler,
     ]
 
 

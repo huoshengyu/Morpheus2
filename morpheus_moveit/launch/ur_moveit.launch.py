@@ -88,6 +88,11 @@ def declare_arguments():
             default_value="",
         ),
         DeclareLaunchArgument(
+            'robot_name',
+            default_value=LaunchConfiguration('ur_type'),
+            description='Name / namespace of the robot',
+        ),
+        DeclareLaunchArgument(
             "warehouse_sqlite_path",
             default_value=os.path.expanduser("~/.ros/warehouse_ros.sqlite"),
             description="Path where the warehouse database should be stored",
@@ -115,6 +120,7 @@ def launch_setup(context):
     launch_rviz = LaunchConfiguration("launch_rviz")
     ur_type = LaunchConfiguration("ur_type")
     ee_type = LaunchConfiguration("ee_type")
+    robot_name = LaunchConfiguration("robot_name")
     warehouse_sqlite_path = LaunchConfiguration("warehouse_sqlite_path")
     launch_servo = LaunchConfiguration("launch_servo")
     use_sim_time = LaunchConfiguration("use_sim_time")

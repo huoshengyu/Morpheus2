@@ -17,9 +17,7 @@
 # ---------------------------------------------------------------------------
 
 import os
-import subprocess
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
@@ -157,37 +155,6 @@ def launch_setup(context):
             }.items(),
         )
 
-        # Generate URDF and SRDF for Morpheus HYBRID distance-field collision detector
-        try:
-            urdf_xacro_path = os.path.join(
-                get_package_share_directory('interbotix_xsarm_descriptions'),
-                'urdf',
-                f'{robot_model}.urdf.xacro',
-            )
-            urdf_xml = subprocess.check_output([
-                'xacro',
-                urdf_xacro_path,
-                f'robot_name:={robot_name}',
-                f'hardware_type:={hardware_type}',
-            ], text=True)
-        except Exception:
-            urdf_xml = ''
-
-        try:
-            srdf_xacro_path = os.path.join(
-                get_package_share_directory('interbotix_xsarm_moveit'),
-                'config',
-                'srdf',
-                f'{robot_model}.srdf.xacro',
-            )
-            srdf_xml = subprocess.check_output([
-                'xacro',
-                srdf_xacro_path,
-                f'robot_name:={robot_name}',
-            ], text=True)
-        except Exception:
-            srdf_xml = ''
-
         collision_node = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 PathJoinSubstitution([
@@ -197,15 +164,17 @@ def launch_setup(context):
                 ])
             ),
             launch_arguments={
+                'robot_name': robot_name,
                 'arm_group': 'interbotix_arm',
                 'gripper_group': 'interbotix_gripper',
-                'robot_description': urdf_xml,
-                'robot_description_semantic': srdf_xml,
-                'robot_description_topic': 'robot_description',
-                'joint_states_topic': f'{robot_name}/joint_states',
-                'planning_scene_topic': f'{robot_name}/monitored_planning_scene',
-                'planning_scene_world_topic': f'{robot_name}/planning_scene_world',
-                'planning_scene_service': f'{robot_name}/get_planning_scene',
+                'kinematics_file': PathJoinSubstitution([
+                    FindPackageShare('interbotix_xsarm_moveit'),
+                    'config',
+                    'kinematics.yaml',
+                ]),
+                'planning_scene_topic': 'monitored_planning_scene',
+                'planning_scene_world_topic': 'planning_scene_world',
+                'planning_scene_service': 'get_planning_scene',
             }.items(),
         )
         control_nodes.append(moveit_node)
@@ -293,12 +262,12 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'frame_id',
-            default_value='vx300s/base_link',
+            default_value=PathJoinSubstitution([LaunchConfiguration('robot_name'), 'base_link']),
             description='Reference frame for control commands',
         ),
         DeclareLaunchArgument(
             'end_effector',
-            default_value='vx300s/ee_gripper_link',
+            default_value=PathJoinSubstitution([LaunchConfiguration('robot_name'), 'ee_gripper_link']),
             description='End effector link frame name',
         ),
         # MoveIt & Collision arguments

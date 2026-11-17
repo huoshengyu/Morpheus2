@@ -37,6 +37,7 @@ from launch.substitutions import (
     AndSubstitution,
     OrSubstitution,
     NotSubstitution,
+    IfElseSubstitution,
 )
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterFile
@@ -57,11 +58,7 @@ def launch_setup(context, *args, **kwargs):
     xs_driver_logging_level_launch_arg = LaunchConfiguration('xs_driver_logging_level')
     controller_spawner_timeout = LaunchConfiguration('controller_spawner_timeout').perform(context)
     initial_arm_controller = LaunchConfiguration('initial_arm_controller').perform(context)
-    
-    if use_mock_hardware_launch_arg.perform(context).lower() == 'true':
-        context.launch_configurations['hardware_type'] = 'fake'
     hardware_type_launch_arg = LaunchConfiguration('hardware_type')
-    print(f"Hardware type: {hardware_type_launch_arg.perform(context)}")
 
     # sets use_sim_time parameter to 'true' if using gazebo hardware
     use_sim_time_param = determine_use_sim_time_param(
@@ -156,28 +153,10 @@ def launch_setup(context, *args, **kwargs):
         executable='ros2_control_node',
         namespace=robot_name_launch_arg,
         parameters=[
-            {'robot_description': robot_description_launch_arg,
-            'hardware_type': hardware_type_launch_arg,},
+            {'hardware_type': hardware_type_launch_arg},
             ros2_control_controllers_config_parameter_file,
         ],
         output={'both': 'screen'},
-        arguments=[
-            '--ros-args',
-            '-r',
-            'motion_control_handle/target_frame:=target_frame',
-            '-r',
-            'cartesian_motion_controller/target_frame:=target_frame',
-            '-r',
-            'cartesian_compliance_controller/target_frame:=target_frame',
-            '-r',
-            'cartesian_force_controller/target_wrench:=target_wrench',
-            '-r',
-            'cartesian_compliance_controller/target_wrench:=target_wrench',
-            '-r',
-            'cartesian_force_controller/ft_sensor_wrench:=ft_sensor_wrench',
-            '-r',
-            'cartesian_compliance_controller/ft_sensor_wrench:=ft_sensor_wrench',   
-        ]
     )
     nodes_to_start.append(controller_manager_node)
 
@@ -235,34 +214,52 @@ def launch_setup(context, *args, **kwargs):
             'motion_control_handle',
         ]
 
+    cartesian_ros_args = []
+    for remap in [
+        '-r cartesian_motion_controller/target_frame:=target_frame',
+        '-r cartesian_compliance_controller/target_frame:=target_frame',
+        '-r cartesian_compliance_controller/target_wrench:=target_wrench',
+        '-r cartesian_compliance_controller/ft_sensor_wrench:=ft_sensor_wrench',
+        '-r cartesian_force_controller/target_wrench:=target_wrench',
+        '-r cartesian_force_controller/ft_sensor_wrench:=ft_sensor_wrench',
+        '-r motion_control_handle/target_frame:=target_frame',
+    ]:
+        cartesian_ros_args.extend(['--controller-ros-args', remap])
+
+    active_controller_args = [
+        '-c',
+        'controller_manager',
+        '--controller-manager-timeout',
+        controller_spawner_timeout,
+    ]
+    if active_arm_ctrl != 'arm_controller':
+        active_controller_args.extend(cartesian_ros_args)
+    active_controller_args.append(active_arm_ctrl)
+
     spawn_active_arm_controller_node = Node(
         name='arm_controller_spawner',
         package='controller_manager',
         executable='spawner',
         namespace=robot_name_launch_arg,
-        arguments=[
-            '-c',
-            'controller_manager',
-            '--controller-manager-timeout',
-            controller_spawner_timeout,
-            active_arm_ctrl,
-        ],
+        arguments=active_controller_args,
         output={'both': 'screen'},
     )
     nodes_to_start.append(spawn_active_arm_controller_node)
+
+    inactive_controller_args = [
+        '-c',
+        'controller_manager',
+        '--controller-manager-timeout',
+        controller_spawner_timeout,
+        '--inactive',
+    ] + cartesian_ros_args + inactive_arm_ctrls
 
     spawn_inactive_controllers_node = Node(
         name='inactive_controllers_spawner',
         package='controller_manager',
         executable='spawner',
         namespace=robot_name_launch_arg,
-        arguments=[
-            '-c',
-            'controller_manager',
-            '--controller-manager-timeout',
-            controller_spawner_timeout,
-            '--inactive',
-        ] + inactive_arm_ctrls,
+        arguments=inactive_controller_args,
         output={'both': 'screen'},
     )
     nodes_to_start.append(spawn_inactive_controllers_node)
@@ -400,7 +397,13 @@ def generate_launch_description():
         )
     )
     declared_arguments.extend(
-        declare_interbotix_xsarm_robot_description_launch_arguments()
+        declare_interbotix_xsarm_robot_description_launch_arguments(
+            hardware_type=IfElseSubstitution(
+                LaunchConfiguration('use_mock_hardware'),
+                'fake',
+                'actual'
+            ),
+        )
     )
 
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
